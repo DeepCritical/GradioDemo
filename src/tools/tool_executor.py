@@ -182,9 +182,9 @@ async def execute_tool_tasks(
             results[f"{task.agent}_{i}"] = ToolAgentOutput(output=f"Error: {result!s}", sources=[])
         else:
             # Type narrowing: result is ToolAgentOutput after Exception check
-            assert isinstance(
-                result, ToolAgentOutput
-            ), "Expected ToolAgentOutput after Exception check"
+            assert isinstance(result, ToolAgentOutput), (
+                "Expected ToolAgentOutput after Exception check"
+            )
             key = f"{task.agent}_{task.gap or i}" if task.gap else f"{task.agent}_{i}"
             results[key] = result
 

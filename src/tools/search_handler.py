@@ -130,8 +130,7 @@ class SearchHandler:
             rag_service = self._get_rag_service()
             if rag_service:
                 try:
-                    # Filter out RAG-sourced evidence (avoid circular ingestion)
-                    evidence_to_ingest = [e for e in all_evidence if e.citation.source != "rag"]
+                    evidence_to_ingest = self._select_evidence_for_rag(all_evidence)
                     if evidence_to_ingest:
                         rag_service.ingest_evidence(evidence_to_ingest)
                         logger.info(
@@ -142,6 +141,29 @@ class SearchHandler:
                     logger.warning("Failed to ingest evidence into RAG", error=str(e))
 
         return search_result
+
+    def _select_evidence_for_rag(self, evidence: list[Evidence]) -> list[Evidence]:
+        """Select high-quality evidence for RAG ingestion.
+
+        Filters out low-relevance or duplicate evidence and limits the number of
+        documents added per search to keep the vector index focused.
+        """
+
+        if not evidence:
+            return []
+
+        filtered = [
+            item for item in evidence if item.citation.source != "rag" and item.relevance >= 0.2
+        ]
+
+        by_url: dict[str, Evidence] = {}
+        for item in filtered:
+            current = by_url.get(item.citation.url)
+            if current is None or item.relevance > current.relevance:
+                by_url[item.citation.url] = item
+
+        deduped = sorted(by_url.values(), key=lambda e: e.relevance, reverse=True)
+        return deduped[:20]
 
     async def _search_with_timeout(
         self,

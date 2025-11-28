@@ -5,6 +5,7 @@ Supports both iterative and deep research patterns with parallel execution.
 """
 
 import asyncio
+from dataclasses import dataclass
 from collections.abc import AsyncGenerator, Callable
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -31,7 +32,7 @@ from src.agent_factory.graph_builder import (
 from src.middleware.budget_tracker import BudgetTracker
 from src.middleware.state_machine import WorkflowState, init_workflow_state
 from src.orchestrator.research_flow import DeepResearchFlow, IterativeResearchFlow
-from src.utils.models import AgentEvent
+from src.utils.models import AgentEvent, ParsedQuery
 
 if TYPE_CHECKING:
     pass
@@ -39,15 +40,31 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
+@dataclass
+class GraphPlan:
+    """Resolved plan for building and executing a research graph."""
+
+    mode: Literal["iterative", "deep"]
+    graph_factory: Callable[..., ResearchGraph]
+    agents: dict[str, Any]
+    description: str
+
+
 class GraphExecutionContext:
     """Context for managing graph execution state."""
 
-    def __init__(self, state: WorkflowState, budget_tracker: BudgetTracker) -> None:
+    def __init__(
+        self,
+        state: WorkflowState,
+        budget_tracker: BudgetTracker,
+        parsed_query: ParsedQuery | None = None,
+    ) -> None:
         """Initialize execution context.
 
         Args:
             state: Current workflow state
             budget_tracker: Budget tracker instance
+            parsed_query: Optional parsed query metadata used for prompt improvement
         """
         self.current_node: str = ""
         self.visited_nodes: set[str] = set()
@@ -55,6 +72,9 @@ class GraphExecutionContext:
         self.state = state
         self.budget_tracker = budget_tracker
         self.iteration_count = 0
+        self.parsed_query = parsed_query
+        self.improved_query: str | None = parsed_query.improved_query if parsed_query else None
+        self.rag_ingested: int = 0
 
     def set_node_result(self, node_id: str, result: Any) -> None:
         """Store result from node execution.
@@ -169,17 +189,46 @@ class GraphOrchestrator:
         )
 
         try:
-            # Determine research mode
-            research_mode = self.mode
-            if research_mode == "auto":
-                research_mode = await self._detect_research_mode(query)
+            improved_query, parsed_query, research_mode = await self._analyze_query(query)
+
+            # Override research mode if explicitly set
+            if self.mode in ("iterative", "deep"):
+                research_mode = self.mode
+                self.logger.info(
+                    "Using explicit research mode", mode=research_mode, query=query[:100]
+                )
+
+            plan = self._resolve_graph_plan(research_mode)
+
+            yield AgentEvent(
+                type="analysis_complete",
+                message=(
+                    "Refined query and selected graph"
+                    if parsed_query
+                    else "Selected graph for execution"
+                ),
+                data={
+                    "original_query": query,
+                    "improved_query": improved_query,
+                    "research_mode": research_mode,
+                    "graph_description": plan.description,
+                    "agents": list(plan.agents.keys()),
+                    "entities": parsed_query.key_entities if parsed_query else [],
+                    "research_questions": parsed_query.research_questions if parsed_query else [],
+                },
+                iteration=0,
+            )
 
             # Use graph execution if enabled, otherwise fall back to agent chains
             if self.use_graph:
-                async for event in self._run_with_graph(query, research_mode):
+                async for event in self._run_with_graph(
+                    improved_query, research_mode, parsed_query, plan
+                ):
                     yield event
             else:
-                async for event in self._run_with_chains(query, research_mode):
+                async for event in self._run_with_chains(
+                    improved_query, research_mode, parsed_query
+                ):
                     yield event
 
         except Exception as e:
@@ -191,7 +240,11 @@ class GraphOrchestrator:
             )
 
     async def _run_with_graph(
-        self, query: str, research_mode: Literal["iterative", "deep"]
+        self,
+        query: str,
+        research_mode: Literal["iterative", "deep"],
+        parsed_query: ParsedQuery | None = None,
+        plan: GraphPlan | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         """Run workflow using graph execution.
 
@@ -216,17 +269,20 @@ class GraphOrchestrator:
         )
         budget_tracker.start_timer("graph_execution")
 
-        context = GraphExecutionContext(state, budget_tracker)
+        context = GraphExecutionContext(state, budget_tracker, parsed_query=parsed_query)
 
         # Build graph
-        self._graph = await self._build_graph(research_mode)
+        self._graph = await self._build_graph(research_mode, plan)
 
         # Execute graph
         async for event in self._execute_graph(query, context):
             yield event
 
     async def _run_with_chains(
-        self, query: str, research_mode: Literal["iterative", "deep"]
+        self,
+        query: str,
+        research_mode: Literal["iterative", "deep"],
+        parsed_query: ParsedQuery | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         """Run workflow using agent chains (backward compatibility).
 
@@ -302,7 +358,80 @@ class GraphOrchestrator:
                 iteration=1,
             )
 
-    async def _build_graph(self, mode: Literal["iterative", "deep"]) -> ResearchGraph:
+    async def _analyze_query(
+        self, query: str
+    ) -> tuple[str, ParsedQuery | None, Literal["iterative", "deep"]]:
+        """Analyze and improve the incoming query for graph orchestration.
+
+        Args:
+            query: Original user query
+
+        Returns:
+            Tuple of (improved_query, parsed_query, research_mode)
+        """
+        improved_query = query
+        parsed_query: ParsedQuery | None = None
+
+        try:
+            input_parser = create_input_parser_agent()
+            parsed_query = await input_parser.parse(query)
+            improved_query = parsed_query.improved_query or query
+            self.logger.info(
+                "Query parsed for graph orchestration",
+                improved=len(improved_query) != len(query),
+                mode=parsed_query.research_mode,
+                entities=len(parsed_query.key_entities),
+            )
+            return improved_query, parsed_query, parsed_query.research_mode
+        except Exception as e:
+            self.logger.warning(
+                "Falling back to heuristic query analysis",
+                error=str(e),
+                query=query[:100],
+            )
+            return improved_query, None, self._fallback_research_mode(query)
+
+    def _resolve_graph_plan(self, mode: Literal["iterative", "deep"]) -> GraphPlan:
+        """Resolve which agents and graph factory to use for a mode."""
+
+        if mode == "iterative":
+            agents = {
+                "thinking": create_thinking_agent(),
+                "knowledge_gap": create_knowledge_gap_agent(),
+                "tool_selector": create_tool_selector_agent(),
+                "writer": create_writer_agent(),
+            }
+            description = (
+                "Iterative loop: observe -> assess gaps -> choose tools -> execute -> write"
+            )
+            return GraphPlan(
+                mode="iterative",
+                graph_factory=create_iterative_graph,
+                agents=agents,
+                description=description,
+            )
+
+        agents = {
+            "planner": create_planner_agent(),
+            "knowledge_gap": create_knowledge_gap_agent(),
+            "tool_selector": create_tool_selector_agent(),
+            "thinking": create_thinking_agent(),
+            "writer": create_writer_agent(),
+            "long_writer": create_long_writer_agent(),
+        }
+        description = (
+            "Deep loop: plan sections -> run section loops -> collect drafts -> synthesize"
+        )
+        return GraphPlan(
+            mode="deep",
+            graph_factory=create_deep_graph,
+            agents=agents,
+            description=description,
+        )
+
+    async def _build_graph(
+        self, mode: Literal["iterative", "deep"], plan: GraphPlan | None = None
+    ) -> ResearchGraph:
         """Build graph for the specified mode.
 
         Args:
@@ -312,30 +441,38 @@ class GraphOrchestrator:
             Constructed ResearchGraph
         """
         if mode == "iterative":
-            # Get agents
-            knowledge_gap_agent = create_knowledge_gap_agent()
-            tool_selector_agent = create_tool_selector_agent()
-            thinking_agent = create_thinking_agent()
-            writer_agent = create_writer_agent()
+            agents = plan.agents if plan else None
+            knowledge_gap_agent = (agents or {}).get("knowledge_gap") or (
+                create_knowledge_gap_agent()
+            )
+            tool_selector_agent = (agents or {}).get("tool_selector") or (
+                create_tool_selector_agent()
+            )
+            thinking_agent = (agents or {}).get("thinking") or create_thinking_agent()
+            writer_agent = (agents or {}).get("writer") or create_writer_agent()
 
-            # Create graph
-            graph = create_iterative_graph(
+            graph_factory = plan.graph_factory if plan else create_iterative_graph
+            graph = graph_factory(
                 knowledge_gap_agent=knowledge_gap_agent.agent,
                 tool_selector_agent=tool_selector_agent.agent,
                 thinking_agent=thinking_agent.agent,
                 writer_agent=writer_agent.agent,
             )
         else:  # deep
-            # Get agents
-            planner_agent = create_planner_agent()
-            knowledge_gap_agent = create_knowledge_gap_agent()
-            tool_selector_agent = create_tool_selector_agent()
-            thinking_agent = create_thinking_agent()
-            writer_agent = create_writer_agent()
-            long_writer_agent = create_long_writer_agent()
+            agents = plan.agents if plan else None
+            planner_agent = (agents or {}).get("planner") or create_planner_agent()
+            knowledge_gap_agent = (agents or {}).get("knowledge_gap") or (
+                create_knowledge_gap_agent()
+            )
+            tool_selector_agent = (agents or {}).get("tool_selector") or (
+                create_tool_selector_agent()
+            )
+            thinking_agent = (agents or {}).get("thinking") or create_thinking_agent()
+            writer_agent = (agents or {}).get("writer") or create_writer_agent()
+            long_writer_agent = (agents or {}).get("long_writer") or (create_long_writer_agent())
 
-            # Create graph
-            graph = create_deep_graph(
+            graph_factory = plan.graph_factory if plan else create_deep_graph
+            graph = graph_factory(
                 planner_agent=planner_agent.agent,
                 knowledge_gap_agent=knowledge_gap_agent.agent,
                 tool_selector_agent=tool_selector_agent.agent,
@@ -900,6 +1037,26 @@ class GraphOrchestrator:
         # Return next node IDs
         return [next_node_id for next_node_id, _ in next_nodes]
 
+    def _fallback_research_mode(self, query: str) -> Literal["iterative", "deep"]:
+        """Heuristic mode detection when parser is unavailable."""
+
+        query_lower = query.lower()
+        if any(
+            keyword in query_lower
+            for keyword in [
+                "section",
+                "sections",
+                "report",
+                "outline",
+                "structure",
+                "comprehensive",
+                "analyze",
+                "analysis",
+            ]
+        ):
+            return "deep"
+        return "iterative"
+
     async def _detect_research_mode(self, query: str) -> Literal["iterative", "deep"]:
         """
         Detect research mode from query using input parser agent.
@@ -930,22 +1087,7 @@ class GraphOrchestrator:
                 error=str(e),
                 query=query[:100],
             )
-            query_lower = query.lower()
-            if any(
-                keyword in query_lower
-                for keyword in [
-                    "section",
-                    "sections",
-                    "report",
-                    "outline",
-                    "structure",
-                    "comprehensive",
-                    "analyze",
-                    "analysis",
-                ]
-            ):
-                return "deep"
-            return "iterative"
+            return self._fallback_research_mode(query)
 
 
 def create_graph_orchestrator(

@@ -1,6 +1,6 @@
 """Unit tests for SearchHandler."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -195,3 +195,59 @@ class TestSearchHandler:
 
         # Should preserve order
         assert result.sources_searched == ["pubmed", "europepmc", "clinicaltrials"]
+
+    def test_select_evidence_for_rag_filters_and_limits(self):
+        """_select_evidence_for_rag should dedupe and filter low-relevance docs."""
+
+        handler = SearchHandler(tools=[])
+        evidence = [
+            Evidence(
+                content="Keep me",
+                citation=Citation(source="pubmed", title="T1", url="u1", date="2024"),
+                relevance=0.9,
+            ),
+            Evidence(
+                content="Drop low relevance",
+                citation=Citation(source="pubmed", title="T2", url="u2", date="2024"),
+                relevance=0.1,
+            ),
+            Evidence(
+                content="Duplicate lower",
+                citation=Citation(source="pubmed", title="T1-dupe", url="u1", date="2024"),
+                relevance=0.5,
+            ),
+        ]
+
+        selected = handler._select_evidence_for_rag(evidence)
+
+        assert len(selected) == 1
+        assert selected[0].content == "Keep me"
+
+    @pytest.mark.asyncio
+    async def test_execute_ingests_filtered_rag_documents(self):
+        """execute should ingest only filtered evidence into RAG."""
+
+        high = Evidence(
+            content="High",
+            citation=Citation(source="pubmed", title="H", url="u1", date="2024"),
+            relevance=0.8,
+        )
+        low = Evidence(
+            content="Low",
+            citation=Citation(source="pubmed", title="L", url="u1", date="2024"),
+            relevance=0.1,
+        )
+
+        mock_tool = AsyncMock()
+        mock_tool.name = "pubmed"
+        mock_tool.search = AsyncMock(return_value=[high, low])
+
+        handler = SearchHandler(tools=[mock_tool])
+        handler._rag_service = MagicMock()
+        handler._rag_service.ingest_evidence = MagicMock()
+
+        await handler.execute("query")
+
+        handler._rag_service.ingest_evidence.assert_called_once()
+        ingested = handler._rag_service.ingest_evidence.call_args[0][0]
+        assert ingested == [high]
