@@ -17,7 +17,7 @@ _clinicaltrials = ClinicalTrialsTool()
 _europepmc = EuropePMCTool()
 
 
-@ai_function  # type: ignore[arg-type, misc]
+@ai_function  # type: ignore[arg-type, misc, untyped-decorator]
 async def search_pubmed(query: str, max_results: int = 10) -> str:
     """Search PubMed for biomedical research papers.
 
@@ -75,7 +75,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
     return "\n".join(output)
 
 
-@ai_function  # type: ignore[arg-type, misc]
+@ai_function  # type: ignore[arg-type, misc, untyped-decorator]
 async def search_clinical_trials(query: str, max_results: int = 10) -> str:
     """Search ClinicalTrials.gov for clinical studies.
 
@@ -114,7 +114,7 @@ async def search_clinical_trials(query: str, max_results: int = 10) -> str:
     return "\n".join(output)
 
 
-@ai_function  # type: ignore[arg-type, misc]
+@ai_function  # type: ignore[arg-type, misc, untyped-decorator]
 async def search_preprints(query: str, max_results: int = 10) -> str:
     """Search Europe PMC for preprints and papers.
 
@@ -153,7 +153,7 @@ async def search_preprints(query: str, max_results: int = 10) -> str:
     return "\n".join(output)
 
 
-@ai_function  # type: ignore[arg-type, misc]
+@ai_function  # type: ignore[arg-type, misc, untyped-decorator]
 async def get_bibliography() -> str:
     """Get the full list of collected evidence for the bibliography.
 
