@@ -85,3 +85,94 @@ def build_reference_from_evidence(evidence: "Evidence") -> dict[str, str]:
         "date": evidence.citation.date or "n.d.",
         "url": evidence.citation.url,
     }
+
+
+def validate_markdown_citations(
+    markdown_report: str, evidence: list["Evidence"]
+) -> tuple[str, int]:
+    """Validate citations in a markdown report against collected evidence.
+
+    This function validates citations in markdown format (e.g., [1], [2]) by:
+    1. Extracting URLs from the references section
+    2. Matching them against Evidence objects
+    3. Removing invalid citations from the report
+
+    Note:
+        This is a basic validation. For full validation, use ResearchReport
+        objects with validate_references().
+
+    Args:
+        markdown_report: The markdown report string with citations
+        evidence: List of Evidence objects collected during research
+
+    Returns:
+        Tuple of (validated_markdown, removed_count)
+    """
+    import re
+
+    # Build set of valid URLs from evidence
+    valid_urls = {e.citation.url for e in evidence}
+    valid_urls_lower = {url.lower() for url in valid_urls}
+
+    # Extract references section (everything after "## References" or "References:")
+    ref_section_pattern = r"(?i)(?:##\s*)?References:?\s*\n(.*?)(?=\n##|\Z)"
+    ref_match = re.search(ref_section_pattern, markdown_report, re.DOTALL)
+
+    if not ref_match:
+        # No references section found, return as-is
+        return markdown_report, 0
+
+    ref_section = ref_match.group(1)
+    ref_lines = ref_section.strip().split("\n")
+
+    # Parse references: [1] https://example.com or [1] https://example.com Title
+    valid_refs = []
+    removed_count = 0
+
+    for ref_line in ref_lines:
+        stripped_line = ref_line.strip()
+        if not stripped_line:
+            continue
+
+        # Extract URL from reference line
+        # Pattern: [N] URL or [N] URL Title
+        url_match = re.search(r"https?://[^\s\)]+", stripped_line)
+        if url_match:
+            url = url_match.group(0).rstrip(".,;")
+            url_lower = url.lower()
+
+            # Check if URL is valid
+            if url in valid_urls or url_lower in valid_urls_lower:
+                valid_refs.append(stripped_line)
+            else:
+                removed_count += 1
+                logger.warning(
+                    f"Removed invalid citation from markdown: {url[:80]}"
+                    + ("..." if len(url) > 80 else "")
+                )
+        else:
+            # No URL found, keep the line (might be formatted differently)
+            valid_refs.append(stripped_line)
+
+    # Rebuild references section
+    if valid_refs:
+        new_ref_section = "\n".join(valid_refs)
+        # Replace the old references section
+        validated_markdown = (
+            markdown_report[: ref_match.start(1)]
+            + new_ref_section
+            + markdown_report[ref_match.end(1) :]
+        )
+    else:
+        # No valid references, remove the entire section
+        validated_markdown = (
+            markdown_report[: ref_match.start()] + markdown_report[ref_match.end() :]
+        )
+
+    if removed_count > 0:
+        logger.info(
+            f"Citation validation removed {removed_count} invalid citations from markdown report. "
+            f"{len(valid_refs)} valid citations remain."
+        )
+
+    return validated_markdown, removed_count

@@ -1,9 +1,11 @@
 """Thread-safe state management for Magentic agents.
 
-Uses contextvars to ensure isolation between concurrent requests (e.g., multiple users
-searching simultaneously via Gradio).
+DEPRECATED: This module is deprecated. Use src.middleware.state_machine instead.
+
+This file is kept for backward compatibility and will be removed in a future version.
 """
 
+import warnings
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any
 
@@ -15,8 +17,20 @@ if TYPE_CHECKING:
     from src.services.embeddings import EmbeddingService
 
 
+def _deprecation_warning() -> None:
+    """Emit deprecation warning for this module."""
+    warnings.warn(
+        "src.agents.state is deprecated. Use src.middleware.state_machine instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
 class MagenticState(BaseModel):
-    """Mutable state for a Magentic workflow session."""
+    """Mutable state for a Magentic workflow session.
+
+    DEPRECATED: Use WorkflowState from src.middleware.state_machine instead.
+    """
 
     evidence: list[Evidence] = Field(default_factory=list)
     # Type as Any to avoid circular imports/runtime resolution issues
@@ -75,14 +89,22 @@ _magentic_state_var: ContextVar[MagenticState | None] = ContextVar("magentic_sta
 
 
 def init_magentic_state(embedding_service: "EmbeddingService | None" = None) -> MagenticState:
-    """Initialize a new state for the current context."""
+    """Initialize a new state for the current context.
+
+    DEPRECATED: Use init_workflow_state from src.middleware.state_machine instead.
+    """
+    _deprecation_warning()
     state = MagenticState(embedding_service=embedding_service)
     _magentic_state_var.set(state)
     return state
 
 
 def get_magentic_state() -> MagenticState:
-    """Get the current state. Raises RuntimeError if not initialized."""
+    """Get the current state. Raises RuntimeError if not initialized.
+
+    DEPRECATED: Use get_workflow_state from src.middleware.state_machine instead.
+    """
+    _deprecation_warning()
     state = _magentic_state_var.get()
     if state is None:
         # Auto-initialize if missing (e.g. during tests or simple scripts)

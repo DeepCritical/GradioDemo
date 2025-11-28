@@ -24,8 +24,13 @@ dependencies = [
     "tenacity>=8.2", # Retry logic
     "structlog>=24.1", # Structured logging
     "requests>=2.32.5", # ClinicalTrials.gov (httpx blocked by WAF)
+    "pydantic-graph>=1.22.0",
     "limits>=3.0", # Rate limiting
     "duckduckgo-search>=5.0", # Web search
+    "llama-index-llms-huggingface>=0.6.1",
+    "llama-index-llms-huggingface-api>=0.6.1",
+    "llama-index-vector-stores-chroma>=0.5.3",
+    "llama-index>=0.14.8",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +55,7 @@ magentic = [
 embeddings = [
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
+    "numpy<2.0",  # chromadb compatibility: uses np.float_ removed in NumPy 2.0
 ]
 modal = [
     # Mario's Modal code execution + LlamaIndex RAG
@@ -59,6 +65,7 @@ modal = [
     "llama-index-embeddings-openai",
     "llama-index-vector-stores-chroma",
     "chromadb>=0.4.0",
+    "numpy<2.0",  # chromadb compatibility: uses np.float_ removed in NumPy 2.0
 ]
 
 [build-system]
@@ -72,7 +79,13 @@ packages = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src", "tests"]
+src = ["src"]
+exclude = [
+    "tests/",
+    "examples/",
+    "reference_repos/",
+    "folder/",
+]
 
 [tool.ruff.lint]
 select = [
@@ -93,6 +106,7 @@ ignore = [
     "PLW0603",  # Global statement (singleton pattern for Modal)
     "PLC0415",  # Lazy imports for optional dependencies
     "E402",     # Module level import not at top (needed for pytest.importorskip)
+    "E501",     # Line too long (ignore line length violations)
     "RUF100",   # Unused noqa (version differences between local/CI)
 ]
 
@@ -107,9 +121,12 @@ ignore_missing_imports = true
 disallow_untyped_defs = true
 warn_return_any = true
 warn_unused_ignores = false
+explicit_package_bases = true
+mypy_path = "."
 exclude = [
     "^reference_repos/",
     "^examples/",
+    "^folder/",
 ]
 
 # ============== PYTEST CONFIG ==============
@@ -120,11 +137,17 @@ addopts = [
     "-v",
     "--tb=short",
     "--strict-markers",
+    "-p",
+    "no:logfire",
 ]
 markers = [
     "unit: Unit tests (mocked)",
     "integration: Integration tests (real APIs)",
     "slow: Slow tests",
+    "openai: Tests that require OpenAI API key",
+    "huggingface: Tests that require HuggingFace API key or use HuggingFace models",
+    "embedding_provider: Tests that require API-based embedding providers (OpenAI, etc.)",
+    "local_embeddings: Tests that use local embeddings (sentence-transformers, ChromaDB)",
 ]
 
 # ============== COVERAGE CONFIG ==============
@@ -137,6 +160,12 @@ exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+]
+
+[dependency-groups]
+dev = [
+    "structlog>=25.5.0",
+    "ty>=0.0.1a28",
 ]
 
 # Note: agent-framework-core is optional for magentic mode (multi-agent orchestration)

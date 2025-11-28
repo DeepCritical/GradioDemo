@@ -9,7 +9,7 @@ from huggingface_hub import InferenceClient
 from pydantic_ai import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.huggingface import HuggingFaceModel
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel as OpenAIModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.huggingface import HuggingFaceProvider
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -40,15 +40,21 @@ def get_model() -> Any:
 
     if llm_provider == "huggingface":
         # Free tier - uses HF_TOKEN from environment if available
-        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-70B-Instruct"
+        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
         hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
         return HuggingFaceModel(model_name, provider=hf_provider)
 
-    if llm_provider != "openai":
-        logger.warning("Unknown LLM provider, defaulting to OpenAI", provider=llm_provider)
+    if llm_provider == "openai":
+        openai_provider = OpenAIProvider(api_key=settings.openai_api_key)
+        return OpenAIModel(settings.openai_model, provider=openai_provider)
 
-    openai_provider = OpenAIProvider(api_key=settings.openai_api_key)
-    return OpenAIModel(settings.openai_model, provider=openai_provider)
+    # Default to HuggingFace if provider is unknown or not specified
+    if llm_provider != "huggingface":
+        logger.warning("Unknown LLM provider, defaulting to HuggingFace", provider=llm_provider)
+
+    model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
+    hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
+    return HuggingFaceModel(model_name, provider=hf_provider)
 
 
 class JudgeHandler:
@@ -357,6 +363,15 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
             ],
             reasoning=f"HF Inference failed: {error}. Recommend configuring OpenAI/Anthropic key.",
         )
+
+
+def create_judge_handler() -> JudgeHandler:
+    """Create a judge handler based on configuration.
+
+    Returns:
+        Configured JudgeHandler instance
+    """
+    return JudgeHandler()
 
 
 class MockJudgeHandler:

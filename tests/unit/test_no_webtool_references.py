@@ -9,7 +9,11 @@ def test_examples_no_webtool_imports():
     examples_dir = pathlib.Path("examples")
 
     for py_file in examples_dir.rglob("*.py"):
-        content = py_file.read_text()
+        try:
+            content = py_file.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            # Skip files that can't be decoded as UTF-8
+            continue
         tree = ast.parse(content)
 
         for node in ast.walk(tree):

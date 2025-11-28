@@ -77,6 +77,8 @@ class PubMedTool:
                     params=search_params,
                 )
                 search_resp.raise_for_status()
+            except httpx.TimeoutException as e:
+                raise SearchError(f"PubMed search timeout: {e}") from e
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == self.HTTP_TOO_MANY_REQUESTS:
                     raise RateLimitError("PubMed rate limit exceeded") from e
@@ -98,11 +100,14 @@ class PubMedTool:
             # Use XML for fetch (more reliable parsing)
             fetch_params["retmode"] = "xml"
 
-            fetch_resp = await client.get(
-                f"{self.BASE_URL}/efetch.fcgi",
-                params=fetch_params,
-            )
-            fetch_resp.raise_for_status()
+            try:
+                fetch_resp = await client.get(
+                    f"{self.BASE_URL}/efetch.fcgi",
+                    params=fetch_params,
+                )
+                fetch_resp.raise_for_status()
+            except httpx.TimeoutException as e:
+                raise SearchError(f"PubMed fetch timeout: {e}") from e
 
             # Step 3: Parse XML to Evidence
             return self._parse_pubmed_xml(fetch_resp.text)
@@ -114,7 +119,15 @@ class PubMedTool:
         except Exception as e:
             raise SearchError(f"Failed to parse PubMed XML: {e}") from e
 
-        articles = data.get("PubmedArticleSet", {}).get("PubmedArticle", [])
+        if data is None:
+            return []
+
+        # Handle case where PubmedArticleSet might not exist or be empty
+        pubmed_set = data.get("PubmedArticleSet")
+        if not pubmed_set:
+            return []
+
+        articles = pubmed_set.get("PubmedArticle", [])
 
         # Handle single article (xmltodict returns dict instead of list)
         if isinstance(articles, dict):

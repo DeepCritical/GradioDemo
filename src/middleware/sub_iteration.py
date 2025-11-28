@@ -125,8 +125,7 @@ class SubIterationMiddleware:
                     AgentEvent(
                         type="looping",
                         message=(
-                            f"Sub-iteration {i} result insufficient. "
-                            f"Feedback: {feedback[:100]}..."
+                            f"Sub-iteration {i} result insufficient. Feedback: {feedback[:100]}..."
                         ),
                         iteration=i,
                     )

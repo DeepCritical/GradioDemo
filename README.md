@@ -21,7 +21,7 @@ tags:
 
 # DeepCritical
 
-AI-Powered Drug Repurposing Research Agent
+## Intro
 
 ## Features
 
@@ -29,6 +29,10 @@ AI-Powered Drug Repurposing Research Agent
 - **MCP Integration**: Use our tools from Claude Desktop or any MCP client
 - **Modal Sandbox**: Secure execution of AI-generated statistical code
 - **LlamaIndex RAG**: Semantic search and evidence synthesis
+- **HuggingfaceInference**: 
+- **HuggingfaceMCP Custom Config To Use Community Tools**:
+- **Strongly Typed Composable Graphs**:
+- **Specialized Research Teams of Agents**: 
 
 ## Quick Start
 
@@ -46,7 +50,7 @@ uv sync
 
 ```bash
 # Start the Gradio app
-uv run python src/app.py
+uv run gradio run src/app.py
 ```
 
 Open your browser to `http://localhost:7860`.
@@ -76,6 +80,97 @@ Add this to your `claude_desktop_config.json`:
 - `search_all`: Search all sources simultaneously.
 - `analyze_hypothesis`: Secure statistical analysis using Modal sandboxes.
 
+
+
+## Architecture
+
+DeepCritical uses a Vertical Slice Architecture:
+
+1.  **Search Slice**: Retrieving evidence from PubMed, ClinicalTrials.gov, and bioRxiv.
+2.  **Judge Slice**: Evaluating evidence quality using LLMs.
+3.  **Orchestrator Slice**: Managing the research loop and UI.
+
+- iterativeResearch
+- deepResearch
+- researchTeam
+
+### Iterative Research
+
+sequenceDiagram
+    participant IterativeFlow
+    participant ThinkingAgent
+    participant KnowledgeGapAgent
+    participant ToolSelector
+    participant ToolExecutor
+    participant JudgeHandler
+    participant WriterAgent
+
+    IterativeFlow->>IterativeFlow: run(query)
+    
+    loop Until complete or max_iterations
+        IterativeFlow->>ThinkingAgent: generate_observations()
+        ThinkingAgent-->>IterativeFlow: observations
+        
+        IterativeFlow->>KnowledgeGapAgent: evaluate_gaps()
+        KnowledgeGapAgent-->>IterativeFlow: KnowledgeGapOutput
+        
+        alt Research complete
+            IterativeFlow->>WriterAgent: create_final_report()
+            WriterAgent-->>IterativeFlow: final_report
+        else Gaps remain
+            IterativeFlow->>ToolSelector: select_agents(gap)
+            ToolSelector-->>IterativeFlow: AgentSelectionPlan
+            
+            IterativeFlow->>ToolExecutor: execute_tool_tasks()
+            ToolExecutor-->>IterativeFlow: ToolAgentOutput[]
+            
+            IterativeFlow->>JudgeHandler: assess_evidence()
+            JudgeHandler-->>IterativeFlow: should_continue
+        end
+    end
+
+
+### Deep Research
+
+sequenceDiagram
+    actor User
+    participant GraphOrchestrator
+    participant InputParser
+    participant GraphBuilder
+    participant GraphExecutor
+    participant Agent
+    participant BudgetTracker
+    participant WorkflowState
+
+    User->>GraphOrchestrator: run(query)
+    GraphOrchestrator->>InputParser: detect_research_mode(query)
+    InputParser-->>GraphOrchestrator: mode (iterative/deep)
+    GraphOrchestrator->>GraphBuilder: build_graph(mode)
+    GraphBuilder-->>GraphOrchestrator: ResearchGraph
+    GraphOrchestrator->>WorkflowState: init_workflow_state()
+    GraphOrchestrator->>BudgetTracker: create_budget()
+    GraphOrchestrator->>GraphExecutor: _execute_graph(graph)
+    
+    loop For each node in graph
+        GraphExecutor->>Agent: execute_node(agent_node)
+        Agent->>Agent: process_input
+        Agent-->>GraphExecutor: result
+        GraphExecutor->>WorkflowState: update_state(result)
+        GraphExecutor->>BudgetTracker: add_tokens(used)
+        GraphExecutor->>BudgetTracker: check_budget()
+        alt Budget exceeded
+            GraphExecutor->>GraphOrchestrator: emit(error_event)
+        else Continue
+            GraphExecutor->>GraphOrchestrator: emit(progress_event)
+        end
+    end
+    
+    GraphOrchestrator->>User: AsyncGenerator[AgentEvent]
+
+### Research Team
+
+Critical Deep Research Agent
+
 ## Development
 
 ### Run Tests
@@ -90,22 +185,7 @@ uv run pytest
 make check
 ```
 
-## Architecture
-
-DeepCritical uses a Vertical Slice Architecture:
-
-1.  **Search Slice**: Retrieving evidence from PubMed, ClinicalTrials.gov, and bioRxiv.
-2.  **Judge Slice**: Evaluating evidence quality using LLMs.
-3.  **Orchestrator Slice**: Managing the research loop and UI.
-
-Built with:
-- **PydanticAI**: For robust agent interactions.
-- **Gradio**: For the streaming user interface.
-- **PubMed, ClinicalTrials.gov, bioRxiv**: For biomedical data.
-- **MCP**: For universal tool access.
-- **Modal**: For secure code execution.
-
-## Team
+## Join Us
 
 - The-Obstacle-Is-The-Way
 - MarioAderman

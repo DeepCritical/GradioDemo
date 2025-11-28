@@ -4,7 +4,11 @@ from typing import Any, Literal
 
 import structlog
 
-from src.orchestrator import JudgeHandlerProtocol, Orchestrator, SearchHandlerProtocol
+from src.legacy_orchestrator import (
+    JudgeHandlerProtocol,
+    Orchestrator,
+    SearchHandlerProtocol,
+)
 from src.utils.config import settings
 from src.utils.models import OrchestratorConfig
 
@@ -20,8 +24,7 @@ def _get_magentic_orchestrator_class() -> Any:
     except ImportError as e:
         logger.error("Failed to import MagenticOrchestrator", error=str(e))
         raise ValueError(
-            "Advanced mode requires agent-framework-core. "
-            "Please install it or use mode='simple'."
+            "Advanced mode requires agent-framework-core. Please install it or use mode='simple'."
         ) from e
 
 

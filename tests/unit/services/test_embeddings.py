@@ -6,12 +6,21 @@ import numpy as np
 import pytest
 
 # Skip if embeddings dependencies are not installed
-pytest.importorskip("chromadb")
-pytest.importorskip("sentence_transformers")
+# Handle Windows-specific scipy import issues
+try:
+    pytest.importorskip("chromadb")
+    pytest.importorskip("sentence_transformers")
+except OSError:
+    # On Windows, scipy import can fail with OSError during collection
+    # Skip the entire test module in this case
+    pytest.skip(
+        "Embeddings dependencies not available (scipy import issue)", allow_module_level=True
+    )
 
 from src.services.embeddings import EmbeddingService
 
 
+@pytest.mark.local_embeddings
 class TestEmbeddingService:
     @pytest.fixture
     def mock_sentence_transformer(self):

@@ -86,7 +86,7 @@ class HierarchicalOrchestrator:
             yield AgentEvent(
                 type="complete",
                 message=(
-                    f"Research complete.\n\nResult:\n{result}\n\n" f"Assessment:\n{assessment_text}"
+                    f"Research complete.\n\nResult:\n{result}\n\nAssessment:\n{assessment_text}"
                 ),
                 data={"assessment": assessment.model_dump() if assessment else None},
             )

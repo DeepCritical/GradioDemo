@@ -5,8 +5,8 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
-# Centralized source type - add new sources here (e.g., new databases)
-SourceName = Literal["pubmed", "clinicaltrials", "europepmc", "preprint", "openalex", "web"]
+# Centralized source type - add new sources here (e.g., "biorxiv" in Phase 11)
+SourceName = Literal["pubmed", "clinicaltrials", "biorxiv", "europepmc", "preprint", "rag", "web"]
 
 
 class Citation(BaseModel):
@@ -307,3 +307,266 @@ class OrchestratorConfig(BaseModel):
     max_iterations: int = Field(default=10, ge=1, le=20)
     max_results_per_tool: int = Field(default=10, ge=1, le=50)
     search_timeout: float = Field(default=30.0, ge=5.0, le=120.0)
+
+
+# Models for iterative/deep research patterns
+
+
+class IterationData(BaseModel):
+    """Data for a single iteration of the research loop."""
+
+    gap: str = Field(description="The gap addressed in the iteration", default="")
+    tool_calls: list[str] = Field(description="The tool calls made", default_factory=list)
+    findings: list[str] = Field(
+        description="The findings collected from tool calls", default_factory=list
+    )
+    thought: str = Field(
+        description="The thinking done to reflect on the success of the iteration and next steps",
+        default="",
+    )
+
+    model_config = {"frozen": True}
+
+
+class Conversation(BaseModel):
+    """A conversation between the user and the iterative researcher."""
+
+    history: list[IterationData] = Field(
+        description="The data for each iteration of the research loop",
+        default_factory=list,
+    )
+
+    def add_iteration(self, iteration_data: IterationData | None = None) -> None:
+        """Add a new iteration to the conversation history."""
+        if iteration_data is None:
+            iteration_data = IterationData()
+        self.history.append(iteration_data)
+
+    def set_latest_gap(self, gap: str) -> None:
+        """Set the gap for the latest iteration."""
+        if not self.history:
+            self.add_iteration()
+        # Use model_copy() since IterationData is frozen
+        self.history[-1] = self.history[-1].model_copy(update={"gap": gap})
+
+    def set_latest_tool_calls(self, tool_calls: list[str]) -> None:
+        """Set the tool calls for the latest iteration."""
+        if not self.history:
+            self.add_iteration()
+        # Use model_copy() since IterationData is frozen
+        self.history[-1] = self.history[-1].model_copy(update={"tool_calls": tool_calls})
+
+    def set_latest_findings(self, findings: list[str]) -> None:
+        """Set the findings for the latest iteration."""
+        if not self.history:
+            self.add_iteration()
+        # Use model_copy() since IterationData is frozen
+        self.history[-1] = self.history[-1].model_copy(update={"findings": findings})
+
+    def set_latest_thought(self, thought: str) -> None:
+        """Set the thought for the latest iteration."""
+        if not self.history:
+            self.add_iteration()
+        # Use model_copy() since IterationData is frozen
+        self.history[-1] = self.history[-1].model_copy(update={"thought": thought})
+
+    def get_latest_gap(self) -> str:
+        """Get the gap from the latest iteration."""
+        if not self.history:
+            return ""
+        return self.history[-1].gap
+
+    def get_latest_tool_calls(self) -> list[str]:
+        """Get the tool calls from the latest iteration."""
+        if not self.history:
+            return []
+        return self.history[-1].tool_calls
+
+    def get_latest_findings(self) -> list[str]:
+        """Get the findings from the latest iteration."""
+        if not self.history:
+            return []
+        return self.history[-1].findings
+
+    def get_latest_thought(self) -> str:
+        """Get the thought from the latest iteration."""
+        if not self.history:
+            return ""
+        return self.history[-1].thought
+
+    def get_all_findings(self) -> list[str]:
+        """Get all findings from all iterations."""
+        return [finding for iteration_data in self.history for finding in iteration_data.findings]
+
+    def compile_conversation_history(self) -> str:
+        """Compile the conversation history into a string."""
+        conversation = ""
+        for iteration_num, iteration_data in enumerate(self.history):
+            conversation += f"[ITERATION {iteration_num + 1}]\n\n"
+            if iteration_data.thought:
+                conversation += f"{self.get_thought_string(iteration_num)}\n\n"
+            if iteration_data.gap:
+                conversation += f"{self.get_task_string(iteration_num)}\n\n"
+            if iteration_data.tool_calls:
+                conversation += f"{self.get_action_string(iteration_num)}\n\n"
+            if iteration_data.findings:
+                conversation += f"{self.get_findings_string(iteration_num)}\n\n"
+
+        return conversation
+
+    def get_task_string(self, iteration_num: int) -> str:
+        """Get the task for the specified iteration."""
+        if iteration_num < len(self.history) and self.history[iteration_num].gap:
+            return f"<task>\nAddress this knowledge gap: {self.history[iteration_num].gap}\n</task>"
+        return ""
+
+    def get_action_string(self, iteration_num: int) -> str:
+        """Get the action for the specified iteration."""
+        if iteration_num < len(self.history) and self.history[iteration_num].tool_calls:
+            joined_calls = "\n".join(self.history[iteration_num].tool_calls)
+            return (
+                "<action>\nCalling the following tools to address the knowledge gap:\n"
+                f"{joined_calls}\n</action>"
+            )
+        return ""
+
+    def get_findings_string(self, iteration_num: int) -> str:
+        """Get the findings for the specified iteration."""
+        if iteration_num < len(self.history) and self.history[iteration_num].findings:
+            joined_findings = "\n\n".join(self.history[iteration_num].findings)
+            return f"<findings>\n{joined_findings}\n</findings>"
+        return ""
+
+    def get_thought_string(self, iteration_num: int) -> str:
+        """Get the thought for the specified iteration."""
+        if iteration_num < len(self.history) and self.history[iteration_num].thought:
+            return f"<thought>\n{self.history[iteration_num].thought}\n</thought>"
+        return ""
+
+    def latest_task_string(self) -> str:
+        """Get the latest task."""
+        if not self.history:
+            return ""
+        return self.get_task_string(len(self.history) - 1)
+
+    def latest_action_string(self) -> str:
+        """Get the latest action."""
+        if not self.history:
+            return ""
+        return self.get_action_string(len(self.history) - 1)
+
+    def latest_findings_string(self) -> str:
+        """Get the latest findings."""
+        if not self.history:
+            return ""
+        return self.get_findings_string(len(self.history) - 1)
+
+    def latest_thought_string(self) -> str:
+        """Get the latest thought."""
+        if not self.history:
+            return ""
+        return self.get_thought_string(len(self.history) - 1)
+
+
+class ReportPlanSection(BaseModel):
+    """A section of the report that needs to be written."""
+
+    title: str = Field(description="The title of the section")
+    key_question: str = Field(description="The key question to be addressed in the section")
+
+    model_config = {"frozen": True}
+
+
+class ReportPlan(BaseModel):
+    """Output from the Report Planner Agent."""
+
+    background_context: str = Field(
+        description="A summary of supporting context that can be passed onto the research agents"
+    )
+    report_outline: list[ReportPlanSection] = Field(
+        description="List of sections that need to be written in the report"
+    )
+    report_title: str = Field(description="The title of the report")
+
+    model_config = {"frozen": True}
+
+
+class KnowledgeGapOutput(BaseModel):
+    """Output from the Knowledge Gap Agent."""
+
+    research_complete: bool = Field(
+        description="Whether the research and findings are complete enough to end the research loop"
+    )
+    outstanding_gaps: list[str] = Field(
+        description="List of knowledge gaps that still need to be addressed"
+    )
+
+    model_config = {"frozen": True}
+
+
+class AgentTask(BaseModel):
+    """A task for a specific agent to address knowledge gaps."""
+
+    gap: str | None = Field(description="The knowledge gap being addressed", default=None)
+    agent: str = Field(description="The name of the agent to use")
+    query: str = Field(description="The specific query for the agent")
+    entity_website: str | None = Field(
+        description="The website of the entity being researched, if known",
+        default=None,
+    )
+
+    model_config = {"frozen": True}
+
+
+class AgentSelectionPlan(BaseModel):
+    """Plan for which agents to use for knowledge gaps."""
+
+    tasks: list[AgentTask] = Field(description="List of agent tasks to address knowledge gaps")
+
+    model_config = {"frozen": True}
+
+
+class ReportDraftSection(BaseModel):
+    """A section of the report that needs to be written."""
+
+    section_title: str = Field(description="The title of the section")
+    section_content: str = Field(description="The content of the section")
+
+    model_config = {"frozen": True}
+
+
+class ReportDraft(BaseModel):
+    """Output from the Report Planner Agent."""
+
+    sections: list[ReportDraftSection] = Field(
+        description="List of sections that are in the report"
+    )
+
+    model_config = {"frozen": True}
+
+
+class ToolAgentOutput(BaseModel):
+    """Standard output for all tool agents."""
+
+    output: str = Field(description="The output from the tool agent")
+    sources: list[str] = Field(description="List of source URLs", default_factory=list)
+
+    model_config = {"frozen": True}
+
+
+class ParsedQuery(BaseModel):
+    """Parsed and improved user query with research mode detection."""
+
+    original_query: str = Field(description="The original user query")
+    improved_query: str = Field(description="Improved/refined query")
+    research_mode: Literal["iterative", "deep"] = Field(description="Detected research mode")
+    key_entities: list[str] = Field(
+        default_factory=list,
+        description="Key entities extracted from query",
+    )
+    research_questions: list[str] = Field(
+        default_factory=list,
+        description="Specific research questions extracted",
+    )
+
+    model_config = {"frozen": True}

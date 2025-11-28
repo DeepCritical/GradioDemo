@@ -4,6 +4,8 @@
 **Philosophy**: "Real data, mocked connections."
 **Prerequisite**: Phase 1 complete (all tests passing)
 
+> **⚠️ Implementation Note (2025-01-27)**: The DuckDuckGo WebTool specified in this phase was removed in favor of the Europe PMC tool (see Phase 11). Europe PMC provides better coverage for biomedical research by including preprints, peer-reviewed articles, and patents. The current implementation uses PubMed, ClinicalTrials.gov, and Europe PMC as search sources.
+
 ---
 
 ## 1. The Slice Definition
@@ -12,16 +14,19 @@ This slice covers:
 1. **Input**: A string query (e.g., "metformin Alzheimer's disease").
 2. **Process**:
    - Fetch from PubMed (E-utilities API).
-   - Fetch from Web (DuckDuckGo).
+   - ~~Fetch from Web (DuckDuckGo).~~ **REMOVED** - Replaced by Europe PMC in Phase 11
    - Normalize results into `Evidence` models.
 3. **Output**: A list of `Evidence` objects.
 
 **Files to Create**:
 - `src/utils/models.py` - Pydantic models (Evidence, Citation, SearchResult)
 - `src/tools/pubmed.py` - PubMed E-utilities tool
-- `src/tools/websearch.py` - DuckDuckGo search tool
+- ~~`src/tools/websearch.py` - DuckDuckGo search tool~~ **REMOVED** - See Phase 11 for Europe PMC replacement
 - `src/tools/search_handler.py` - Orchestrates multiple tools
 - `src/tools/__init__.py` - Exports
+
+**Additional Files (Post-Phase 2 Enhancements)**:
+- `src/tools/query_utils.py` - Query preprocessing (removes question words, expands medical synonyms)
 
 ---
 
@@ -767,17 +772,23 @@ async def test_pubmed_live_search():
 
 ## 8. Implementation Checklist
 
-- [ ] Create `src/utils/models.py` with all Pydantic models (Evidence, Citation, SearchResult)
-- [ ] Create `src/tools/__init__.py` with SearchTool Protocol and exports
-- [ ] Implement `src/tools/pubmed.py` with PubMedTool class
-- [ ] Implement `src/tools/websearch.py` with WebTool class
-- [ ] Create `src/tools/search_handler.py` with SearchHandler class
-- [ ] Write tests in `tests/unit/tools/test_pubmed.py`
-- [ ] Write tests in `tests/unit/tools/test_websearch.py`
-- [ ] Write tests in `tests/unit/tools/test_search_handler.py`
-- [ ] Run `uv run pytest tests/unit/tools/ -v` — **ALL TESTS MUST PASS**
+- [x] Create `src/utils/models.py` with all Pydantic models (Evidence, Citation, SearchResult) - **COMPLETE**
+- [x] Create `src/tools/__init__.py` with SearchTool Protocol and exports - **COMPLETE**
+- [x] Implement `src/tools/pubmed.py` with PubMedTool class - **COMPLETE**
+- [ ] ~~Implement `src/tools/websearch.py` with WebTool class~~ - **REMOVED** (replaced by Europe PMC in Phase 11)
+- [x] Create `src/tools/search_handler.py` with SearchHandler class - **COMPLETE**
+- [x] Write tests in `tests/unit/tools/test_pubmed.py` - **COMPLETE** (basic tests)
+- [ ] Write tests in `tests/unit/tools/test_websearch.py` - **N/A** (WebTool removed)
+- [x] Write tests in `tests/unit/tools/test_search_handler.py` - **COMPLETE** (basic tests)
+- [x] Run `uv run pytest tests/unit/tools/ -v` — **ALL TESTS MUST PASS** - **PASSING**
 - [ ] (Optional) Run integration test: `uv run pytest -m integration`
-- [ ] Commit: `git commit -m "feat: phase 2 search slice complete"`
+- [ ] Add edge case tests (rate limiting, error handling, timeouts) - **PENDING**
+- [ ] Commit: `git commit -m "feat: phase 2 search slice complete"` - **DONE**
+
+**Post-Phase 2 Enhancements**:
+- [x] Query preprocessing (`src/tools/query_utils.py`) - **ADDED**
+- [x] Europe PMC tool (Phase 11) - **ADDED**
+- [x] ClinicalTrials tool (Phase 10) - **ADDED**
 
 ---
 
@@ -785,20 +796,19 @@ async def test_pubmed_live_search():
 
 Phase 2 is **COMPLETE** when:
 
-1. All unit tests pass: `uv run pytest tests/unit/tools/ -v`
-2. `SearchHandler` can execute with both tools
-3. Graceful degradation: if PubMed fails, WebTool results still return
-4. Rate limiting is enforced (verify no 429 errors)
-5. Can run this in Python REPL:
+1. ✅ All unit tests pass: `uv run pytest tests/unit/tools/ -v` - **PASSING**
+2. ✅ `SearchHandler` can execute with search tools - **WORKING**
+3. ✅ Graceful degradation: if one tool fails, other tools still return results - **IMPLEMENTED**
+4. ✅ Rate limiting is enforced (verify no 429 errors) - **IMPLEMENTED**
+5. ✅ Can run this in Python REPL:
 
 ```python
 import asyncio
 from src.tools.pubmed import PubMedTool
-from src.tools.websearch import WebTool
 from src.tools.search_handler import SearchHandler
 
 async def test():
-    handler = SearchHandler([PubMedTool(), WebTool()])
+    handler = SearchHandler([PubMedTool()])
     result = await handler.execute("metformin alzheimer")
     print(f"Found {result.total_found} results")
     for e in result.evidence[:3]:
@@ -806,5 +816,7 @@ async def test():
 
 asyncio.run(test())
 ```
+
+**Note**: WebTool was removed in favor of Europe PMC (Phase 11). The current implementation uses PubMed as the primary Phase 2 tool, with Europe PMC and ClinicalTrials added in later phases.
 
 **Proceed to Phase 3 ONLY after all checkboxes are complete.**
