@@ -5,8 +5,8 @@ Supports both iterative and deep research patterns with parallel execution.
 """
 
 import asyncio
-from dataclasses import dataclass
 from collections.abc import AsyncGenerator, Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 import structlog
