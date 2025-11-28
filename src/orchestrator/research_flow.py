@@ -515,16 +515,34 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             )
 
             # Ingest evidence into RAG if available (Phase 6 requirement)
+            # Only ingest evidence that is relevant (score > 0.5) or from reliable sources
             rag_service = self._get_rag_service()
             if rag_service is not None:
                 try:
-                    # ingest_evidence is synchronous, run in executor to avoid blocking
-                    loop = asyncio.get_event_loop()
-                    await loop.run_in_executor(None, rag_service.ingest_evidence, evidence_list)
-                    self.logger.info(
-                        "Evidence ingested into RAG",
-                        count=len(evidence_list),
-                    )
+                    # Filter evidence for ingestion
+                    evidence_to_ingest = [
+                        e
+                        for e in evidence_list
+                        if e.relevance > 0.5
+                        or e.citation.source in ["pubmed", "clinicaltrials", "europepmc"]
+                    ]
+
+                    if evidence_to_ingest:
+                        # ingest_evidence is synchronous, run in executor to avoid blocking
+                        loop = asyncio.get_event_loop()
+                        await loop.run_in_executor(
+                            None, rag_service.ingest_evidence, evidence_to_ingest
+                        )
+                        self.logger.info(
+                            "Evidence ingested into RAG",
+                            count=len(evidence_to_ingest),
+                            total_found=len(evidence_list),
+                        )
+                    else:
+                        self.logger.info(
+                            "No sufficiently relevant evidence to ingest",
+                            total_found=len(evidence_list),
+                        )
                 except Exception as e:
                     # Don't fail the research loop if RAG ingestion fails
                     self.logger.warning(

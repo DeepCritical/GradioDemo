@@ -109,7 +109,7 @@ class LlamaIndexRAGService:
                     HuggingFaceInferenceAPI as _HuggingFaceInferenceAPI,  # type: ignore[import-untyped]
                 )
 
-                huggingface_llm = _HuggingFaceInferenceAPI
+                huggingface_llm = _HuggingFaceInferenceAPI  # type: ignore[assignment]
             except ImportError:
                 # Fallback to local HuggingFaceLLM if API version not available
                 try:
@@ -117,7 +117,7 @@ class LlamaIndexRAGService:
                         HuggingFaceLLM as _HuggingFaceLLM,  # type: ignore[import-untyped]
                     )
 
-                    huggingface_llm = _HuggingFaceLLM
+                    huggingface_llm = _HuggingFaceLLM  # type: ignore[assignment]
                 except ImportError:
                     huggingface_llm = None  # type: ignore[assignment]
 

@@ -71,7 +71,7 @@ async def test_advanced_mode_explicit_instantiation():
         mock_settings.has_any_llm_key = True
         mock_settings.has_huggingface_key = True
 
-        with patch("src.agents.magentic_agents.OpenAIChatClient"):
+        with patch("src.agents.magentic_agents.OpenAIChatClient", create=True):
             # Mock agent creation to avoid real API calls during init
             with (
                 patch("src.orchestrator_magentic.create_search_agent"),
