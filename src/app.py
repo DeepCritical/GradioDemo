@@ -402,10 +402,25 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
-    with gr.Blocks(title="🧬 DeepCritical") as demo:
+    # Create custom theme with orange and red colors
+    theme = gr.themes.Soft(
+        primary_hue="orange",
+        secondary_hue="red",
+    )
+
+    # Custom CSS to further refine the look (especially for login)
+    custom_css = """
+    .login-button {
+        background: linear-gradient(90deg, #ff8c00 0%, #ff4500 100%);
+        border: none;
+        color: white !important;
+    }
+    """
+
+    with gr.Blocks(title="🧬 DeepCritical", theme=theme, css=custom_css) as demo:
         # Add login button at the top
         with gr.Row():
-            gr.LoginButton()
+            gr.LoginButton(elem_classes="login-button")
 
         # Chat interface
         gr.ChatInterface(
