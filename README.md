@@ -2,7 +2,7 @@
 title: Critical Deep Resarch
 emoji: 🐉
 colorFrom: red
-colorTo: orange
+colorTo: yellow
 sdk: gradio
 sdk_version: "6.0.1"
 python_version: "3.11"
