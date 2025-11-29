@@ -94,7 +94,7 @@ def configure_orchestrator(
         if not _HUGGINGFACE_AVAILABLE:
             raise ImportError(
                 "HuggingFace models are not available in this version of pydantic-ai. "
-                "Please install with: uv add 'pydantic-ai[huggingface]' or use 'openai'/'anthropic' as the LLM provider."
+                "Please install with: uv add 'pydantic-ai[huggingface]' to use HuggingFace inference providers."
             )
         # Inference API - uses HuggingFace Inference API via AsyncInferenceClient
         # Per https://ai.pydantic.dev/models/huggingface/#configure-the-provider
@@ -294,13 +294,13 @@ async def yield_auth_messages(
             "content": f"👋 **Welcome, {oauth_username}!** Using your HuggingFace account.\n\n",
         }
 
-    # Advanced mode is not supported without OpenAI (which requires manual setup)
+    # Advanced mode is not currently supported with HuggingFace inference
     # For now, we only support simple mode with HuggingFace
     if mode == "advanced":
         yield {
             "role": "assistant",
             "content": (
-                "⚠️ **Warning**: Advanced mode requires OpenAI API key configuration. "
+                "⚠️ **Note**: Advanced mode is not available with HuggingFace inference providers. "
                 "Falling back to simple mode.\n\n"
             ),
         }
@@ -553,7 +553,7 @@ def create_demo() -> gr.Blocks:
                 choices=["simple", "advanced"],
                 value="simple",
                 label="Orchestrator Mode",
-                info="Simple: Linear | Advanced: Multi-Agent (Requires OpenAI)",
+                info="Simple: Linear | Advanced: Multi-Agent (HuggingFace Inference)",
             )
 
             # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
