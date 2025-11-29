@@ -268,7 +268,8 @@ class HFInferenceJudgeHandler:
         self.model_id = model_id
         self.api_key = api_key
         self.provider = provider
-        # Use provided API key, or fall back to env var, or use no auth
+        # Create InferenceClient without provider - provider will be specified per request
+        # Provider should be specified per API call, not at client initialization
         self.client = InferenceClient(token=api_key) if api_key else InferenceClient()
         self.call_count = 0
         self.last_question: str | None = None
@@ -345,36 +346,58 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
         ]
 
         # Use chat_completion (conversational task - supported by all models)
-        # HuggingFace Inference Providers format: "model-id:provider" or use provider parameter
-        # According to docs: https://huggingface.co/docs/inference-providers
-        model_to_use = model
-        provider_param = None
+        # Try multiple approaches to handle provider specification
+        # Some models/providers don't work together, so we need fallbacks
+        
+        attempts = []
+        
+        # Attempt 1: If provider specified, try model:provider format
         if self.provider:
-            # Format: model-id:provider for explicit provider selection
-            model_to_use = f"{model}:{self.provider}"
-            # Alternative: pass provider as separate parameter (if client supports it)
-            provider_param = self.provider
-
-        # Build chat_completion call
-        call_kwargs = {
-            "messages": messages,
-            "model": model_to_use,
-            "max_tokens": 1024,
-            "temperature": 0.1,
-        }
-        # Add provider parameter if client supports it (some clients use this instead of model:provider)
-        if provider_param and hasattr(self.client.chat_completion, "__code__"):
-            # Check if provider parameter is supported
+            attempts.append({
+                "model": f"{model}:{self.provider}",
+                "description": f"{model} with {self.provider} provider",
+            })
+        
+        # Attempt 2: Try model without provider (let HF auto-select)
+        attempts.append({
+            "model": model,
+            "description": f"{model} (auto provider)",
+        })
+        
+        last_error: Exception | None = None
+        for attempt in attempts:
             try:
-                call_kwargs["provider"] = provider_param
-            except TypeError:
-                # Provider not supported as parameter, use model:provider format
-                pass
-
-        response = await loop.run_in_executor(
-            None,
-            lambda: self.client.chat_completion(**call_kwargs),  # type: ignore[call-overload]
-        )
+                call_kwargs = {
+                    "messages": messages,
+                    "model": attempt["model"],
+                    "max_tokens": 1024,
+                    "temperature": 0.1,
+                }
+                
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: self.client.chat_completion(**call_kwargs),  # type: ignore[call-overload]
+                )
+                # If we get here, the call succeeded
+                break
+            except Exception as e:
+                error_str = str(e)
+                # Check if it's a 422 or provider-related error
+                if "422" in error_str or "Unprocessable" in error_str:
+                    logger.debug(
+                        "Provider/model combination failed, trying next approach",
+                        attempt=attempt["description"],
+                        error=error_str[:100],
+                    )
+                    last_error = e
+                    continue
+                # For other errors, re-raise immediately
+                raise
+        else:
+            # All attempts failed
+            if last_error:
+                raise last_error
+            raise ValueError("All model/provider attempts failed")
 
         # Extract content from response
         content = response.choices[0].message.content

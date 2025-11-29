@@ -64,14 +64,38 @@ jobs:
 
       - name: Deploy to GitHub Pages
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          publish_branch: dev
-          cname: false
-          keep_files: true
-          force_orphan: false
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Configure git to use token for authentication
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          
+          # Get current branch from GitHub context
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          echo "Current branch: $CURRENT_BRANCH"
+          
+          # Always checkout dev branch (even if we're already on it, this ensures we're up to date)
+          git fetch origin dev
+          git checkout dev
+          
+          # Remove old built site files that MkDocs generates
+          rm -f index.html 404.html sitemap.xml sitemap.xml.gz 2>/dev/null || true
+          rm -rf assets search api architecture configuration contributing getting-started overview license team 2>/dev/null || true
+          
+          # Copy new site files to root (this will add/update site files)
+          cp -r site/* .
+          
+          # Add all changes (site files will be added, source files that exist won't be affected)
+          git add -A
+          
+          # Check if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Deploy docs to dev branch [skip ci]"
+            git push origin dev
+          fi
 
 
 

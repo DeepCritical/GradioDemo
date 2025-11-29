@@ -543,20 +543,26 @@ def create_demo() -> gr.Blocks:
                 [
                     "What drugs could be repurposed for Alzheimer's disease?",
                     "simple",
-                    "Qwen/Qwen3-Next-80B-A3B-Thinking",  # Gated model - requires auth
-                    "together",  # Provider for Qwen3-Next models
+                    "Qwen/Qwen3-Next-80B-A3B-Thinking",  
+                    "hyperbolic", 
                 ],
                 [
                     "Is metformin effective for treating cancer?",
                     "simple",
-                    "allenai/Olmo-3-7B-Instruct",  # Ungated model - no auth needed
-                    "publicai",  # Provider for Olmo models
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507:scaleway",  
+                    "scaleway",  
                 ],
                 [
                     "What medications show promise for Long COVID treatment?",
                     "simple",
-                    "meta-llama/Llama-3.3-70B-Instruct",  # Gated model - requires auth
-                    "cerebras",  # Provider for Llama models
+                    "zai-org/GLM-4.5-Air", 
+                    "nebius", 
+                ],
+                [
+                    "What medications show promise for Alzheimer's disease treatment?",
+                    "simple",
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507", 
+                    "nebius", 
                 ],
             ],
             cache_examples=False,  # Disable example caching to prevent startup errors
