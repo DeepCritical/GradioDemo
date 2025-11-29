@@ -80,9 +80,9 @@ class PlannerAgent:
             raise ConfigurationError("crawl_tool must be callable")
 
         # Initialize Pydantic AI Agent
-        self.agent = Agent(
+        self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            output_type=ReportPlan,
+            result_type=ReportPlan,
             system_prompt=SYSTEM_PROMPT,
             tools=[self.web_search_tool, self.crawl_tool],
             retries=3,
@@ -109,7 +109,7 @@ class PlannerAgent:
         try:
             # Run the agent
             result = await self.agent.run(user_message)
-            report_plan = result.output
+            report_plan = result.data
 
             # Validate report plan
             if not report_plan.report_outline:
@@ -136,7 +136,7 @@ class PlannerAgent:
                 has_background=bool(report_plan.background_context),
             )
 
-            return report_plan
+            return report_plan  # type: ignore[no-any-return]
 
         except Exception as e:
             self.logger.error("Planning failed", error=str(e), query=query[:100])

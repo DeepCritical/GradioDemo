@@ -101,12 +101,26 @@ class Orchestrator:
             return evidence
 
         try:
-            # Deduplicate using semantic similarity
-            unique_evidence: list[Evidence] = await embeddings.deduplicate(evidence, threshold=0.85)
+            # First, deduplicate by URL (exact duplicates) from current evidence batch
+            # This prevents the same URL from appearing multiple times in one batch
+            seen_urls: set[str] = set()
+            unique_by_url: list[Evidence] = []
+            for e in evidence:
+                if e.citation.url not in seen_urls:
+                    unique_by_url.append(e)
+                    seen_urls.add(e.citation.url)
+
+            # Then, deduplicate using semantic similarity with stricter threshold
+            # threshold=0.95 means only remove near-identical content (distance < 0.05)
+            # This prevents over-filtering while still removing true duplicates
+            unique_evidence: list[Evidence] = await embeddings.deduplicate(
+                unique_by_url, threshold=0.95
+            )
             logger.info(
                 "Deduplicated evidence",
                 before=len(evidence),
-                after=len(unique_evidence),
+                after_url=len(unique_by_url),
+                after_semantic=len(unique_evidence),
             )
             return unique_evidence
         except Exception as e:

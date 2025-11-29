@@ -65,7 +65,7 @@ def get_huggingface_chat_client() -> "HuggingFaceChatClient":
     """
     from src.utils.huggingface_chat_client import HuggingFaceChatClient
 
-    model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
+    model_name = settings.huggingface_model or "Qwen/Qwen3-Next-80B-A3B-Thinking"
     api_key = settings.hf_token or settings.huggingface_api_key
 
     return HuggingFaceChatClient(
@@ -120,33 +120,65 @@ def get_pydantic_ai_model() -> Any:
         Configured pydantic-ai model
     """
     from pydantic_ai.models.anthropic import AnthropicModel
-    from pydantic_ai.models.huggingface import HuggingFaceModel
-    from pydantic_ai.models.openai import OpenAIChatModel as OpenAIModel
-    from pydantic_ai.providers.anthropic import AnthropicProvider
-    from pydantic_ai.providers.huggingface import HuggingFaceProvider
-    from pydantic_ai.providers.openai import OpenAIProvider
+    from pydantic_ai.models.openai import OpenAIModel  # type: ignore[attr-defined]
+
+    # Try to import HuggingFace support (may not be available in all pydantic-ai versions)
+    # According to https://ai.pydantic.dev/models/huggingface/, HuggingFace support requires
+    # pydantic-ai with huggingface extra or pydantic-ai-slim[huggingface]
+    # There are two ways to use HuggingFace:
+    # 1. Inference API: HuggingFaceModel with HuggingFaceProvider (uses AsyncInferenceClient internally)
+    # 2. Local models: Would use transformers directly (not via pydantic-ai)
+    try:
+        from huggingface_hub import AsyncInferenceClient
+        from pydantic_ai.models.huggingface import HuggingFaceModel
+        from pydantic_ai.providers.huggingface import HuggingFaceProvider
+
+        _HUGGINGFACE_AVAILABLE = True  # noqa: N806
+    except ImportError:
+        HuggingFaceModel = None  # type: ignore[assignment, misc]  # noqa: N806
+        HuggingFaceProvider = None  # type: ignore[assignment, misc]  # noqa: N806
+        AsyncInferenceClient = None  # type: ignore[assignment, misc]  # noqa: N806
+        _HUGGINGFACE_AVAILABLE = False  # noqa: N806
 
     if settings.llm_provider == "huggingface":
-        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-        hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
-        return HuggingFaceModel(model_name, provider=hf_provider)
+        if not _HUGGINGFACE_AVAILABLE:
+            raise ConfigurationError(
+                "HuggingFace models are not available in this version of pydantic-ai. "
+                "Please install with: uv add 'pydantic-ai[huggingface]' or set LLM_PROVIDER to 'openai'/'anthropic'."
+            )
+        # Inference API - uses HuggingFace Inference API via AsyncInferenceClient
+        # Per https://ai.pydantic.dev/models/huggingface/#configure-the-provider
+        model_name = settings.huggingface_model or "Qwen/Qwen3-Next-80B-A3B-Thinking"
+        # Create AsyncInferenceClient for inference API
+        hf_client = AsyncInferenceClient(api_key=settings.hf_token)  # type: ignore[misc]
+        # Pass client to HuggingFaceProvider for inference API usage
+        provider = HuggingFaceProvider(hf_client=hf_client)  # type: ignore[misc]
+        return HuggingFaceModel(model_name, provider=provider)  # type: ignore[misc]
 
     if settings.llm_provider == "openai":
         if not settings.openai_api_key:
             raise ConfigurationError("OPENAI_API_KEY not set for pydantic-ai")
-        provider = OpenAIProvider(api_key=settings.openai_api_key)
-        return OpenAIModel(settings.openai_model, provider=provider)
+        return OpenAIModel(settings.openai_model, api_key=settings.openai_api_key)  # type: ignore[call-overload]
 
     if settings.llm_provider == "anthropic":
         if not settings.anthropic_api_key:
             raise ConfigurationError("ANTHROPIC_API_KEY not set for pydantic-ai")
-        anthropic_provider = AnthropicProvider(api_key=settings.anthropic_api_key)
-        return AnthropicModel(settings.anthropic_model, provider=anthropic_provider)
+        return AnthropicModel(settings.anthropic_model, api_key=settings.anthropic_api_key)  # type: ignore[call-arg]
 
     # Default to HuggingFace if provider is unknown or not specified
-    model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-    hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
-    return HuggingFaceModel(model_name, provider=hf_provider)
+    if not _HUGGINGFACE_AVAILABLE:
+        raise ConfigurationError(
+            "HuggingFace models are not available in this version of pydantic-ai. "
+            "Please install with: uv add 'pydantic-ai[huggingface]' or set LLM_PROVIDER to 'openai'/'anthropic'."
+        )
+    # Inference API - uses HuggingFace Inference API via AsyncInferenceClient
+    # Per https://ai.pydantic.dev/models/huggingface/#configure-the-provider
+    model_name = settings.huggingface_model or "Qwen/Qwen3-Next-80B-A3B-Thinking"
+    # Create AsyncInferenceClient for inference API
+    hf_client = AsyncInferenceClient(api_key=settings.hf_token)  # type: ignore[misc]
+    # Pass client to HuggingFaceProvider for inference API usage
+    provider = HuggingFaceProvider(hf_client=hf_client)  # type: ignore[misc]
+    return HuggingFaceModel(model_name, provider=provider)  # type: ignore[misc]
 
 
 def check_magentic_requirements() -> None:

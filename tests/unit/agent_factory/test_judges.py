@@ -34,6 +34,7 @@ class TestJudgeHandler:
 
         # Mock the PydanticAI agent
         mock_result = MagicMock()
+        type(mock_result).data = mock_assessment  # pydantic-ai uses .data for structured output
         mock_result.output = mock_assessment
 
         with (
@@ -88,7 +89,8 @@ class TestJudgeHandler:
         )
 
         mock_result = MagicMock()
-        mock_result.output = mock_assessment
+        mock_result.data = mock_assessment
+        mock_result.output = mock_assessment  # Some code may use .output
 
         with (
             patch("src.agent_factory.judges.get_model") as mock_get_model,

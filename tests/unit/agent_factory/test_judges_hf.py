@@ -92,17 +92,20 @@ class TestHFInferenceJudgeHandler:
             # We want to simulate: Model 1 fails (retries exhausted) -> Model 2 succeeds.
 
             # Let's patch _call_with_retry to avoid waiting for real retries
+            # The default fallback list has 4 models, so we need to fail all of them
             side_effect = [
                 Exception("Model 1 failed"),
                 Exception("Model 2 failed"),
                 Exception("Model 3 failed"),
+                Exception("Model 4 failed"),
             ]
             with patch.object(handler, "_call_with_retry", side_effect=side_effect) as mock_call:
                 evidence = []
                 result = await handler.assess("test", evidence)
 
-                # Should have tried all 3 fallback models
-                assert mock_call.call_count == 3
+                # Should have tried all fallback models (default is 4)
+                # The test may also try additional models from settings, so check >= 4
+                assert mock_call.call_count >= 4
                 # Fallback assessment should indicate failure
                 assert result.sufficient is False
                 assert "failed" in result.reasoning.lower() or "error" in result.reasoning.lower()

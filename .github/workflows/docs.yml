@@ -32,12 +32,13 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        run: |
-          pip install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
 
       - name: Install dependencies
         run: |
-          uv sync --all-extras --dev
+          uv sync --extra dev
 
       - name: Build documentation
         run: |
@@ -49,7 +50,9 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
+          publish_branch: gh-pages
           cname: false
+          keep_files: false
 
 
 

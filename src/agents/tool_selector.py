@@ -68,9 +68,9 @@ class ToolSelectorAgent:
         self.logger = logger
 
         # Initialize Pydantic AI Agent
-        self.agent = Agent(
+        self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            output_type=AgentSelectionPlan,
+            result_type=AgentSelectionPlan,
             system_prompt=SYSTEM_PROMPT,
             retries=3,
         )
@@ -117,7 +117,7 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
         try:
             # Run the agent
             result = await self.agent.run(user_message)
-            selection_plan = result.output
+            selection_plan = result.data
 
             self.logger.info(
                 "Tool selection complete",
@@ -125,7 +125,7 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
                 agents=[task.agent for task in selection_plan.tasks],
             )
 
-            return selection_plan
+            return selection_plan  # type: ignore[no-any-return]
 
         except Exception as e:
             self.logger.error("Tool selection failed", error=str(e))

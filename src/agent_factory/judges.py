@@ -2,18 +2,41 @@
 
 import asyncio
 import json
-from typing import Any, ClassVar
+import os
+from typing import Any
 
 import structlog
 from huggingface_hub import InferenceClient
 from pydantic_ai import Agent
-from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.models.huggingface import HuggingFaceModel
-from pydantic_ai.models.openai import OpenAIChatModel as OpenAIModel
-from pydantic_ai.providers.anthropic import AnthropicProvider
-from pydantic_ai.providers.huggingface import HuggingFaceProvider
-from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.models.openai import OpenAIModel  # type: ignore[attr-defined]
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+# Try to import AnthropicModel (may not be available if anthropic package is missing)
+try:
+    from pydantic_ai.models.anthropic import AnthropicModel
+
+    _ANTHROPIC_AVAILABLE = True
+except ImportError:
+    AnthropicModel = None  # type: ignore[assignment, misc]
+    _ANTHROPIC_AVAILABLE = False
+
+# Try to import HuggingFace support (may not be available in all pydantic-ai versions)
+# According to https://ai.pydantic.dev/models/huggingface/, HuggingFace support requires
+# pydantic-ai with huggingface extra or pydantic-ai-slim[huggingface]
+# There are two ways to use HuggingFace:
+# 1. Inference API: HuggingFaceModel with HuggingFaceProvider (uses AsyncInferenceClient internally)
+# 2. Local models: Would use transformers directly (not via pydantic-ai)
+try:
+    from huggingface_hub import AsyncInferenceClient
+    from pydantic_ai.models.huggingface import HuggingFaceModel
+    from pydantic_ai.providers.huggingface import HuggingFaceProvider
+
+    _HUGGINGFACE_AVAILABLE = True
+except ImportError:
+    HuggingFaceModel = None  # type: ignore[assignment, misc]
+    HuggingFaceProvider = None  # type: ignore[assignment, misc]
+    AsyncInferenceClient = None  # type: ignore[assignment, misc]
+    _HUGGINGFACE_AVAILABLE = False
 
 from src.prompts.judge import (
     SYSTEM_PROMPT,
@@ -31,30 +54,58 @@ def get_model() -> Any:
 
     Explicitly passes API keys from settings to avoid requiring
     users to export environment variables manually.
+    
+    Falls back to HuggingFace if the configured provider's API key is missing,
+    which is important for CI/testing environments.
     """
     llm_provider = settings.llm_provider
 
     if llm_provider == "anthropic":
-        provider = AnthropicProvider(api_key=settings.anthropic_api_key)
-        return AnthropicModel(settings.anthropic_model, provider=provider)
-
-    if llm_provider == "huggingface":
-        # Free tier - uses HF_TOKEN from environment if available
-        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-        hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
-        return HuggingFaceModel(model_name, provider=hf_provider)
+        if not _ANTHROPIC_AVAILABLE:
+            logger.warning("Anthropic not available, falling back to HuggingFace")
+        elif settings.anthropic_api_key:
+            return AnthropicModel(settings.anthropic_model, api_key=settings.anthropic_api_key)  # type: ignore[call-arg]
+        else:
+            logger.warning("ANTHROPIC_API_KEY not set, falling back to HuggingFace")
 
     if llm_provider == "openai":
-        openai_provider = OpenAIProvider(api_key=settings.openai_api_key)
-        return OpenAIModel(settings.openai_model, provider=openai_provider)
+        if settings.openai_api_key:
+            return OpenAIModel(settings.openai_model, api_key=settings.openai_api_key)  # type: ignore[call-overload]
+        else:
+            logger.warning("OPENAI_API_KEY not set, falling back to HuggingFace")
 
-    # Default to HuggingFace if provider is unknown or not specified
+    if llm_provider == "huggingface":
+        if not _HUGGINGFACE_AVAILABLE:
+            raise ImportError(
+                "HuggingFace models are not available in this version of pydantic-ai. "
+                "Please install with: uv add 'pydantic-ai[huggingface]' or use 'openai'/'anthropic' as the LLM provider."
+            )
+        # Inference API - uses HuggingFace Inference API via AsyncInferenceClient
+        # Per https://ai.pydantic.dev/models/huggingface/#configure-the-provider
+        model_name = settings.huggingface_model or "Qwen/Qwen3-Next-80B-A3B-Thinking"
+        # Create AsyncInferenceClient for inference API
+        hf_client = AsyncInferenceClient(api_key=settings.hf_token)  # type: ignore[misc]
+        # Pass client to HuggingFaceProvider for inference API usage
+        provider = HuggingFaceProvider(hf_client=hf_client)  # type: ignore[misc]
+        return HuggingFaceModel(model_name, provider=provider)  # type: ignore[misc]
+
+    # Default to HuggingFace if provider is unknown or not specified, or if API key is missing
     if llm_provider != "huggingface":
-        logger.warning("Unknown LLM provider, defaulting to HuggingFace", provider=llm_provider)
+        logger.warning("Unknown LLM provider or missing API key, defaulting to HuggingFace", provider=llm_provider)
 
-    model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-    hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
-    return HuggingFaceModel(model_name, provider=hf_provider)
+    if not _HUGGINGFACE_AVAILABLE:
+        raise ImportError(
+            "HuggingFace models are not available in this version of pydantic-ai. "
+            "Please install with: uv add 'pydantic-ai[huggingface]' or set LLM_PROVIDER to 'openai'/'anthropic'."
+        )
+    # Inference API - uses HuggingFace Inference API via AsyncInferenceClient
+    # Per https://ai.pydantic.dev/models/huggingface/#configure-the-provider
+    model_name = settings.huggingface_model or "Qwen/Qwen3-Next-80B-A3B-Thinking"
+    # Create AsyncInferenceClient for inference API
+    hf_client = AsyncInferenceClient(api_key=settings.hf_token)  # type: ignore[misc]
+    # Pass client to HuggingFaceProvider for inference API usage
+    provider = HuggingFaceProvider(hf_client=hf_client)  # type: ignore[misc]
+    return HuggingFaceModel(model_name, provider=provider)  # type: ignore[misc]
 
 
 class JudgeHandler:
@@ -72,9 +123,9 @@ class JudgeHandler:
             model: Optional PydanticAI model. If None, uses config default.
         """
         self.model = model or get_model()
-        self.agent = Agent(
+        self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            output_type=JudgeAssessment,
+            result_type=JudgeAssessment,
             system_prompt=SYSTEM_PROMPT,
             retries=3,
         )
@@ -112,7 +163,7 @@ class JudgeHandler:
         try:
             # Run the agent with structured output
             result = await self.agent.run(user_prompt)
-            assessment = result.output
+            assessment = result.data
 
             logger.info(
                 "Assessment complete",
@@ -121,7 +172,7 @@ class JudgeHandler:
                 confidence=assessment.confidence,
             )
 
-            return assessment
+            return assessment  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error("Assessment failed", error=str(e))
@@ -167,25 +218,58 @@ class JudgeHandler:
 class HFInferenceJudgeHandler:
     """
     JudgeHandler using HuggingFace Inference API for FREE LLM calls.
-    Defaults to Llama-3.1-8B-Instruct (requires HF_TOKEN) or falls back to public models.
+
+    Models are loaded from environment variable HF_FALLBACK_MODELS (comma-separated)
+    or use defaults based on currently available inference providers:
+    - meta-llama/Llama-3.1-8B-Instruct (gated, multiple providers)
+    - HuggingFaceH4/zephyr-7b-beta (ungated, featherless-ai)
+    - Qwen/Qwen2-7B-Instruct (ungated, featherless-ai)
+    - google/gemma-2-2b-it (gated, nebius)
     """
 
-    FALLBACK_MODELS: ClassVar[list[str]] = [
-        "meta-llama/Llama-3.1-8B-Instruct",  # Primary (Gated)
-        "mistralai/Mistral-7B-Instruct-v0.3",  # Secondary
-        "HuggingFaceH4/zephyr-7b-beta",  # Fallback (Ungated)
-    ]
+    @classmethod
+    def _get_fallback_models(cls) -> list[str]:
+        """Get fallback models from env var or use defaults."""
+        from src.utils.config import settings
 
-    def __init__(self, model_id: str | None = None) -> None:
+        # Get from env var or settings
+        models_str = os.getenv("HF_FALLBACK_MODELS") or settings.huggingface_fallback_models
+
+        # Parse comma-separated list
+        models = [m.strip() for m in models_str.split(",") if m.strip()]
+
+        # Default fallback if empty
+        if not models:
+            models = [
+                "meta-llama/Llama-3.1-8B-Instruct",  # Primary (Gated, multiple providers)
+                "HuggingFaceH4/zephyr-7b-beta",  # Fallback (Ungated, featherless-ai)
+                "Qwen/Qwen2-7B-Instruct",  # Fallback (Ungated, featherless-ai)
+                "google/gemma-2-2b-it",  # Fallback (Gated, nebius)
+            ]
+
+        return models
+
+    def __init__(
+        self,
+        model_id: str | None = None,
+        api_key: str | None = None,
+        provider: str | None = None,
+    ) -> None:
         """
         Initialize with HF Inference client.
 
         Args:
             model_id: Optional specific model ID. If None, uses FALLBACK_MODELS chain.
+            api_key: Optional HuggingFace API key (OAuth token or HF_TOKEN).
+                     If provided, will use authenticated access for gated models.
+            provider: Optional inference provider name (e.g., "novita", "nebius").
+                     If provided, will use that specific provider.
         """
         self.model_id = model_id
-        # Will automatically use HF_TOKEN from env if available
-        self.client = InferenceClient()
+        self.api_key = api_key
+        self.provider = provider
+        # Use provided API key, or fall back to env var, or use no auth
+        self.client = InferenceClient(token=api_key) if api_key else InferenceClient()
         self.call_count = 0
         self.last_question: str | None = None
         self.last_evidence: list[Evidence] | None = None
@@ -209,7 +293,7 @@ class HFInferenceJudgeHandler:
         else:
             user_prompt = format_empty_evidence_prompt(question)
 
-        models_to_try: list[str] = [self.model_id] if self.model_id else self.FALLBACK_MODELS
+        models_to_try: list[str] = [self.model_id] if self.model_id else self._get_fallback_models()
         last_error: Exception | None = None
 
         for model in models_to_try:
@@ -261,14 +345,35 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
         ]
 
         # Use chat_completion (conversational task - supported by all models)
+        # HuggingFace Inference Providers format: "model-id:provider" or use provider parameter
+        # According to docs: https://huggingface.co/docs/inference-providers
+        model_to_use = model
+        provider_param = None
+        if self.provider:
+            # Format: model-id:provider for explicit provider selection
+            model_to_use = f"{model}:{self.provider}"
+            # Alternative: pass provider as separate parameter (if client supports it)
+            provider_param = self.provider
+
+        # Build chat_completion call
+        call_kwargs = {
+            "messages": messages,
+            "model": model_to_use,
+            "max_tokens": 1024,
+            "temperature": 0.1,
+        }
+        # Add provider parameter if client supports it (some clients use this instead of model:provider)
+        if provider_param and hasattr(self.client.chat_completion, "__code__"):
+            # Check if provider parameter is supported
+            try:
+                call_kwargs["provider"] = provider_param
+            except TypeError:
+                # Provider not supported as parameter, use model:provider format
+                pass
+
         response = await loop.run_in_executor(
             None,
-            lambda: self.client.chat_completion(
-                messages=messages,
-                model=model,
-                max_tokens=1024,
-                temperature=0.1,
-            ),
+            lambda: self.client.chat_completion(**call_kwargs),  # type: ignore[call-overload]
         )
 
         # Extract content from response

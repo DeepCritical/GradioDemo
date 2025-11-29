@@ -40,9 +40,9 @@ class HypothesisAgent(BaseAgent):  # type: ignore[misc]
     def _get_agent(self) -> Agent[None, HypothesisAssessment]:
         """Lazy initialization of LLM agent to avoid requiring API keys at import."""
         if self._agent is None:
-            self._agent = Agent(
+            self._agent = Agent(  # type: ignore[call-overload]
                 model=get_model(),  # Uses configured LLM (OpenAI/Anthropic)
-                output_type=HypothesisAssessment,
+                result_type=HypothesisAssessment,
                 system_prompt=SYSTEM_PROMPT,
             )
         return self._agent
@@ -75,7 +75,7 @@ class HypothesisAgent(BaseAgent):  # type: ignore[misc]
         # Generate hypotheses with diverse evidence selection
         prompt = await format_hypothesis_prompt(query, evidence, embeddings=self._embeddings)
         result = await self._get_agent().run(prompt)
-        assessment = result.output  # pydantic-ai returns .output for structured output
+        assessment = result.data  # type: ignore[attr-defined]
 
         # Store hypotheses in shared context
         existing = self._evidence_store.get("hypotheses", [])

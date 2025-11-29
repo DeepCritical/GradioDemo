@@ -209,10 +209,23 @@ class TestGraphOrchestrator:
         from src.orchestrator.research_flow import IterativeResearchFlow
 
         # Create flow and patch its run method to raise exception
-        original_flow = IterativeResearchFlow(
-            max_iterations=2,
-            max_time_minutes=5,
-        )
+        mock_judge = MagicMock()
+        with (
+            patch("src.orchestrator.research_flow.create_judge_handler", return_value=mock_judge),
+            patch("src.orchestrator.research_flow.create_knowledge_gap_agent") as mock_kg,
+            patch("src.orchestrator.research_flow.create_tool_selector_agent") as mock_ts,
+            patch("src.orchestrator.research_flow.create_thinking_agent") as mock_thinking,
+            patch("src.orchestrator.research_flow.create_writer_agent") as mock_writer,
+        ):
+            # Mock all agents to avoid needing API keys
+            mock_kg.return_value = MagicMock()
+            mock_ts.return_value = MagicMock()
+            mock_thinking.return_value = MagicMock()
+            mock_writer.return_value = MagicMock()
+            original_flow = IterativeResearchFlow(
+                max_iterations=2,
+                max_time_minutes=5,
+            )
         orchestrator._iterative_flow = original_flow
 
         with patch.object(original_flow, "run", side_effect=Exception("Test error")):

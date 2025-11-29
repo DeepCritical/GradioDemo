@@ -4,7 +4,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic_ai import AgentRunResult
+from pydantic_ai.result import RunResult
 
 from src.agents.writer import WriterAgent, create_writer_agent
 from src.utils.exceptions import ConfigurationError
@@ -18,10 +18,17 @@ def mock_model() -> MagicMock:
     return model
 
 
+@pytest.fixture(autouse=True)
+def patch_infer_model(mock_model: MagicMock):
+    """Auto-patch infer_model for all tests to avoid OpenAI API key requirements."""
+    with patch("pydantic_ai.models.infer_model", return_value=mock_model):
+        yield
+
+
 @pytest.fixture
-def mock_agent_result() -> AgentRunResult[Any]:
+def mock_agent_result() -> RunResult[Any]:
     """Create a mock agent result."""
-    result = MagicMock(spec=AgentRunResult)
+    result = MagicMock(spec=RunResult)
     result.output = "# Research Report\n\nThis is a test report with citations [1].\n\nReferences:\n[1] https://example.com"
     return result
 
@@ -67,7 +74,7 @@ class TestWriteReport:
 
     @pytest.mark.asyncio
     async def test_write_report_basic(
-        self, writer_agent: WriterAgent, mock_agent_result: AgentRunResult[Any]
+        self, writer_agent: WriterAgent, mock_agent_result: RunResult[Any]
     ) -> None:
         """Test basic report writing."""
         writer_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -83,7 +90,7 @@ class TestWriteReport:
 
     @pytest.mark.asyncio
     async def test_write_report_with_output_length(
-        self, writer_agent: WriterAgent, mock_agent_result: AgentRunResult[Any]
+        self, writer_agent: WriterAgent, mock_agent_result: RunResult[Any]
     ) -> None:
         """Test report writing with output length specification."""
         writer_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -103,7 +110,7 @@ class TestWriteReport:
 
     @pytest.mark.asyncio
     async def test_write_report_with_instructions(
-        self, writer_agent: WriterAgent, mock_agent_result: AgentRunResult[Any]
+        self, writer_agent: WriterAgent, mock_agent_result: RunResult[Any]
     ) -> None:
         """Test report writing with additional instructions."""
         writer_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -123,7 +130,7 @@ class TestWriteReport:
 
     @pytest.mark.asyncio
     async def test_write_report_with_citations(
-        self, writer_agent: WriterAgent, mock_agent_result: AgentRunResult[Any]
+        self, writer_agent: WriterAgent, mock_agent_result: RunResult[Any]
     ) -> None:
         """Test report writing includes citations."""
         writer_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -138,7 +145,7 @@ class TestWriteReport:
 
     @pytest.mark.asyncio
     async def test_write_report_empty_findings(
-        self, writer_agent: WriterAgent, mock_agent_result: AgentRunResult[Any]
+        self, writer_agent: WriterAgent, mock_agent_result: RunResult[Any]
     ) -> None:
         """Test report writing with empty findings."""
         writer_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -153,7 +160,7 @@ class TestWriteReport:
 
     @pytest.mark.asyncio
     async def test_write_report_very_long_findings(
-        self, writer_agent: WriterAgent, mock_agent_result: AgentRunResult[Any]
+        self, writer_agent: WriterAgent, mock_agent_result: RunResult[Any]
     ) -> None:
         """Test report writing with very long findings."""
         writer_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -168,7 +175,7 @@ class TestWriteReport:
 
     @pytest.mark.asyncio
     async def test_write_report_special_characters(
-        self, writer_agent: WriterAgent, mock_agent_result: AgentRunResult[Any]
+        self, writer_agent: WriterAgent, mock_agent_result: RunResult[Any]
     ) -> None:
         """Test report writing with special characters in findings."""
         writer_agent.agent.run = AsyncMock(return_value=mock_agent_result)

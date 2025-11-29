@@ -20,7 +20,7 @@ class TestPlannerAgent:
     def mock_agent_run_result(self):
         """Create a mock agent run result."""
         mock_result = MagicMock()
-        mock_result.output = ReportPlan(
+        report_plan = ReportPlan(
             background_context="Python is a programming language.",
             report_outline=[
                 ReportPlanSection(
@@ -34,6 +34,8 @@ class TestPlannerAgent:
             ],
             report_title="Python Programming Language Overview",
         )
+        type(mock_result).data = report_plan  # pydantic-ai uses .data for structured output
+        mock_result.output = report_plan
         return mock_result
 
     @pytest.mark.asyncio
@@ -63,11 +65,13 @@ class TestPlannerAgent:
     async def test_planner_agent_handles_empty_outline(self, mock_model):
         """PlannerAgent should return fallback plan when outline is empty."""
         mock_result = MagicMock()
-        mock_result.output = ReportPlan(
+        report_plan = ReportPlan(
             background_context="Some context",
             report_outline=[],  # Empty outline
             report_title="Test Report",
         )
+        type(mock_result).data = report_plan  # pydantic-ai uses .data for structured output
+        mock_result.output = report_plan
 
         mock_agent = AsyncMock()
         mock_agent.run = AsyncMock(return_value=mock_result)

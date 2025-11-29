@@ -4,7 +4,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic_ai import AgentRunResult
+from pydantic_ai.result import RunResult
 
 from src.agents.proofreader import ProofreaderAgent, create_proofreader_agent
 from src.utils.models import ReportDraft, ReportDraftSection
@@ -18,10 +18,17 @@ def mock_model() -> MagicMock:
     return model
 
 
+@pytest.fixture(autouse=True)
+def patch_infer_model(mock_model: MagicMock):
+    """Auto-patch infer_model for all tests to avoid OpenAI API key requirements."""
+    with patch("pydantic_ai.models.infer_model", return_value=mock_model):
+        yield
+
+
 @pytest.fixture
-def mock_agent_result() -> AgentRunResult[Any]:
+def mock_agent_result() -> RunResult[Any]:
     """Create a mock agent result."""
-    result = MagicMock(spec=AgentRunResult)
+    result = MagicMock(spec=RunResult)
     result.output = """# Final Report
 
 ## Summary
@@ -98,7 +105,7 @@ class TestProofread:
     async def test_proofread_basic(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
         sample_report_draft: ReportDraft,
     ) -> None:
         """Test basic proofreading."""
@@ -115,7 +122,7 @@ class TestProofread:
     async def test_proofread_single_section(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
     ) -> None:
         """Test proofreading with single section."""
         proofreader_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -138,7 +145,7 @@ class TestProofread:
     async def test_proofread_multiple_sections(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
         sample_report_draft: ReportDraft,
     ) -> None:
         """Test proofreading with multiple sections."""
@@ -155,7 +162,7 @@ class TestProofread:
     async def test_proofread_removes_duplicates(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
     ) -> None:
         """Test that proofreader removes duplicate content."""
         proofreader_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -184,7 +191,7 @@ class TestProofread:
     async def test_proofread_adds_summary(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
         sample_report_draft: ReportDraft,
     ) -> None:
         """Test that proofreader adds summary."""
@@ -202,7 +209,7 @@ class TestProofread:
     async def test_proofread_preserves_references(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
         sample_report_draft: ReportDraft,
     ) -> None:
         """Test that proofreader preserves references."""
@@ -224,7 +231,7 @@ class TestProofread:
     async def test_proofread_empty_draft(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
     ) -> None:
         """Test proofreading with empty draft."""
         proofreader_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -244,7 +251,7 @@ class TestProofread:
     async def test_proofread_single_section_draft(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
     ) -> None:
         """Test proofreading with single section draft."""
         proofreader_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -266,7 +273,7 @@ class TestProofread:
     async def test_proofread_very_long_draft(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
     ) -> None:
         """Test proofreading with very long draft."""
         proofreader_agent.agent.run = AsyncMock(return_value=mock_agent_result)
@@ -289,7 +296,7 @@ class TestProofread:
     async def test_proofread_malformed_sections(
         self,
         proofreader_agent: ProofreaderAgent,
-        mock_agent_result: AgentRunResult[Any],
+        mock_agent_result: RunResult[Any],
     ) -> None:
         """Test proofreading with malformed sections."""
         proofreader_agent.agent.run = AsyncMock(return_value=mock_agent_result)

@@ -9,40 +9,53 @@ pydantic>=2.7
 pydantic-settings>=2.2
 pydantic-ai>=0.0.16
 
-
 # OPTIONAL AI Providers
 openai>=1.0.0
-# anthropic>=0.18.0
-
-# Multi-agent orchestration (Advanced mode)
-agent-framework-core>=1.0.0b251120
-
-# Web search
-duckduckgo-search>=5.0
+anthropic>=0.18.0
 
 # HTTP & Parsing
 httpx>=0.27
 beautifulsoup4>=4.12
 xmltodict>=0.13
 
+# HuggingFace Hub
+huggingface-hub>=0.20.0
+
 # UI (Gradio with MCP server support)
-# gradio[mcp]>=6.0.0
+gradio[mcp,oauth]>=6.0.0
 
 # Utils
 python-dotenv>=1.0
 tenacity>=8.2
 structlog>=24.1
 requests>=2.32.5
-limits>=3.0  # Rate limiting 
+limits>=3.0  # Rate limiting
+pydantic-graph>=1.22.0
+
+# Web search
+duckduckgo-search>=5.0
+
+# Multi-agent orchestration (Advanced mode)
+agent-framework-core>=1.0.0b251120,<2.0.0
+
+# LlamaIndex RAG
+llama-index-llms-huggingface>=0.6.1
+llama-index-llms-huggingface-api>=0.6.1
+llama-index-vector-stores-chroma>=0.5.3
+llama-index>=0.14.8
+llama-index-llms-openai>=0.6.9
+llama-index-embeddings-openai>=0.5.1
+
+# Embeddings & Vector Store
+tokenizers>=0.22.0,<=0.23.0
+transformers>=4.57.2
+chromadb>=0.4.0
+rpds-py>=0.29.0  # Python implementation of rpds (required by chromadb on Windows)
+sentence-transformers>=2.2.0
+numpy<2.0
 
 # Optional: Modal for code execution
 modal>=0.63.0
 
-# Optional: LlamaIndex RAG
-llama-index>=0.11.0
-llama-index-llms-openai
-llama-index-llms-huggingface 
-llama-index-embeddings-openai
-llama-index-vector-stores-chroma
-chromadb>=0.4.0
-sentence-transformers>=2.2.0
+# Pydantic AI with HuggingFace support
+pydantic-ai-slim[huggingface]>=0.0.18

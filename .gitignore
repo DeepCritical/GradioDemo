@@ -72,6 +72,8 @@ logs/
 .pytest_cache/
 .mypy_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
 
 # Database files

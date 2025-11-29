@@ -136,7 +136,8 @@ class LlamaIndexRAGService:
             }
         except ImportError as e:
             raise ImportError(
-                "LlamaIndex dependencies not installed. Run: uv sync --extra modal"
+                "LlamaIndex dependencies not installed. Required packages: chromadb, llama-index, "
+                "and their dependencies. If rpds is missing, try: uv pip install rpds-py"
             ) from e
 
     def _configure_embeddings(
@@ -202,7 +203,7 @@ class LlamaIndexRAGService:
     def _configure_llm(self, huggingface_llm: Any, openai_llm: Any) -> None:
         """Configure LLM for query synthesis."""
         if huggingface_llm is not None and (settings.hf_token or settings.huggingface_api_key):
-            model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
+            model_name = settings.huggingface_model or "Qwen/Qwen3-Next-80B-A3B-Thinking"
             token = settings.hf_token or settings.huggingface_api_key
 
             # Check if it's HuggingFaceInferenceAPI (API-based) or HuggingFaceLLM (local)

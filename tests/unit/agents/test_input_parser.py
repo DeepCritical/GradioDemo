@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic_ai import AgentRunResult
+from pydantic_ai.result import RunResult
 
 from src.agents.input_parser import InputParserAgent, create_input_parser_agent
 from src.utils.exceptions import ConfigurationError
@@ -16,6 +16,13 @@ def mock_model() -> MagicMock:
     model = MagicMock()
     model.name = "test-model"
     return model
+
+
+@pytest.fixture(autouse=True)
+def patch_infer_model(mock_model: MagicMock):
+    """Auto-patch infer_model for all tests to avoid OpenAI API key requirements."""
+    with patch("pydantic_ai.models.infer_model", return_value=mock_model):
+        yield
 
 
 @pytest.fixture
@@ -49,9 +56,11 @@ def mock_parsed_query_deep() -> ParsedQuery:
 @pytest.fixture
 def mock_agent_result_iterative(
     mock_parsed_query_iterative: ParsedQuery,
-) -> AgentRunResult[ParsedQuery]:
+) -> RunResult[ParsedQuery]:
     """Create a mock agent result for iterative mode."""
-    result = MagicMock(spec=AgentRunResult)
+    result = MagicMock()
+    # Configure the mock to return the actual output when .data is accessed
+    type(result).data = mock_parsed_query_iterative
     result.output = mock_parsed_query_iterative
     return result
 
@@ -59,9 +68,11 @@ def mock_agent_result_iterative(
 @pytest.fixture
 def mock_agent_result_deep(
     mock_parsed_query_deep: ParsedQuery,
-) -> AgentRunResult[ParsedQuery]:
+) -> RunResult[ParsedQuery]:
     """Create a mock agent result for deep mode."""
-    result = MagicMock(spec=AgentRunResult)
+    result = MagicMock()
+    # Configure the mock to return the actual output when .data is accessed
+    type(result).data = mock_parsed_query_deep
     result.output = mock_parsed_query_deep
     return result
 
@@ -72,33 +83,52 @@ def input_parser_agent(mock_model: MagicMock) -> InputParserAgent:
     return InputParserAgent(model=mock_model)
 
 
+@pytest.fixture(autouse=True)
+def patch_infer_model(mock_model: MagicMock):
+    """Auto-patch infer_model for all tests to avoid OpenAI API key requirements."""
+    with patch("pydantic_ai.models.infer_model", return_value=mock_model):
+        yield
+
+
 class TestInputParserAgentInit:
     """Test InputParserAgent initialization."""
 
-    def test_input_parser_agent_init_with_model(self, mock_model: MagicMock) -> None:
+    @patch("pydantic_ai.models.infer_model")
+    def test_input_parser_agent_init_with_model(
+        self, mock_infer_model: MagicMock, mock_model: MagicMock
+    ) -> None:
         """Test InputParserAgent initialization with provided model."""
+        mock_infer_model.return_value = mock_model
         agent = InputParserAgent(model=mock_model)
         assert agent.model == mock_model
         assert agent.agent is not None
 
     @patch("src.agents.input_parser.get_model")
+    @patch("pydantic_ai.models.infer_model")
     def test_input_parser_agent_init_without_model(
-        self, mock_get_model: MagicMock, mock_model: MagicMock
+        self,
+        mock_infer_model: MagicMock,
+        mock_get_model: MagicMock,
+        mock_model: MagicMock,
     ) -> None:
         """Test InputParserAgent initialization without model (uses default)."""
         mock_get_model.return_value = mock_model
+        mock_infer_model.return_value = mock_model
         agent = InputParserAgent()
         assert agent.model == mock_model
         mock_get_model.assert_called_once()
 
+    @patch("pydantic_ai.models.infer_model")
     def test_input_parser_agent_has_correct_system_prompt(
-        self, input_parser_agent: InputParserAgent
+        self, mock_infer_model: MagicMock, mock_model: MagicMock
     ) -> None:
         """Test that InputParserAgent has correct system prompt."""
+        mock_infer_model.return_value = mock_model
+        agent = InputParserAgent(model=mock_model)
         # System prompt should contain key instructions
         # In pydantic_ai, system_prompt is a property that returns the prompt string
         # For mocked agents, we check that the agent was created with a system prompt
-        assert input_parser_agent.agent is not None
+        assert agent.agent is not None
         # The actual system prompt is set during agent creation
         # We verify the agent exists and was properly initialized
         # Note: Direct access to system_prompt may not work with mocks
@@ -112,7 +142,7 @@ class TestParse:
     async def test_parse_iterative_query(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_iterative: AgentRunResult[ParsedQuery],
+        mock_agent_result_iterative: RunResult[ParsedQuery],
     ) -> None:
         """Test parsing a simple query that should return iterative mode."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_iterative)
@@ -130,7 +160,7 @@ class TestParse:
     async def test_parse_deep_query(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_deep: AgentRunResult[ParsedQuery],
+        mock_agent_result_deep: RunResult[ParsedQuery],
     ) -> None:
         """Test parsing a complex query that should return deep mode."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_deep)
@@ -148,7 +178,7 @@ class TestParse:
     async def test_parse_improves_query(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_iterative: AgentRunResult[ParsedQuery],
+        mock_agent_result_iterative: RunResult[ParsedQuery],
     ) -> None:
         """Test that parse() improves the query."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_iterative)
@@ -164,7 +194,7 @@ class TestParse:
     async def test_parse_extracts_entities(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_iterative: AgentRunResult[ParsedQuery],
+        mock_agent_result_iterative: RunResult[ParsedQuery],
     ) -> None:
         """Test that parse() extracts key entities."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_iterative)
@@ -180,7 +210,7 @@ class TestParse:
     async def test_parse_extracts_research_questions(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_deep: AgentRunResult[ParsedQuery],
+        mock_agent_result_deep: RunResult[ParsedQuery],
     ) -> None:
         """Test that parse() extracts research questions."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_deep)
@@ -199,7 +229,7 @@ class TestParse:
     ) -> None:
         """Test that parse() handles missing improved_query gracefully."""
         # Create a result with missing improved_query
-        mock_result = MagicMock(spec=AgentRunResult)
+        mock_result = MagicMock(spec=RunResult)
         mock_parsed = ParsedQuery(
             original_query="test query",
             improved_query="",  # Empty improved query
@@ -290,7 +320,7 @@ class TestResearchModeDetection:
     async def test_detects_iterative_mode_for_simple_queries(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_iterative: AgentRunResult[ParsedQuery],
+        mock_agent_result_iterative: RunResult[ParsedQuery],
     ) -> None:
         """Test that simple queries are detected as iterative."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_iterative)
@@ -309,7 +339,7 @@ class TestResearchModeDetection:
     async def test_detects_deep_mode_for_complex_queries(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_deep: AgentRunResult[ParsedQuery],
+        mock_agent_result_deep: RunResult[ParsedQuery],
     ) -> None:
         """Test that complex queries are detected as deep."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_deep)

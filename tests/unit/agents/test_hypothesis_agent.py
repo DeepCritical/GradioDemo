@@ -28,18 +28,17 @@ def sample_evidence():
 
 @pytest.fixture
 def mock_assessment():
+    primary_hyp = MechanismHypothesis(
+        drug="Metformin",
+        target="AMPK",
+        pathway="mTOR inhibition",
+        effect="Reduced cancer cell proliferation",
+        confidence=0.75,
+        search_suggestions=["metformin AMPK cancer", "mTOR cancer therapy"],
+    )
     return HypothesisAssessment(
-        hypotheses=[
-            MechanismHypothesis(
-                drug="Metformin",
-                target="AMPK",
-                pathway="mTOR inhibition",
-                effect="Reduced cancer cell proliferation",
-                confidence=0.75,
-                search_suggestions=["metformin AMPK cancer", "mTOR cancer therapy"],
-            )
-        ],
-        primary_hypothesis=None,
+        hypotheses=[primary_hyp],
+        primary_hypothesis=primary_hyp,  # Set primary hypothesis
         knowledge_gaps=["Clinical trial data needed"],
         recommended_searches=["metformin clinical trial cancer"],
     )
@@ -54,8 +53,9 @@ async def test_hypothesis_agent_generates_hypotheses(sample_evidence, mock_asses
         with patch("src.agents.hypothesis_agent.Agent") as mock_agent_class:
             mock_get_model.return_value = MagicMock()  # Mock model
             mock_result = MagicMock()
+            type(mock_result).data = mock_assessment  # pydantic-ai uses .data for structured output
             mock_result.output = mock_assessment
-            # pydantic-ai Agent returns an object with .output for structured output
+            # pydantic-ai Agent returns an object with .data for structured output
             mock_agent_class.return_value.run = AsyncMock(return_value=mock_result)
 
             agent = HypothesisAgent(store)
@@ -94,6 +94,7 @@ async def test_hypothesis_agent_uses_embeddings(sample_evidence, mock_assessment
                 mock_format.return_value = "Prompt"
 
                 mock_result = MagicMock()
+                type(mock_result).data = mock_assessment  # pydantic-ai uses .data for structured output
                 mock_result.output = mock_assessment
                 mock_agent_class.return_value.run = AsyncMock(return_value=mock_result)
 
