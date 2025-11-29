@@ -609,13 +609,13 @@ def create_demo() -> gr.Blocks:
         with gr.Row(elem_id="hero-banner"):
             with gr.Column(scale=2, elem_id="hero-nav"):
                 gr.Markdown(
-                    """#### Architecture
-- Deep Orchestration
-- Graph Orchestration
-- Analysis Orchestration
-- Deployment Orchestration
-- Tests & Validation
-- Adapters
+                    """#### Available Tools:
+
+- search_pubmed: Search peer-reviewed biomedical literature.
+- search_clinical_trials: Search ClinicalTrials.gov.
+- search_biorxiv: Search bioRxiv/medRxiv preprints.
+- search_all: Search all sources simultaneously.
+- analyze_hypothesis: Secure statistical analysis using Modal sandboxes.
 """,
                 )
             with gr.Column(scale=3, elem_id="hero-text"):
@@ -623,8 +623,10 @@ def create_demo() -> gr.Blocks:
                     """## 🧬 DeepCritical Research Agent
 **Evidence-focused drug repurposing with MCP integration.**
 
-Streamlined, design-forward layout inspired by our documentation theme. \
-Orange accents highlight navigation and calls-to-action while keeping the workspace light and focused.
+Multi-Source Search: PubMed, ClinicalTrials.gov, bioRxiv/medRxiv
+MCP Integration: Use our tools from Claude Desktop or any MCP client
+Modal Sandbox: Secure execution of AI-generated statistical code
+LlamaIndex RAG: Semantic search and evidence synthesis
 """,
                 )
             with gr.Column(scale=2, elem_id="hero-login"):
