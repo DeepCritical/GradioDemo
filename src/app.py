@@ -540,17 +540,18 @@ def create_demo() -> gr.Blocks:
                 # When additional_inputs are provided, examples must be lists of lists
                 # Each inner list: [message, mode, hf_model, hf_provider]
                 # Using actual model IDs and provider names from inference_models.py
+                # Note: Provider is optional - if empty, HF will auto-select
                 [
                     "What drugs could be repurposed for Alzheimer's disease?",
                     "simple",
                     "Qwen/Qwen3-Next-80B-A3B-Thinking",  
-                    "hyperbolic", 
+                    "", 
                 ],
                 [
                     "Is metformin effective for treating cancer?",
                     "simple",
-                    "Qwen/Qwen3-235B-A22B-Instruct-2507:scaleway",  
-                    "scaleway",  
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507",  
+                    "",  
                 ],
                 [
                     "What medications show promise for Long COVID treatment?",
@@ -558,12 +559,7 @@ def create_demo() -> gr.Blocks:
                     "zai-org/GLM-4.5-Air", 
                     "nebius", 
                 ],
-                [
-                    "What medications show promise for Alzheimer's disease treatment?",
-                    "simple",
-                    "Qwen/Qwen3-235B-A22B-Instruct-2507", 
-                    "nebius", 
-                ],
+
             ],
             cache_examples=False,  # Disable example caching to prevent startup errors
             additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=False),

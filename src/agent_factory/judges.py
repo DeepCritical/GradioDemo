@@ -309,12 +309,6 @@ class HFInferenceJudgeHandler:
         logger.error("All HF models failed", error=str(last_error))
         return self._create_fallback_assessment(question, str(last_error))
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=4),
-        retry=retry_if_exception_type(Exception),
-        reraise=True,
-    )
     async def _call_with_retry(self, model: str, prompt: str, question: str) -> JudgeAssessment:
         """Make API call with retry logic using chat_completion."""
         loop = asyncio.get_running_loop()
@@ -345,27 +339,50 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
             {"role": "user", "content": prompt},
         ]
 
-        # Use chat_completion (conversational task - supported by all models)
         # Try multiple approaches to handle provider specification
-        # Some models/providers don't work together, so we need fallbacks
+        # IMPORTANT: The HuggingFace InferenceClient chat_completion API does NOT support
+        # the model:provider format in the model parameter. The provider must be set
+        # when creating the InferenceClient, not in the API call.
         
         attempts = []
         
-        # Attempt 1: If provider specified, try model:provider format
-        if self.provider:
-            attempts.append({
-                "model": f"{model}:{self.provider}",
-                "description": f"{model} with {self.provider} provider",
-            })
-        
-        # Attempt 2: Try model without provider (let HF auto-select)
+        # Attempt 1: Try model without provider first (most reliable)
+        # This lets HuggingFace auto-select a working provider
+        # This should work for most models
         attempts.append({
             "model": model,
             "description": f"{model} (auto provider)",
+            "client": self.client,
         })
         
+        # Attempt 2: If provider specified, create new client with provider set at initialization
+        # Some providers require explicit client initialization with provider parameter
+        if self.provider and self.provider != "auto":
+            try:
+                # Create a new client with provider set at initialization
+                provider_client_kwargs: dict[str, Any] = {}
+                if self.api_key:
+                    provider_client_kwargs["token"] = self.api_key
+                # Provider should be set at client creation, not in API call
+                provider_client = InferenceClient(
+                    provider=self.provider,  # type: ignore[arg-type]
+                    **provider_client_kwargs,
+                )
+                attempts.append({
+                    "model": model,
+                    "description": f"{model} with {self.provider} provider (client-level)",
+                    "client": provider_client,
+                })
+                logger.debug("Created client with provider", provider=self.provider, model=model)
+            except Exception as e:
+                logger.debug(
+                    "Failed to create client with provider",
+                    provider=self.provider,
+                    error=str(e)[:200],
+                )
+        
         last_error: Exception | None = None
-        for attempt in attempts:
+        for attempt_idx, attempt in enumerate(attempts):
             try:
                 call_kwargs = {
                     "messages": messages,
@@ -374,27 +391,101 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
                     "temperature": 0.1,
                 }
                 
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: self.client.chat_completion(**call_kwargs),  # type: ignore[call-overload]
+                # Use the client from the attempt (might be different for provider-specific attempts)
+                client = attempt["client"]
+                
+                logger.debug(
+                    "Attempting API call",
+                    attempt_num=attempt_idx + 1,
+                    total_attempts=len(attempts),
+                    description=attempt["description"],
+                    model=attempt["model"],
                 )
-                # If we get here, the call succeeded
+                
+                # Capture variables properly for lambda closure
+                attempt_client = client
+                attempt_kwargs = call_kwargs.copy()
+                
+                # Make the API call with retry logic
+                for retry_num in range(3):
+                    try:
+                        response = await loop.run_in_executor(
+                            None,
+                            lambda c=attempt_client, k=attempt_kwargs: c.chat_completion(**k),  # type: ignore[call-overload]
+                        )
+                        # If we get here, the call succeeded
+                        logger.info(
+                            "API call succeeded",
+                            attempt=attempt["description"],
+                            retry=retry_num + 1,
+                        )
+                        break
+                    except Exception as e:
+                        error_str = str(e)
+                        # Check if it's a 422 or provider-related error
+                        if "422" in error_str or "Unprocessable" in error_str or "status_code: 422" in error_str:
+                            if retry_num < 2:  # Not the last retry
+                                wait_time = 2 ** retry_num  # Exponential backoff: 1s, 2s
+                                logger.debug(
+                                    "Retrying after 422 error",
+                                    attempt=attempt["description"],
+                                    retry=retry_num + 1,
+                                    wait=wait_time,
+                                    error=error_str[:150],
+                                )
+                                await asyncio.sleep(wait_time)
+                                continue
+                            # Last retry failed, try next attempt
+                            logger.warning(
+                                "Provider/model combination failed after retries",
+                                attempt=attempt["description"],
+                                error=error_str[:200],
+                            )
+                            last_error = e
+                            break  # Break retry loop, try next attempt
+                        # For other errors, re-raise immediately (don't retry)
+                        logger.warning(
+                            "Non-422 error, not retrying",
+                            attempt=attempt["description"],
+                            error=error_str[:200],
+                        )
+                        raise
+                else:
+                    # All retries for this attempt failed, try next attempt
+                    logger.debug(
+                        "All retries failed for attempt, trying next",
+                        attempt=attempt["description"],
+                    )
+                    continue
+                
+                # If we get here, the call succeeded - extract response and return
                 break
             except Exception as e:
                 error_str = str(e)
                 # Check if it's a 422 or provider-related error
-                if "422" in error_str or "Unprocessable" in error_str:
-                    logger.debug(
-                        "Provider/model combination failed, trying next approach",
+                if "422" in error_str or "Unprocessable" in error_str or "status_code: 422" in error_str:
+                    logger.warning(
+                        "Provider/model combination failed (422 error)",
                         attempt=attempt["description"],
-                        error=error_str[:100],
+                        error=error_str[:200],
                     )
                     last_error = e
                     continue
-                # For other errors, re-raise immediately
-                raise
+                # For other errors, log and continue to next attempt
+                logger.warning(
+                    "Unexpected error, trying next approach",
+                    attempt=attempt["description"],
+                    error=error_str[:200],
+                )
+                last_error = e
+                continue
         else:
             # All attempts failed
+            logger.error(
+                "All model/provider attempts failed",
+                total_attempts=len(attempts),
+                last_error=str(last_error)[:300] if last_error else "Unknown error",
+            )
             if last_error:
                 raise last_error
             raise ValueError("All model/provider attempts failed")
