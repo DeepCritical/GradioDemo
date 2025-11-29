@@ -476,11 +476,12 @@ async def research_agent(
     except Exception as e:
         # Return error message without metadata to avoid issues during example caching
         # Metadata can cause validation errors when Gradio caches examples
-        # Gradio Chatbot doesn't accept markdown formatting, use plain text
-        error_msg = str(e).replace("**", "").replace("*", "")
+        # Gradio Chatbot requires plain text - remove all markdown and special characters
+        error_msg = str(e).replace("**", "").replace("*", "").replace("`", "")
+        # Ensure content is a simple string without any special formatting
         yield {
             "role": "assistant",
-            "content": f"Error: {error_msg}\n\nPlease check your configuration and try again.",
+            "content": f"Error: {error_msg}. Please check your configuration and try again.",
         }
 
 
@@ -705,6 +706,7 @@ def create_demo() -> gr.Blocks:
             examples=[
                 # When additional_inputs are provided, examples must be lists of lists
                 # Each inner list: [message, mode, hf_model, hf_provider]
+                # Disabled example caching to avoid startup errors - examples still work but won't be pre-cached
                 [
                     "What drugs could be repurposed for Alzheimer's disease?",
                     "simple",
@@ -719,6 +721,7 @@ def create_demo() -> gr.Blocks:
                     None,
                 ],
             ],
+            cache_examples=False,  # Disable example caching to prevent startup errors
             additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=False),
             additional_inputs=[
                 mode_radio,
