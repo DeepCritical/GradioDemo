@@ -402,10 +402,18 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
+    # Load custom CSS
+    css_path = os.path.join(os.path.dirname(__file__), "assets", "style.css")
+    with open(css_path, "r") as f:
+        custom_css = f.read()
+
     with gr.Blocks(title="🧬 DeepCritical") as demo:
+        # Inject custom CSS
+        gr.HTML(f"<style>{custom_css}</style>")
+
         # Add login button at the top
         with gr.Row():
-            gr.LoginButton()
+            gr.LoginButton(elem_id="login-btn")
 
         # Chat interface
         gr.ChatInterface(
