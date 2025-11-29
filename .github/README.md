@@ -1,7 +1,16 @@
+
+> [!IMPORTANT]
+> **You are reading the Github README!**
+> 
+> - 📚 **Documentation**: See our [technical documentation](https://deepcritical.github.io/GradioDemo/) for detailed information
+> - 📖 **Demo README**: Check out the [Demo README](..README.md) for setup, configuration, and contribution guidelines
+> - 🏆 **Hackathon Submission**: Keep reading below for more information about our MCP Hackathon submission
+
+
 <div align="center">
 
 [![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
-[![Documentation](https://img.shields.io/badge/📚%20Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](docs/index.md)
+[![Documentation](https://img.shields.io/badge/Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](deepcritical.github.io/GradioDemo/)
 [![Demo](https://img.shields.io/badge/🚀%20Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
 [![codecov](https://codecov.io/gh/DeepCritical/GradioDemo/graph/badge.svg?token=B1f05RCGpz)](https://codecov.io/gh/DeepCritical/GradioDemo)
 [![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 
@@ -24,7 +33,7 @@ uv sync --all-extras
 
 ```bash
 # Start the Gradio app
-uv run gradio gradio src/app.py
+gradio run "src/app.py"
 ```
 
 Open your browser to `http://localhost:7860`.

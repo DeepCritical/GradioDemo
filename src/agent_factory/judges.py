@@ -54,16 +54,25 @@ def get_model() -> Any:
 
     Explicitly passes API keys from settings to avoid requiring
     users to export environment variables manually.
+    
+    Falls back to HuggingFace if the configured provider's API key is missing,
+    which is important for CI/testing environments.
     """
     llm_provider = settings.llm_provider
 
     if llm_provider == "anthropic":
         if not _ANTHROPIC_AVAILABLE:
-            raise ImportError(
-                "Anthropic models are not available. "
-                "Please install with: uv add 'pydantic-ai[anthropic]' or use 'openai'/'huggingface' as the LLM provider."
-            )
-        return AnthropicModel(settings.anthropic_model, api_key=settings.anthropic_api_key)  # type: ignore[call-arg]
+            logger.warning("Anthropic not available, falling back to HuggingFace")
+        elif settings.anthropic_api_key:
+            return AnthropicModel(settings.anthropic_model, api_key=settings.anthropic_api_key)  # type: ignore[call-arg]
+        else:
+            logger.warning("ANTHROPIC_API_KEY not set, falling back to HuggingFace")
+
+    if llm_provider == "openai":
+        if settings.openai_api_key:
+            return OpenAIModel(settings.openai_model, api_key=settings.openai_api_key)  # type: ignore[call-overload]
+        else:
+            logger.warning("OPENAI_API_KEY not set, falling back to HuggingFace")
 
     if llm_provider == "huggingface":
         if not _HUGGINGFACE_AVAILABLE:
@@ -80,12 +89,9 @@ def get_model() -> Any:
         provider = HuggingFaceProvider(hf_client=hf_client)  # type: ignore[misc]
         return HuggingFaceModel(model_name, provider=provider)  # type: ignore[misc]
 
-    if llm_provider == "openai":
-        return OpenAIModel(settings.openai_model, api_key=settings.openai_api_key)  # type: ignore[call-overload]
-
-    # Default to HuggingFace if provider is unknown or not specified
+    # Default to HuggingFace if provider is unknown or not specified, or if API key is missing
     if llm_provider != "huggingface":
-        logger.warning("Unknown LLM provider, defaulting to HuggingFace", provider=llm_provider)
+        logger.warning("Unknown LLM provider or missing API key, defaulting to HuggingFace", provider=llm_provider)
 
     if not _HUGGINGFACE_AVAILABLE:
         raise ImportError(

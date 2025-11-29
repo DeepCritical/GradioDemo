@@ -1,6 +1,7 @@
 """Shared pytest fixtures for all tests."""
 
-from unittest.mock import AsyncMock
+import os
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -62,3 +63,19 @@ def integration_test_timeout():
     # This fixture runs automatically for all tests
     # Individual tests can override with asyncio.wait_for
     pass
+
+
+@pytest.fixture(autouse=True)
+def default_to_huggingface(monkeypatch):
+    """Ensure tests default to HuggingFace provider unless explicitly overridden.
+    
+    This prevents tests from requiring OpenAI/Anthropic API keys.
+    Tests can override by setting LLM_PROVIDER in their environment or mocking settings.
+    """
+    # Only set if not already set (allows tests to override)
+    if "LLM_PROVIDER" not in os.environ:
+        monkeypatch.setenv("LLM_PROVIDER", "huggingface")
+    
+    # Set a dummy HF_TOKEN if not set (prevents errors, but tests should mock actual API calls)
+    if "HF_TOKEN" not in os.environ:
+        monkeypatch.setenv("HF_TOKEN", "dummy_token_for_testing")
