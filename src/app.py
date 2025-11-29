@@ -491,46 +491,63 @@ def create_demo() -> gr.Blocks:
     """
     brand_css = """
     :root {
-        --brand-orange: #ff7a1a;
-        --brand-red: #d7263d;
-        --brand-dark: #1f0f0f;
+        --brand-orange: #f28c28;
+        --brand-red: #c53d2b;
+        --brand-sand: #f7f3ed;
+        --brand-ink: #1f2329;
     }
 
     .gradio-container {
-        background: radial-gradient(circle at 20% 20%, rgba(255, 122, 26, 0.08), transparent 25%),
-            radial-gradient(circle at 80% 10%, rgba(215, 38, 61, 0.08), transparent 20%),
-            #0f0b0b;
-        color: #f6f0f0;
+        background: var(--brand-sand);
+        color: var(--brand-ink);
     }
 
     #hero-banner {
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: linear-gradient(135deg, rgba(255, 122, 26, 0.12), rgba(215, 38, 61, 0.12));
+        border: 1px solid #eadfd3;
+        background: linear-gradient(120deg, #ffffff, #fbf6ef 35%, #fff9f1 70%);
         border-radius: 16px;
         padding: 22px 24px;
-        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.08);
+    }
+
+    #hero-nav {
+        background: #fff;
+        border: 1px solid #eadfd3;
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    #hero-nav h4 {
+        color: var(--brand-orange);
+        margin-bottom: 10px;
+    }
+
+    #hero-nav li {
+        margin-bottom: 4px;
+        color: #3a3f45;
     }
 
     #hero-text h1, #hero-text h2, #hero-text h3, #hero-text h4 {
-        color: #fff5f0;
+        color: #0f1216;
         margin-bottom: 8px;
     }
 
     #hero-text p {
-        color: #f3e5e2;
+        color: #383f47;
         font-size: 16px;
     }
 
     #hero-login {
-        background: #1f1414;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #fff;
+        border: 1px solid #eadfd3;
         border-radius: 14px;
         padding: 16px;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
     }
 
     #hero-login h4 {
-        color: #ffe8d9;
+        color: #0f1216;
         margin-bottom: 10px;
     }
 
@@ -542,46 +559,46 @@ def create_demo() -> gr.Blocks:
         border: none;
         border-radius: 10px;
         padding: 12px;
-        box-shadow: 0 10px 25px rgba(215, 38, 61, 0.35);
+        box-shadow: 0 10px 20px rgba(197, 61, 43, 0.25);
         transition: transform 160ms ease, box-shadow 160ms ease;
     }
 
     #hf-login button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 12px 30px rgba(255, 122, 26, 0.45);
+        box-shadow: 0 12px 26px rgba(242, 140, 40, 0.35);
     }
 
     #hf-login .sso-status {
-        color: #ffe8d9;
+        color: #3a3f45;
     }
 
     #login-note {
-        color: #f8d8cf;
+        color: #4d565f;
         font-size: 14px;
     }
 
     #chat-panel .wrap {
-        background: #180f0f;
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: #fff;
+        border: 1px solid #eadfd3;
         border-radius: 14px;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
     }
 
     #chat-panel .message {
-        background: #120a0a;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: #fff8f1;
+        border: 1px solid rgba(242, 140, 40, 0.15);
     }
 
     #chat-panel .accordion {
-        background: #1b1010;
+        background: #fff;
     }
 
     #chat-panel .prose :where(h1, h2, h3, h4, h5, h6) {
-        color: #ffe8d9;
+        color: #0f1216;
     }
 
     #chat-panel .prose :where(p, li) {
-        color: #f3e5e2;
+        color: #3a3f45;
     }
     """
 
@@ -590,14 +607,24 @@ def create_demo() -> gr.Blocks:
         is_space = bool(os.getenv("SPACE_ID"))
 
         with gr.Row(elem_id="hero-banner"):
+            with gr.Column(scale=2, elem_id="hero-nav"):
+                gr.Markdown(
+                    """#### Architecture
+- Deep Orchestration
+- Graph Orchestration
+- Analysis Orchestration
+- Deployment Orchestration
+- Tests & Validation
+- Adapters
+""",
+                )
             with gr.Column(scale=3, elem_id="hero-text"):
                 gr.Markdown(
                     """## 🧬 DeepCritical Research Agent
 **Evidence-focused drug repurposing with MCP integration.**
 
-* Explore PubMed, ClinicalTrials.gov, and Europe PMC in one pass.
-* Traceable reasoning with accordion-style research steps.
-* Optimized for rapid expert review and collaboration.
+Streamlined, design-forward layout inspired by our documentation theme. \
+Orange accents highlight navigation and calls-to-action while keeping the workspace light and focused.
 """,
                 )
             with gr.Column(scale=2, elem_id="hero-login"):
