@@ -10,7 +10,8 @@ from pathlib import Path
 def clean_caches(project_root: Path) -> None:
     """Remove pytest and Python cache directories and files.
 
-    Only scans specific directories (src/, tests/) to avoid resource
+    Comprehensively removes all cache files and directories to ensure
+    clean test runs. Only scans specific directories to avoid resource
     exhaustion from scanning large directories like .venv on Windows.
     """
     # Directories to scan for caches (only project code, not dependencies)
@@ -31,6 +32,7 @@ def clean_caches(project_root: Path) -> None:
         "folder",
     }
 
+    # Comprehensive list of cache patterns to remove
     cache_patterns = [
         ".pytest_cache",
         "__pycache__",
@@ -39,6 +41,12 @@ def clean_caches(project_root: Path) -> None:
         "*.pyd",
         ".mypy_cache",
         ".ruff_cache",
+        ".coverage",
+        "coverage.xml",
+        "htmlcov",
+        ".hypothesis",  # Hypothesis testing framework cache
+        ".tox",  # Tox cache (if used)
+        ".cache",  # General Python cache
     ]
 
     def should_exclude(path: Path) -> bool:
@@ -91,17 +99,45 @@ def clean_caches(project_root: Path) -> None:
                     pass  # Ignore errors during directory traversal
 
     # Also clean root-level caches (like .pytest_cache in project root)
-    for pattern in [".pytest_cache", ".mypy_cache", ".ruff_cache"]:
+    root_cache_patterns = [
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".coverage",
+        "coverage.xml",
+        "htmlcov",
+        ".hypothesis",
+        ".tox",
+        ".cache",
+        ".pytest",
+    ]
+    for pattern in root_cache_patterns:
         cache_path = project_root / pattern
-        if cache_path.exists() and cache_path.is_dir():
+        if cache_path.exists():
             try:
-                shutil.rmtree(cache_path, ignore_errors=True)
+                if cache_path.is_dir():
+                    shutil.rmtree(cache_path, ignore_errors=True)
+                elif cache_path.is_file():
+                    cache_path.unlink()
                 cleaned.append(pattern)
             except OSError:
                 pass
 
+    # Also remove any .pyc files in root directory
+    try:
+        for pyc_file in project_root.glob("*.pyc"):
+            try:
+                pyc_file.unlink()
+                cleaned.append(pyc_file.name)
+            except OSError:
+                pass
+    except OSError:
+        pass
+
     if cleaned:
-        print(f"Cleaned {len(cleaned)} cache items")
+        print(
+            f"Cleaned {len(cleaned)} cache items: {', '.join(cleaned[:10])}{'...' if len(cleaned) > 10 else ''}"
+        )
     else:
         print("No cache files found to clean")
 

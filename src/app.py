@@ -133,7 +133,7 @@ def configure_orchestrator(
     return orchestrator, backend_info
 
 
-def event_to_chat_message(event: AgentEvent) -> gr.ChatMessage:
+def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
     """
     Convert AgentEvent to gr.ChatMessage with metadata for accordion display.
 
@@ -166,10 +166,11 @@ def event_to_chat_message(event: AgentEvent) -> gr.ChatMessage:
 
     # For complete events, return main response without accordion
     if event.type == "complete":
-        return gr.ChatMessage(
-            role="assistant",
-            content=event.message,
-        )
+        # Return as dict format for Gradio Chatbot compatibility
+        return {
+            "role": "assistant",
+            "content": event.message,
+        }
 
     # Build metadata for accordion
     metadata: dict[str, Any] = {}
@@ -196,11 +197,15 @@ def event_to_chat_message(event: AgentEvent) -> gr.ChatMessage:
     if log_parts:
         metadata["log"] = " | ".join(log_parts)
 
-    return gr.ChatMessage(
-        role="assistant",
-        content=event.message,
-        metadata=metadata if metadata else None,
-    )
+    # Return as dict format for Gradio Chatbot compatibility
+    # Gradio Chatbot expects dict format, not gr.ChatMessage objects
+    result: dict[str, Any] = {
+        "role": "assistant",
+        "content": event.message,
+    }
+    if metadata:
+        result["metadata"] = metadata
+    return result
 
 
 def extract_oauth_info(request: gr.Request | None) -> tuple[str | None, str | None]:
@@ -251,7 +256,7 @@ async def yield_auth_messages(
     oauth_token: str | None,
     has_huggingface: bool,
     mode: str,
-) -> AsyncGenerator[gr.ChatMessage, None]:
+) -> AsyncGenerator[dict[str, Any], None]:
     """
     Yield authentication and mode status messages.
 
@@ -266,46 +271,46 @@ async def yield_auth_messages(
     """
     # Show user greeting if logged in via OAuth
     if oauth_username:
-        yield gr.ChatMessage(
-            role="assistant",
-            content=f"👋 **Welcome, {oauth_username}!** Using your HuggingFace account.\n\n",
-        )
+        yield {
+            "role": "assistant",
+            "content": f"👋 **Welcome, {oauth_username}!** Using your HuggingFace account.\n\n",
+        }
 
     # Advanced mode is not supported without OpenAI (which requires manual setup)
     # For now, we only support simple mode with HuggingFace
     if mode == "advanced":
-        yield gr.ChatMessage(
-            role="assistant",
-            content=(
+        yield {
+            "role": "assistant",
+            "content": (
                 "⚠️ **Warning**: Advanced mode requires OpenAI API key configuration. "
                 "Falling back to simple mode.\n\n"
             ),
-        )
+        }
 
     # Inform user about authentication status
     if oauth_token:
-        yield gr.ChatMessage(
-            role="assistant",
-            content=(
+        yield {
+            "role": "assistant",
+            "content": (
                 "🔐 **Using HuggingFace OAuth token** - "
                 "Authenticated via your HuggingFace account.\n\n"
             ),
-        )
+        }
     elif not has_huggingface:
         # No keys at all - will use FREE HuggingFace Inference (public models)
-        yield gr.ChatMessage(
-            role="assistant",
-            content=(
+        yield {
+            "role": "assistant",
+            "content": (
                 "🤗 **Free Tier**: Using HuggingFace Inference (Llama 3.1 / Mistral) for AI analysis.\n"
                 "For premium models or higher rate limits, sign in with HuggingFace above.\n\n"
             ),
-        )
+        }
 
 
 async def handle_orchestrator_events(
     orchestrator: Any,
     message: str,
-) -> AsyncGenerator[gr.ChatMessage, None]:
+) -> AsyncGenerator[dict[str, Any], None]:
     """
     Handle orchestrator events and yield ChatMessages.
 
@@ -328,43 +333,50 @@ async def handle_orchestrator_events(
             # Close any pending accordions first
             if pending_accordions:
                 for title, content in pending_accordions.items():
-                    yield gr.ChatMessage(
-                        role="assistant",
-                        content=content.strip(),
-                        metadata={"title": title, "status": "done"},
-                    )
+                    yield {
+                        "role": "assistant",
+                        "content": content.strip(),
+                        "metadata": {"title": title, "status": "done"},
+                    }
                 pending_accordions.clear()
 
             # Yield final response (no accordion for main response)
+            # chat_msg is already a dict from event_to_chat_message
             yield chat_msg
             continue
 
         # Handle events with metadata (accordions)
-        if chat_msg.metadata:
-            title = chat_msg.metadata.get("title")
-            status = chat_msg.metadata.get("status")
+        # chat_msg is always a dict from event_to_chat_message
+        metadata: dict[str, Any] = chat_msg.get("metadata", {})
+        if metadata:
+            msg_title: str | None = metadata.get("title")
+            msg_status: str | None = metadata.get("status")
 
-            if title:
+            if msg_title:
                 # For pending operations, accumulate content and show spinner
-                if status == "pending":
-                    if title not in pending_accordions:
-                        pending_accordions[title] = ""
-                    pending_accordions[title] += chat_msg.content + "\n"
+                if msg_status == "pending":
+                    if msg_title not in pending_accordions:
+                        pending_accordions[msg_title] = ""
+                    # chat_msg is always a dict, so access content via key
+                    content = chat_msg.get("content", "")
+                    pending_accordions[msg_title] += content + "\n"
                     # Yield updated accordion with accumulated content
-                    yield gr.ChatMessage(
-                        role="assistant",
-                        content=pending_accordions[title].strip(),
-                        metadata=chat_msg.metadata,
-                    )
-                elif title in pending_accordions:
+                    yield {
+                        "role": "assistant",
+                        "content": pending_accordions[msg_title].strip(),
+                        "metadata": chat_msg.get("metadata", {}),
+                    }
+                elif msg_title in pending_accordions:
                     # Combine pending content with final content
-                    final_content = pending_accordions[title] + chat_msg.content
-                    del pending_accordions[title]
-                    yield gr.ChatMessage(
-                        role="assistant",
-                        content=final_content.strip(),
-                        metadata={"title": title, "status": "done"},
-                    )
+                    # chat_msg is always a dict, so access content via key
+                    content = chat_msg.get("content", "")
+                    final_content = pending_accordions[msg_title] + content
+                    del pending_accordions[msg_title]
+                    yield {
+                        "role": "assistant",
+                        "content": final_content.strip(),
+                        "metadata": {"title": msg_title, "status": "done"},
+                    }
                 else:
                     # New done accordion (no pending state)
                     yield chat_msg
@@ -383,7 +395,7 @@ async def research_agent(
     hf_model: str | None = None,
     hf_provider: str | None = None,
     request: gr.Request | None = None,
-) -> AsyncGenerator[gr.ChatMessage | list[gr.ChatMessage], None]:
+) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
     """
     Gradio chat function that runs the research agent.
 
@@ -399,10 +411,10 @@ async def research_agent(
         ChatMessage objects with metadata for accordion display
     """
     if not message.strip():
-        yield gr.ChatMessage(
-            role="assistant",
-            content="Please enter a research question.",
-        )
+        yield {
+            "role": "assistant",
+            "content": "Please enter a research question.",
+        }
         return
 
     # Extract OAuth token from request if available
@@ -433,21 +445,21 @@ async def research_agent(
             hf_provider=hf_provider,  # Can be None, will use defaults in configure_orchestrator
         )
 
-        yield gr.ChatMessage(
-            role="assistant",
-            content=f"🧠 **Backend**: {backend_name}\n\n",
-        )
+        yield {
+            "role": "assistant",
+            "content": f"🧠 **Backend**: {backend_name}\n\n",
+        }
 
         # Handle orchestrator events
         async for msg in handle_orchestrator_events(orchestrator, message):
             yield msg
 
     except Exception as e:
-        yield gr.ChatMessage(
-            role="assistant",
-            content=f"❌ **Error**: {e!s}",
-            metadata={"title": "❌ Error", "status": "done"},
-        )
+        yield {
+            "role": "assistant",
+            "content": f"❌ **Error**: {e!s}",
+            "metadata": {"title": "❌ Error", "status": "done"},
+        }
 
 
 def create_demo() -> gr.Blocks:
@@ -514,17 +526,24 @@ def create_demo() -> gr.Blocks:
                 initial_model_id = None
 
         # Get providers for the selected model (only if we have a valid model)
+        # CRITICAL: Re-validate model_id is still in available models before getting providers
         initial_providers = []
         initial_provider = None
-        if initial_model_id:
+        if initial_model_id and initial_model_id in available_model_ids:
             initial_providers = get_available_providers(initial_model_id, has_auth=has_auth)
             # Ensure we have a valid provider value that's in the choices
             if initial_providers:
-                initial_provider = initial_providers[0][0]  # Use first provider's ID
-                # Safety check: ensure provider is in the list
                 available_provider_ids = [p[0] for p in initial_providers]
-                if initial_provider not in available_provider_ids:
-                    initial_provider = initial_providers[0][0] if initial_providers else None
+                if available_provider_ids:
+                    initial_provider = available_provider_ids[0]  # Use first provider's ID
+                else:
+                    initial_provider = None
+            else:
+                initial_provider = None
+        else:
+            # Model not available - reset to None
+            initial_model_id = None
+            initial_provider = None
 
         # Create dropdowns for model and provider selection
         # Note: Components can be in a hidden row and still work with ChatInterface additional_inputs
@@ -540,29 +559,43 @@ def create_demo() -> gr.Blocks:
             # Final validation: ensure value is in choices before creating dropdown
             # Gradio requires the value to be exactly one of the choice values (first element of tuples)
             # CRITICAL: Always default to the first available choice to ensure value is always valid
-            # Extract model IDs from choices (first element of each tuple)
+            # Extract model IDs from choices (first element of each tuple) - do this fresh right before creating dropdown
             model_ids_in_choices = [m[0] for m in initial_models] if initial_models else []
 
             # Determine the model value - must be in model_ids_in_choices
+            # CRITICAL: Only use values that are actually in the current choices list
+            model_value = None
             if initial_models and model_ids_in_choices:
-                # First try to use initial_model_id if it's valid
+                # First try to use initial_model_id if it's valid and in the current choices
                 if initial_model_id and initial_model_id in model_ids_in_choices:
                     model_value = initial_model_id
                 else:
                     # Fallback to first available model - guarantees a valid value
                     model_value = model_ids_in_choices[0]
-            else:
-                # No models available - set to None (empty dropdown)
-                model_value = None
 
             # Absolute final check: if we have choices but model_value is None or invalid, use first choice
+            # This is the last line of defense - ensure value is ALWAYS valid
             if initial_models and model_ids_in_choices:
                 if not model_value or model_value not in model_ids_in_choices:
                     model_value = model_ids_in_choices[0]
+            elif not initial_models:
+                # No models available - set to None (empty dropdown)
+                model_value = None
+
+            # CRITICAL: Only set value if it's actually in the choices list
+            # This prevents Gradio warnings about invalid values
+            final_model_value = None
+            if model_value and initial_models:
+                # Double-check the value is in the choices (defensive programming)
+                if model_value in model_ids_in_choices:
+                    final_model_value = model_value
+                elif model_ids_in_choices:
+                    # If value is invalid, use first available
+                    final_model_value = model_ids_in_choices[0]
 
             hf_model_dropdown = gr.Dropdown(
                 choices=initial_models if initial_models else [],
-                value=model_value,  # Always set to a valid value from choices (or None if empty)
+                value=final_model_value,  # Only set if validated to be in choices
                 label="🤖 Reasoning Model",
                 info="Select AI model for evidence assessment. Sign in to access gated models.",
                 interactive=True,
@@ -571,10 +604,13 @@ def create_demo() -> gr.Blocks:
 
             # Final validation for provider: ensure value is in choices
             # CRITICAL: Always default to the first available choice to ensure value is always valid
+            # Extract provider IDs fresh right before creating dropdown
             provider_ids_in_choices = [p[0] for p in initial_providers] if initial_providers else []
             provider_value = None
+
+            # CRITICAL: Only use values that are actually in the current choices list
             if initial_providers and provider_ids_in_choices:
-                # First try to use the preferred provider if it's available
+                # First try to use the preferred provider if it's available and in current choices
                 if initial_provider and initial_provider in provider_ids_in_choices:
                     provider_value = initial_provider
                 else:
@@ -582,13 +618,28 @@ def create_demo() -> gr.Blocks:
                     provider_value = provider_ids_in_choices[0]
 
             # Absolute final check: if we have choices but provider_value is None or invalid, use first choice
+            # This is the last line of defense - ensure value is ALWAYS valid
             if initial_providers and provider_ids_in_choices:
                 if not provider_value or provider_value not in provider_ids_in_choices:
                     provider_value = provider_ids_in_choices[0]
+            elif not initial_providers:
+                # No providers available - set to None (empty dropdown)
+                provider_value = None
+
+            # CRITICAL: Only set value if it's actually in the choices list
+            # This prevents Gradio warnings about invalid values
+            final_provider_value = None
+            if provider_value and initial_providers:
+                # Double-check the value is in the choices (defensive programming)
+                if provider_value in provider_ids_in_choices:
+                    final_provider_value = provider_value
+                elif provider_ids_in_choices:
+                    # If value is invalid, use first available
+                    final_provider_value = provider_ids_in_choices[0]
 
             hf_provider_dropdown = gr.Dropdown(
                 choices=initial_providers if initial_providers else [],
-                value=provider_value,  # Always set to a valid value from choices (or None if empty)
+                value=final_provider_value,  # Only set if validated to be in choices
                 label="⚡ Inference Provider",
                 info="Select provider for model execution. Some require authentication.",
                 interactive=True,
@@ -642,7 +693,7 @@ def create_demo() -> gr.Blocks:
             ],
         )
 
-    return demo
+    return demo  # type: ignore[no-any-return]
 
 
 def main() -> None:

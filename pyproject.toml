@@ -105,6 +105,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/app.py" = ["PLR0915"]  # Too many statements (Gradio UI setup is complex)
+".pre-commit-hooks/run_pytest_with_sync.py" = ["PLR0915"]  # Too many statements (pre-commit hook with comprehensive cache cleaning)
 
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
