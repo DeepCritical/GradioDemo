@@ -7,7 +7,11 @@ sdk: gradio
 sdk_version: "6.0.1"
 python_version: "3.11"
 app_file: src/app.py
-pinned: false
+hf_oauth: true
+hf_oauth_expiration_minutes: 480
+hf_oauth_scopes:
+ - inference-api
+pinned: true
 license: mit
 tags:
   - mcp-in-action-track-enterprise

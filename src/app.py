@@ -79,7 +79,7 @@ def configure_orchestrator(
     # Priority: oauth_token > env vars
     # On HuggingFace Spaces, OAuth token is available via request.oauth_token
     effective_api_key = oauth_token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
-    
+
     if effective_api_key:
         # We have an API key (OAuth or env) - use pydantic-ai with JudgeHandler
         # This uses HuggingFace's own inference API, not third-party providers
@@ -435,27 +435,29 @@ async def research_agent(
     # According to Gradio docs: OAuthToken and OAuthProfile are None if user not logged in
     token_value: str | None = None
     username: str | None = None
-    
+
     if oauth_token is not None:
         # OAuthToken has a .token attribute containing the access token
         token_value = oauth_token.token if hasattr(oauth_token, "token") else None
-    
+
     if oauth_profile is not None:
         # OAuthProfile has .username, .name, .profile_image attributes
         username = (
-            oauth_profile.username 
-            if hasattr(oauth_profile, "username") and oauth_profile.username 
-            else (oauth_profile.name if hasattr(oauth_profile, "name") and oauth_profile.name else None)
+            oauth_profile.username
+            if hasattr(oauth_profile, "username") and oauth_profile.username
+            else (
+                oauth_profile.name
+                if hasattr(oauth_profile, "name") and oauth_profile.name
+                else None
+            )
         )
-    
+
     # Check if user is logged in (OAuth token or env var)
     # Fallback to env vars for local development or Spaces with HF_TOKEN secret
     has_authentication = bool(
-        token_value 
-        or os.getenv("HF_TOKEN") 
-        or os.getenv("HUGGINGFACE_API_KEY")
+        token_value or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
     )
-    
+
     if not has_authentication:
         yield {
             "role": "assistant",
@@ -467,7 +469,7 @@ async def research_agent(
             ),
         }
         return
-    
+
     if not message.strip():
         yield {
             "role": "assistant",
@@ -494,7 +496,7 @@ async def research_agent(
         # Convert empty strings from Textbox to None for defaults
         model_id = hf_model if hf_model and hf_model.strip() else None
         provider_name = hf_provider if hf_provider and hf_provider.strip() else None
-        
+
         orchestrator, backend_name = configure_orchestrator(
             use_mock=False,  # Never use mock in production - HF Inference is the free fallback
             mode=effective_mode,
@@ -542,7 +544,7 @@ def create_demo() -> gr.Blocks:
                     variant="huggingface",
                     size="lg",
                 )
-        
+
         # Create settings components (hidden - used only for additional_inputs)
         # Model/provider selection removed to avoid dropdown value mismatch errors
         # Settings will use defaults from configure_orchestrator
@@ -591,22 +593,21 @@ def create_demo() -> gr.Blocks:
                 [
                     "What drugs could be repurposed for Alzheimer's disease?",
                     "simple",
-                    "Qwen/Qwen3-Next-80B-A3B-Thinking",  
-                    "", 
+                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                    "",
                 ],
                 [
                     "Is metformin effective for treating cancer?",
                     "simple",
-                    "Qwen/Qwen3-235B-A22B-Instruct-2507",  
-                    "",  
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    "",
                 ],
                 [
                     "What medications show promise for Long COVID treatment?",
                     "simple",
-                    "zai-org/GLM-4.5-Air", 
-                    "nebius", 
+                    "zai-org/GLM-4.5-Air",
+                    "nebius",
                 ],
-
             ],
             cache_examples=False,  # CRITICAL: Disable example caching to prevent examples from running at startup
             # Examples will only run when user explicitly clicks them (after login)
