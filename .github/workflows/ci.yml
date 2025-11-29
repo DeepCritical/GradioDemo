@@ -109,6 +109,19 @@ jobs:
 
       - name: Deploy to GitHub Pages
         run: |
-          uv run mkdocs gh-deploy --force --message "Deploy docs [skip ci]"
+          # mkdocs gh-deploy automatically creates .nojekyll, but let's verify
+          uv run mkdocs gh-deploy --force --message "Deploy docs [skip ci]" --strict
+          # Verify .nojekyll was created in gh-pages branch
+          git fetch origin gh-pages:gh-pages || true
+          git checkout gh-pages || true
+          if [ -f .nojekyll ]; then
+            echo "✓ .nojekyll file exists"
+          else
+            echo "⚠ .nojekyll file missing, creating it..."
+            touch .nojekyll
+            git add .nojekyll
+            git commit -m "Add .nojekyll to disable Jekyll [skip ci]" || true
+            git push origin gh-pages || true
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
