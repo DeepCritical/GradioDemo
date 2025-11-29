@@ -705,14 +705,14 @@ def create_demo() -> gr.Blocks:
                 # Each inner list: [message, mode, hf_model, hf_provider]
                 [
                     "What drugs could be repurposed for Alzheimer's disease?",
-                    "iterative",
+                    "simple",
                     None,
                     None,
                 ],
-                ["Is metformin effective for treating cancer?", "iterative", None, None],
+                ["Is metformin effective for treating cancer?", "simple", None, None],
                 [
                     "What medications show promise for Long COVID treatment?",
-                    "iterative",
+                    "simple",
                     None,
                     None,
                 ],
