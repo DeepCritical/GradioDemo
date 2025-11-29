@@ -1,8 +1,103 @@
 # Graph Orchestration Architecture
 
-## Overview
+## Graph Patterns
 
-Phase 4 implements a graph-based orchestration system for research workflows using Pydantic AI agents as nodes. This enables better parallel execution, conditional routing, and state management compared to simple agent chains.
+### Iterative Research Graph
+
+```
+[Input] → [Thinking] → [Knowledge Gap] → [Decision: Complete?]
+                                              ↓ No          ↓ Yes
+                                    [Tool Selector]    [Writer]
+                                              ↓
+                                    [Execute Tools] → [Loop Back]
+```
+
+### Deep Research Graph
+
+```
+[Input] → [Planner] → [Parallel Iterative Loops] → [Synthesizer]
+                           ↓         ↓         ↓
+                        [Loop1]  [Loop2]  [Loop3]
+```
+
+### Deep Research
+
+```mermaid
+
+sequenceDiagram
+    actor User
+    participant GraphOrchestrator
+    participant InputParser
+    participant GraphBuilder
+    participant GraphExecutor
+    participant Agent
+    participant BudgetTracker
+    participant WorkflowState
+
+    User->>GraphOrchestrator: run(query)
+    GraphOrchestrator->>InputParser: detect_research_mode(query)
+    InputParser-->>GraphOrchestrator: mode (iterative/deep)
+    GraphOrchestrator->>GraphBuilder: build_graph(mode)
+    GraphBuilder-->>GraphOrchestrator: ResearchGraph
+    GraphOrchestrator->>WorkflowState: init_workflow_state()
+    GraphOrchestrator->>BudgetTracker: create_budget()
+    GraphOrchestrator->>GraphExecutor: _execute_graph(graph)
+    
+    loop For each node in graph
+        GraphExecutor->>Agent: execute_node(agent_node)
+        Agent->>Agent: process_input
+        Agent-->>GraphExecutor: result
+        GraphExecutor->>WorkflowState: update_state(result)
+        GraphExecutor->>BudgetTracker: add_tokens(used)
+        GraphExecutor->>BudgetTracker: check_budget()
+        alt Budget exceeded
+            GraphExecutor->>GraphOrchestrator: emit(error_event)
+        else Continue
+            GraphExecutor->>GraphOrchestrator: emit(progress_event)
+        end
+    end
+    
+    GraphOrchestrator->>User: AsyncGenerator[AgentEvent]
+
+```
+
+### Iterative Research
+
+```mermaid
+sequenceDiagram
+    participant IterativeFlow
+    participant ThinkingAgent
+    participant KnowledgeGapAgent
+    participant ToolSelector
+    participant ToolExecutor
+    participant JudgeHandler
+    participant WriterAgent
+
+    IterativeFlow->>IterativeFlow: run(query)
+    
+    loop Until complete or max_iterations
+        IterativeFlow->>ThinkingAgent: generate_observations()
+        ThinkingAgent-->>IterativeFlow: observations
+        
+        IterativeFlow->>KnowledgeGapAgent: evaluate_gaps()
+        KnowledgeGapAgent-->>IterativeFlow: KnowledgeGapOutput
+        
+        alt Research complete
+            IterativeFlow->>WriterAgent: create_final_report()
+            WriterAgent-->>IterativeFlow: final_report
+        else Gaps remain
+            IterativeFlow->>ToolSelector: select_agents(gap)
+            ToolSelector-->>IterativeFlow: AgentSelectionPlan
+            
+            IterativeFlow->>ToolExecutor: execute_tool_tasks()
+            ToolExecutor-->>IterativeFlow: ToolAgentOutput[]
+            
+            IterativeFlow->>JudgeHandler: assess_evidence()
+            JudgeHandler-->>IterativeFlow: should_continue
+        end
+    end
+```
+
 
 ## Graph Structure
 
@@ -50,25 +145,6 @@ Edges define transitions between nodes:
    - To: Multiple target nodes
    - Execution: All targets run concurrently
 
-## Graph Patterns
-
-### Iterative Research Graph
-
-```
-[Input] → [Thinking] → [Knowledge Gap] → [Decision: Complete?]
-                                              ↓ No          ↓ Yes
-                                    [Tool Selector]    [Writer]
-                                              ↓
-                                    [Execute Tools] → [Loop Back]
-```
-
-### Deep Research Graph
-
-```
-[Input] → [Planner] → [Parallel Iterative Loops] → [Synthesizer]
-                           ↓         ↓         ↓
-                        [Loop1]  [Loop2]  [Loop3]
-```
 
 ## State Management
 
