@@ -16,10 +16,10 @@ class TestHuggingFaceChatClient:
         """Test initialization with default parameters."""
         with patch("src.utils.huggingface_chat_client.InferenceClient") as mock_client:
             client = HuggingFaceChatClient()
-            assert client.model_name == "meta-llama/Llama-3.1-8B-Instruct"
+            assert client.model_name == "Qwen/Qwen3-Next-80B-A3B-Thinking"
             assert client.provider == "auto"
             mock_client.assert_called_once_with(
-                model="meta-llama/Llama-3.1-8B-Instruct",
+                model="Qwen/Qwen3-Next-80B-A3B-Thinking",
                 api_key=None,
                 provider="auto",
             )

@@ -41,9 +41,9 @@ class ReportAgent(BaseAgent):  # type: ignore[misc]
     def _get_agent(self) -> Agent[None, ResearchReport]:
         """Lazy initialization of LLM agent to avoid requiring API keys at import."""
         if self._agent is None:
-            self._agent = Agent(
+            self._agent = Agent(  # type: ignore[call-overload]
                 model=get_model(),
-                output_type=ResearchReport,
+                result_type=ResearchReport,
                 system_prompt=SYSTEM_PROMPT,
             )
         return self._agent

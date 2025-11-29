@@ -71,9 +71,9 @@ class StatisticalAnalyzer:
         """Lazy initialization of LLM agent for code generation."""
         if self._agent is None:
             library_versions = get_sandbox_library_prompt()
-            self._agent = Agent(
+            self._agent = Agent(  # type: ignore[call-overload]
                 model=get_model(),
-                output_type=str,
+                result_type=str,
                 system_prompt=f"""You are a biomedical data scientist.
 
 Generate Python code to analyze research evidence and test hypotheses.

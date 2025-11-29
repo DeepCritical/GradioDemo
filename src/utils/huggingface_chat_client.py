@@ -28,14 +28,14 @@ class HuggingFaceChatClient:
 
     def __init__(
         self,
-        model_name: str = "meta-llama/Llama-3.1-8B-Instruct",
+        model_name: str = "Qwen/Qwen3-Next-80B-A3B-Thinking",
         api_key: str | None = None,
         provider: str = "auto",
     ) -> None:
         """Initialize HuggingFace chat client.
 
         Args:
-            model_name: HuggingFace model identifier (e.g., "meta-llama/Llama-3.1-8B-Instruct")
+            model_name: HuggingFace model identifier (e.g., "Qwen/Qwen3-Next-80B-A3B-Thinking")
             api_key: Optional HF_TOKEN for gated models. If None, uses environment token.
             provider: Provider name or "auto" for automatic selection.
                      Options: "auto", "cerebras", "together", "sambanova", etc.

@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic_ai import AgentRunResult
+from pydantic_ai.result import RunResult
 
 from src.agents.input_parser import InputParserAgent, create_input_parser_agent
 from src.utils.exceptions import ConfigurationError
@@ -49,9 +49,9 @@ def mock_parsed_query_deep() -> ParsedQuery:
 @pytest.fixture
 def mock_agent_result_iterative(
     mock_parsed_query_iterative: ParsedQuery,
-) -> AgentRunResult[ParsedQuery]:
+) -> RunResult[ParsedQuery]:
     """Create a mock agent result for iterative mode."""
-    result = MagicMock(spec=AgentRunResult)
+    result = MagicMock(spec=RunResult)
     result.output = mock_parsed_query_iterative
     return result
 
@@ -59,9 +59,9 @@ def mock_agent_result_iterative(
 @pytest.fixture
 def mock_agent_result_deep(
     mock_parsed_query_deep: ParsedQuery,
-) -> AgentRunResult[ParsedQuery]:
+) -> RunResult[ParsedQuery]:
     """Create a mock agent result for deep mode."""
-    result = MagicMock(spec=AgentRunResult)
+    result = MagicMock(spec=RunResult)
     result.output = mock_parsed_query_deep
     return result
 
@@ -112,7 +112,7 @@ class TestParse:
     async def test_parse_iterative_query(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_iterative: AgentRunResult[ParsedQuery],
+        mock_agent_result_iterative: RunResult[ParsedQuery],
     ) -> None:
         """Test parsing a simple query that should return iterative mode."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_iterative)
@@ -130,7 +130,7 @@ class TestParse:
     async def test_parse_deep_query(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_deep: AgentRunResult[ParsedQuery],
+        mock_agent_result_deep: RunResult[ParsedQuery],
     ) -> None:
         """Test parsing a complex query that should return deep mode."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_deep)
@@ -148,7 +148,7 @@ class TestParse:
     async def test_parse_improves_query(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_iterative: AgentRunResult[ParsedQuery],
+        mock_agent_result_iterative: RunResult[ParsedQuery],
     ) -> None:
         """Test that parse() improves the query."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_iterative)
@@ -164,7 +164,7 @@ class TestParse:
     async def test_parse_extracts_entities(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_iterative: AgentRunResult[ParsedQuery],
+        mock_agent_result_iterative: RunResult[ParsedQuery],
     ) -> None:
         """Test that parse() extracts key entities."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_iterative)
@@ -180,7 +180,7 @@ class TestParse:
     async def test_parse_extracts_research_questions(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_deep: AgentRunResult[ParsedQuery],
+        mock_agent_result_deep: RunResult[ParsedQuery],
     ) -> None:
         """Test that parse() extracts research questions."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_deep)
@@ -199,7 +199,7 @@ class TestParse:
     ) -> None:
         """Test that parse() handles missing improved_query gracefully."""
         # Create a result with missing improved_query
-        mock_result = MagicMock(spec=AgentRunResult)
+        mock_result = MagicMock(spec=RunResult)
         mock_parsed = ParsedQuery(
             original_query="test query",
             improved_query="",  # Empty improved query
@@ -290,7 +290,7 @@ class TestResearchModeDetection:
     async def test_detects_iterative_mode_for_simple_queries(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_iterative: AgentRunResult[ParsedQuery],
+        mock_agent_result_iterative: RunResult[ParsedQuery],
     ) -> None:
         """Test that simple queries are detected as iterative."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_iterative)
@@ -309,7 +309,7 @@ class TestResearchModeDetection:
     async def test_detects_deep_mode_for_complex_queries(
         self,
         input_parser_agent: InputParserAgent,
-        mock_agent_result_deep: AgentRunResult[ParsedQuery],
+        mock_agent_result_deep: RunResult[ParsedQuery],
     ) -> None:
         """Test that complex queries are detected as deep."""
         input_parser_agent.agent.run = AsyncMock(return_value=mock_agent_result_deep)

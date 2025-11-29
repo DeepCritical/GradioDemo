@@ -5,21 +5,16 @@ description = "AI-Native Drug Repurposing Research Agent"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    # Core
     "pydantic>=2.7",
     "pydantic-settings>=2.2",
     "pydantic-ai>=0.0.16",
-    # AI Providers
     "openai>=1.0.0",
     "anthropic>=0.18.0",
-    # HTTP & Parsing
-    "httpx>=0.27", 
-    "beautifulsoup4>=4.12", 
-    "xmltodict>=0.13", 
-    "huggingface-hub>=0.20.0", 
-    # UI
-    "gradio[mcp,oauth]>=6.0.0", 
-    # Utils
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "xmltodict>=0.13",
+    "huggingface-hub>=0.20.0",
+    "gradio[mcp,oauth]>=6.0.0",
     "python-dotenv>=1.0", # .env loading
     "tenacity>=8.2", # Retry logic
     "structlog>=24.1", # Structured logging
@@ -40,28 +35,30 @@ dependencies = [
     "modal>=0.63.0",
     "llama-index-llms-openai>=0.6.9",
     "llama-index-embeddings-openai>=0.5.1",
+    "pydantic-ai-slim[huggingface]>=0.0.18",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    # Testing
-    "pytest>=8.0",
-    "pytest-asyncio>=0.23",
-    "pytest-sugar>=1.0",
-    "pytest-cov>=5.0",
-    "pytest-mock>=3.12",
-    "respx>=0.21",                  
-    "typer>=0.9.0",                 
-
-    # Quality
-    "ruff>=0.4.0",
-    "mypy>=1.10",
+    "pytest>=9.0.1",
+    "pytest-asyncio>=1.3.0",
+    "pytest-sugar>=1.1.1",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
+    "respx>=0.22.0",
+    "typer>=0.9.0",
+    "ruff>=0.14.6",
+    "mypy>=1.18.2",
     "pre-commit>=3.7",
-    # Documentation
     "mkdocs>=1.5.0",
-    "mkdocs-material>=9.0.0",
-    "mkdocs-mermaid2-plugin>=1.1.0",
-    "mkdocs-minify-plugin>=0.7.0",
+    "mkdocs-material>=9.7.0",
+    "mkdocs-mermaid2-plugin>=1.2.3",
+    "mkdocs-minify-plugin>=0.8.0",
+    "mkdocs-codeinclude-plugin>=0.2.1",
+    "mkdocs-macros-plugin>=1.5.0",
+    "pymdown-extensions>=10.17.2",
 ]
 
 [build-system]
@@ -106,6 +103,9 @@ ignore = [
     "RUF100",   # Unused noqa (version differences between local/CI)
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"src/app.py" = ["PLR0915"]  # Too many statements (Gradio UI setup is complex)
+
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
 
@@ -123,6 +123,7 @@ exclude = [
     "^reference_repos/",
     "^examples/",
     "^folder/",
+    "^src/app\\.py$",  # Gradio UI setup - ignore mypy checks
 ]
 
 # ============== PYTEST CONFIG ==============
@@ -136,6 +137,25 @@ addopts = [
     "-p",
     "no:logfire",
 ]
+# Suppress known warnings that don't indicate test failures
+# These are from third-party libraries and don't affect test correctness
+filterwarnings = [
+    # Pydantic deprecation warnings from unittest.mock introspection
+    # These occur when mock tries to introspect Pydantic models
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince211",
+    # Gradio UI warnings (not relevant for unit tests)
+    "ignore::UserWarning:gradio.components.dropdown",
+    "ignore::UserWarning:gradio.oauth",
+    # Pattern-based filters for Pydantic deprecation messages (catch-all)
+    "ignore:The `__fields__` attribute is deprecated.*",
+    "ignore:The `__fields_set__` attribute is deprecated.*",
+    "ignore:Accessing the 'model_computed_fields' attribute.*",
+    "ignore:Accessing the 'model_fields' attribute.*",
+    # Also catch warnings from unittest.mock module
+    "ignore::DeprecationWarning:unittest.mock",
+]
+# Note: pytest only runs test files, so source files don't need exclusion
 markers = [
     "unit: Unit tests (mocked)",
     "integration: Integration tests (real APIs)",
@@ -149,25 +169,14 @@ markers = [
 # ============== COVERAGE CONFIG ==============
 [tool.coverage.run]
 source = ["src"]
-omit = ["*/__init__.py"]
+omit = [
+    "*/__init__.py",
+    "src/app.py",  # Exclude Gradio UI from coverage
+]
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
-]
-
-[dependency-groups]
-dev = [
-    "mkdocs-codeinclude-plugin>=0.2.1",
-    "mkdocs-macros-plugin>=1.5.0",
-    "pytest>=9.0.1",
-    "pytest-asyncio>=1.3.0",
-    "pytest-cov>=7.0.0",
-    "pytest-mock>=3.15.1",
-    "pytest-sugar>=1.1.1",
-    "respx>=0.22.0",
-    "structlog>=25.5.0",
-    "ty>=0.0.1a28",
 ]

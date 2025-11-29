@@ -35,7 +35,7 @@ tags:
 [![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
 [![Documentation](https://img.shields.io/badge/📚%20Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](docs/index.md)
 [![Demo](https://img.shields.io/badge/🚀%20Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
-[![CodeCov](https://img.shields.io/badge/📊%20Coverage-F01F7A?style=for-the-badge&logo=codecov&logoColor=white&labelColor=F01F7A&color=F01F7A)](https://codecov.io/gh/DeepCritical/GradioDemo)
+[![codecov](https://codecov.io/gh/DeepCritical/GradioDemo/graph/badge.svg?token=B1f05RCGpz)](https://codecov.io/gh/DeepCritical/GradioDemo)
 [![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 
 
 
@@ -76,6 +76,7 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
 - [] Create Deep Critical Drug Reporposing / Discovery Demo
 - [] Create Deep Critical Literal Review
 - [] Create Deep Critical Hypothesis Generator
+- [] Create PyPi Package 
 
 ## Completed
 
@@ -118,5 +119,5 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
 [![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
 [![Documentation](https://img.shields.io/badge/📚%20Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](docs/index.md)
 [![Demo](https://img.shields.io/badge/🚀%20Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
-[![CodeCov](https://img.shields.io/badge/📊%20Coverage-F01F7A?style=for-the-badge&logo=codecov&logoColor=white&labelColor=F01F7A&color=F01F7A)](https://codecov.io/gh/DeepCritical/GradioDemo)
+[![codecov](https://codecov.io/gh/DeepCritical/GradioDemo/graph/badge.svg?token=B1f05RCGpz)](https://codecov.io/gh/DeepCritical/GradioDemo)
 [![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 

@@ -41,8 +41,9 @@ class Settings(BaseSettings):
         description="OpenAI embedding model (used by LlamaIndex RAG)",
     )
     local_embedding_model: str = Field(
-        default="all-MiniLM-L6-v2",
-        description="Local sentence-transformers model (used by EmbeddingService)",
+        default="BAAI/bge-small-en-v1.5",
+        description="Local sentence-transformers model (used by EmbeddingService). "
+        "BAAI/bge-small-en-v1.5 is newer, faster, and better than all-MiniLM-L6-v2.",
     )
     embedding_provider: Literal["openai", "local", "huggingface"] = Field(
         default="local",
@@ -58,8 +59,15 @@ class Settings(BaseSettings):
         default=None, description="HuggingFace API token (HF_TOKEN or HUGGINGFACE_API_KEY)"
     )
     huggingface_model: str = Field(
-        default="meta-llama/Llama-3.1-8B-Instruct",
-        description="Default HuggingFace model ID for inference",
+        default="Qwen/Qwen3-Next-80B-A3B-Thinking",
+        description="Default HuggingFace model ID for inference (gated, requires auth). "
+        "Latest reasoning model with advanced thinking capabilities.",
+    )
+    huggingface_fallback_models: str = Field(
+        default="Qwen/Qwen3-Next-80B-A3B-Thinking,Qwen/Qwen3-Next-80B-A3B-Instruct,meta-llama/Llama-3.3-70B-Instruct,meta-llama/Llama-3.1-8B-Instruct,HuggingFaceH4/zephyr-7b-beta,Qwen/Qwen2-7B-Instruct",
+        description="Comma-separated list of fallback HuggingFace models for inference API. "
+        "Models are tried in order until one succeeds. "
+        "Default: Latest reasoning models (Qwen3-Next, Llama-3.3) followed by reliable fallbacks.",
     )
 
     # PubMed Configuration

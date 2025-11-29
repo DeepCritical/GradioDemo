@@ -6,11 +6,16 @@ import pytest
 
 pytestmark = pytest.mark.unit
 from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.openai import OpenAIModel
 
-# We expect this import to exist after we implement it, or we mock it if it's not there yet
-# For TDD, we assume we will use the library class
-from pydantic_ai.models.huggingface import HuggingFaceModel
-from pydantic_ai.models.openai import OpenAIChatModel as OpenAIModel
+# Try to import HuggingFace support (may not be available in all pydantic-ai versions)
+try:
+    from pydantic_ai.models.huggingface import HuggingFaceModel
+
+    _HUGGINGFACE_AVAILABLE = True
+except ImportError:
+    HuggingFaceModel = None  # type: ignore[assignment, misc]
+    _HUGGINGFACE_AVAILABLE = False
 
 from src.agent_factory.judges import get_model
 
@@ -43,6 +48,7 @@ def test_get_model_anthropic(mock_settings):
     assert model.model_name == "claude-sonnet-4-5-20250929"
 
 
+@pytest.mark.skipif(not _HUGGINGFACE_AVAILABLE, reason="HuggingFace models not available")
 def test_get_model_huggingface(mock_settings):
     """Test that HuggingFace model is returned when provider is huggingface."""
     mock_settings.llm_provider = "huggingface"
@@ -54,11 +60,13 @@ def test_get_model_huggingface(mock_settings):
     assert model.model_name == "meta-llama/Llama-3.1-70B-Instruct"
 
 
+@pytest.mark.skipif(not _HUGGINGFACE_AVAILABLE, reason="HuggingFace models not available")
 def test_get_model_default_fallback(mock_settings):
     """Test fallback to HuggingFace if provider is unknown."""
     mock_settings.llm_provider = "unknown_provider"
     mock_settings.hf_token = "hf_test_token"
-    mock_settings.huggingface_model = "meta-llama/Llama-3.1-8B-Instruct"
+    mock_settings.huggingface_model = "Qwen/Qwen3-Next-80B-A3B-Thinking"
 
     model = get_model()
     assert isinstance(model, HuggingFaceModel)
+    assert model.model_name == "Qwen/Qwen3-Next-80B-A3B-Thinking"

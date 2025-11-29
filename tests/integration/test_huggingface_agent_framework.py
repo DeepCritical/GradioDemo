@@ -35,9 +35,9 @@ class TestHuggingFaceAgentFramework:
         if not api_key:
             pytest.skip("HF_TOKEN required for HuggingFace integration tests")
         return HuggingFaceChatClient(
-            model_name="meta-llama/Llama-3.1-8B-Instruct",
+            model_name="Qwen/Qwen3-Next-80B-A3B-Thinking",
             api_key=api_key,
-            provider="auto",
+            provider="together",
         )
 
     @pytest.mark.asyncio

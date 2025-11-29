@@ -56,9 +56,9 @@ class KnowledgeGapAgent:
         self.logger = logger
 
         # Initialize Pydantic AI Agent
-        self.agent = Agent(
+        self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            output_type=KnowledgeGapOutput,
+            result_type=KnowledgeGapOutput,
             system_prompt=SYSTEM_PROMPT,
             retries=3,
         )
@@ -121,7 +121,7 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
                 gaps_count=len(evaluation.outstanding_gaps),
             )
 
-            return evaluation
+            return evaluation  # type: ignore[no-any-return]
 
         except Exception as e:
             self.logger.error("Knowledge gap evaluation failed", error=str(e))

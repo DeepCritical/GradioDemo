@@ -202,7 +202,7 @@ class LlamaIndexRAGService:
     def _configure_llm(self, huggingface_llm: Any, openai_llm: Any) -> None:
         """Configure LLM for query synthesis."""
         if huggingface_llm is not None and (settings.hf_token or settings.huggingface_api_key):
-            model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
+            model_name = settings.huggingface_model or "Qwen/Qwen3-Next-80B-A3B-Thinking"
             token = settings.hf_token or settings.huggingface_api_key
 
             # Check if it's HuggingFaceInferenceAPI (API-based) or HuggingFaceLLM (local)

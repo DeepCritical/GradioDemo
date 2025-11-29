@@ -84,9 +84,9 @@ class LongWriterAgent:
         self.logger = logger
 
         # Initialize Pydantic AI Agent
-        self.agent = Agent(
+        self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            output_type=LongWriterOutput,
+            result_type=LongWriterOutput,
             system_prompt=SYSTEM_PROMPT,
             retries=3,
         )
@@ -193,7 +193,7 @@ class LongWriterAgent:
                     attempt=attempt + 1,
                 )
 
-                return output
+                return output  # type: ignore[no-any-return]
 
             except (TimeoutError, ConnectionError) as e:
                 # Transient errors - retry

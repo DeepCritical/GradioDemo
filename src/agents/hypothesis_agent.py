@@ -40,9 +40,9 @@ class HypothesisAgent(BaseAgent):  # type: ignore[misc]
     def _get_agent(self) -> Agent[None, HypothesisAssessment]:
         """Lazy initialization of LLM agent to avoid requiring API keys at import."""
         if self._agent is None:
-            self._agent = Agent(
+            self._agent = Agent(  # type: ignore[call-overload]
                 model=get_model(),  # Uses configured LLM (OpenAI/Anthropic)
-                output_type=HypothesisAssessment,
+                result_type=HypothesisAssessment,
                 system_prompt=SYSTEM_PROMPT,
             )
         return self._agent

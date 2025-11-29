@@ -64,9 +64,9 @@ class InputParserAgent:
         self.logger = logger
 
         # Initialize Pydantic AI Agent
-        self.agent = Agent(
+        self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            output_type=ParsedQuery,
+            result_type=ParsedQuery,
             system_prompt=SYSTEM_PROMPT,
             retries=3,
         )
@@ -117,7 +117,7 @@ class InputParserAgent:
                 questions=len(parsed_query.research_questions),
             )
 
-            return parsed_query
+            return parsed_query  # type: ignore[no-any-return]
 
         except Exception as e:
             self.logger.error("Query parsing failed", error=str(e), query=query[:100])

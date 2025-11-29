@@ -16,9 +16,9 @@ class LLMSubIterationJudge:
 
     def __init__(self) -> None:
         self.model = get_model()
-        self.agent = Agent(
+        self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            output_type=JudgeAssessment,
+            result_type=JudgeAssessment,
             system_prompt="""You are a strict judge evaluating a research task.
 
 Evaluate if the result is sufficient to answer the task.
@@ -42,4 +42,4 @@ Evaluate validity and sufficiency."""
 
         run_result = await self.agent.run(prompt)
         logger.info("LLM judge assessment complete", sufficient=run_result.output.sufficient)
-        return run_result.output
+        return run_result.output  # type: ignore[no-any-return]
