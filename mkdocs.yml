@@ -7,6 +7,9 @@ repo_name: DeepCritical/GradioDemo
 repo_url: https://github.com/DeepCritical/GradioDemo
 edit_uri: edit/dev/docs/
 
+# Ensure all files are included even if not in nav
+strict: false
+
 theme:
   name: material
   palette:
@@ -81,16 +84,18 @@ nav:
     - getting-started/quick-start.md
     - getting-started/mcp-integration.md
     - getting-started/examples.md
-  - Configuration: CONFIGURATION.md
+  - Configuration:
+    - configuration/index.md
+    - configuration/CONFIGURATION.md
   - Architecture:
-    - architecture/overview.md
-    - architecture/design-patterns.md
-    - architecture/graph_orchestration.md
-    - architecture/agents.md
-    - architecture/orchestrators.md
-    - architecture/tools.md
-    - architecture/middleware.md
-    - architecture/services.md
+    - "Graph Orchestration": architecture/graph_orchestration.md
+    - "Workflows": architecture/workflows.md
+    - "Workflow Diagrams": architecture/workflow-diagrams.md
+    - "Agents": architecture/agents.md
+    - "Orchestrators": architecture/orchestrators.md
+    - "Tools": architecture/tools.md
+    - "Middleware": architecture/middleware.md
+    - "Services": architecture/services.md
   - API Reference:
     - api/agents.md
     - api/tools.md
