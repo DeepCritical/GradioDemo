@@ -1,1 +1,0 @@
-make sure you run the full pre-commit checks before opening a PR (not draft) otherwise Obstacle is the Way will loose his mind 
