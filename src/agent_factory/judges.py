@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 import structlog
-from huggingface_hub import InferenceClient
+from huggingface_hub import InferenceClient, AsyncInferenceClient
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel  # type: ignore[attr-defined]
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -268,9 +268,9 @@ class HFInferenceJudgeHandler:
         self.model_id = model_id
         self.api_key = api_key
         self.provider = provider
-        # Create InferenceClient without provider - provider will be specified per request
-        # Provider should be specified per API call, not at client initialization
-        self.client = InferenceClient(token=api_key) if api_key else InferenceClient()
+        # Use AsyncInferenceClient (like pydantic-ai does) instead of synchronous InferenceClient
+        # This ensures compatibility with how pydantic-ai's HuggingFaceProvider works
+        self.client = AsyncInferenceClient(token=api_key) if api_key else AsyncInferenceClient()
         self.call_count = 0
         self.last_question: str | None = None
         self.last_evidence: list[Evidence] | None = None
@@ -310,9 +310,10 @@ class HFInferenceJudgeHandler:
         return self._create_fallback_assessment(question, str(last_error))
 
     async def _call_with_retry(self, model: str, prompt: str, question: str) -> JudgeAssessment:
-        """Make API call with retry logic using chat_completion."""
-        loop = asyncio.get_running_loop()
-
+        """Make API call with retry logic using chat_completion.
+        
+        Uses AsyncInferenceClient (like pydantic-ai's HuggingFaceProvider) for proper async handling.
+        """
         # Build messages for chat_completion (model-agnostic)
         messages = [
             {
@@ -359,12 +360,13 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
         # Some providers require explicit client initialization with provider parameter
         if self.provider and self.provider != "auto":
             try:
-                # Create a new client with provider set at initialization
+                # Create a new async client with provider set at initialization
                 provider_client_kwargs: dict[str, Any] = {}
                 if self.api_key:
                     provider_client_kwargs["token"] = self.api_key
                 # Provider should be set at client creation, not in API call
-                provider_client = InferenceClient(
+                # Use AsyncInferenceClient to match pydantic-ai's approach
+                provider_client = AsyncInferenceClient(
                     provider=self.provider,  # type: ignore[arg-type]
                     **provider_client_kwargs,
                 )
@@ -373,7 +375,7 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
                     "description": f"{model} with {self.provider} provider (client-level)",
                     "client": provider_client,
                 })
-                logger.debug("Created client with provider", provider=self.provider, model=model)
+                logger.debug("Created async client with provider", provider=self.provider, model=model)
             except Exception as e:
                 logger.debug(
                     "Failed to create client with provider",
@@ -402,17 +404,14 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
                     model=attempt["model"],
                 )
                 
-                # Capture variables properly for lambda closure
-                attempt_client = client
-                attempt_kwargs = call_kwargs.copy()
+                # Use async client directly (no need for run_in_executor)
+                # AsyncInferenceClient is already async, matching pydantic-ai's approach
                 
                 # Make the API call with retry logic
                 for retry_num in range(3):
                     try:
-                        response = await loop.run_in_executor(
-                            None,
-                            lambda c=attempt_client, k=attempt_kwargs: c.chat_completion(**k),  # type: ignore[call-overload]
-                        )
+                        # AsyncInferenceClient.chat_completion is async, so await directly
+                        response = await client.chat_completion(**call_kwargs)  # type: ignore[call-overload]
                         # If we get here, the call succeeded
                         logger.info(
                             "API call succeeded",
@@ -480,7 +479,78 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
                 last_error = e
                 continue
         else:
-            # All attempts failed
+            # All chat_completion attempts failed - try text_generation as fallback
+            # Some models (especially older ones) only support text_generation, not chat_completion
+            if last_error and ("422" in str(last_error) or "Unprocessable" in str(last_error) or "status_code: 422" in str(last_error)):
+                logger.info(
+                    "All chat_completion attempts failed with 422, trying text_generation fallback",
+                    model=model,
+                )
+                try:
+                    # Build text prompt from messages
+                    text_prompt = f"""{SYSTEM_PROMPT}
+
+IMPORTANT: Respond with ONLY valid JSON matching this schema:
+{{
+    "details": {{
+        "mechanism_score": <int 0-10>,
+        "mechanism_reasoning": "<string>",
+        "clinical_evidence_score": <int 0-10>,
+        "clinical_reasoning": "<string>",
+        "drug_candidates": ["<string>", ...],
+        "key_findings": ["<string>", ...]
+    }},
+    "sufficient": <bool>,
+    "confidence": <float 0-1>,
+    "recommendation": "continue" | "synthesize",
+    "next_search_queries": ["<string>", ...],
+    "reasoning": "<string>"
+}}
+
+{prompt}"""
+                    
+                    # Try text_generation with the async client
+                    # AsyncInferenceClient.text_generation is async, so await directly
+                    text_response_raw = await self.client.text_generation(
+                        prompt=text_prompt,
+                        model=model,
+                        max_new_tokens=1024,
+                        temperature=0.1,
+                    )
+                    
+                    # Handle both string and object responses
+                    if isinstance(text_response_raw, str):
+                        text_response = text_response_raw
+                    elif hasattr(text_response_raw, "generated_text"):
+                        text_response = text_response_raw.generated_text
+                    elif hasattr(text_response_raw, "text"):
+                        text_response = text_response_raw.text
+                    else:
+                        text_response = str(text_response_raw)
+                    
+                    if not text_response:
+                        raise ValueError("Empty response from text_generation")
+                    
+                    logger.info("text_generation succeeded", model=model)
+                    
+                    # Extract and parse JSON from text response
+                    json_data = self._extract_json(text_response)
+                    if not json_data:
+                        raise ValueError("No valid JSON found in text_generation response")
+                    
+                    return JudgeAssessment(**json_data)
+                except Exception as text_gen_error:
+                    logger.error(
+                        "text_generation fallback also failed",
+                        model=model,
+                        error=str(text_gen_error)[:300],
+                    )
+                    # If text_generation also fails, raise the original chat_completion error
+                    if last_error:
+                        raise last_error
+                    raise text_gen_error
+            
+            # All attempts failed and it wasn't a 422 error
             logger.error(
                 "All model/provider attempts failed",
                 total_attempts=len(attempts),
@@ -490,7 +560,7 @@ IMPORTANT: Respond with ONLY valid JSON matching this schema:
                 raise last_error
             raise ValueError("All model/provider attempts failed")
 
-        # Extract content from response
+        # Extract content from response (chat_completion succeeded)
         content = response.choices[0].message.content
         if not content:
             raise ValueError("Empty response from model")
