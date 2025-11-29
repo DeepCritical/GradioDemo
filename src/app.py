@@ -31,7 +31,6 @@ from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
 from src.utils.config import settings
-from src.utils.inference_models import get_available_models, get_available_providers
 from src.utils.models import AgentEvent, OrchestratorConfig
 
 
@@ -455,13 +454,16 @@ async def research_agent(
     try:
         # use_mock=False - let configure_orchestrator decide based on available keys
         # It will use: OAuth token > Env vars > HF Inference (free tier)
-        # hf_model and hf_provider come from dropdown, so they're guaranteed to be valid
+        # Convert empty strings from Textbox to None for defaults
+        model_id = hf_model if hf_model and hf_model.strip() else None
+        provider_name = hf_provider if hf_provider and hf_provider.strip() else None
+        
         orchestrator, backend_name = configure_orchestrator(
             use_mock=False,  # Never use mock in production - HF Inference is the free fallback
             mode=effective_mode,
             oauth_token=oauth_token,
-            hf_model=hf_model,  # Can be None, will use defaults in configure_orchestrator
-            hf_provider=hf_provider,  # Can be None, will use defaults in configure_orchestrator
+            hf_model=model_id,  # None will use defaults in configure_orchestrator
+            hf_provider=provider_name,  # None will use defaults in configure_orchestrator
         )
 
         yield {
@@ -497,53 +499,9 @@ def create_demo() -> gr.Blocks:
         with gr.Row():
             gr.LoginButton()
 
-        # Get initial model/provider lists (no auth by default)
-        # Check if user has auth to determine which model list to use
-        has_auth = bool(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY"))
-
-        # Get the appropriate model list based on user's actual auth status
-        # CRITICAL: Use the list that matches the user's auth status to avoid mismatches
-        if has_auth:
-            # User has auth - get models available with auth (includes gated models)
-            initial_models = get_available_models(has_auth=True)
-            # Fallback to unauthenticated models if auth list is empty (shouldn't happen, but be safe)
-            if not initial_models:
-                initial_models = get_available_models(has_auth=False)
-        else:
-            # User doesn't have auth - only get unauthenticated models (ungated only)
-            initial_models = get_available_models(has_auth=False)
-
-        # Extract available model IDs (first element of tuples) - this is what Gradio uses as values
-        available_model_ids = [m[0] for m in initial_models] if initial_models else []
-
-        # Always use the first available model to ensure it matches the choices
-        # This prevents mismatches between preferred models and actual available models
-        # (e.g., preferred models might require auth but user doesn't have it)
-        initial_model_id = available_model_ids[0] if available_model_ids else None
-
-        # Get providers for the selected model (only if we have a valid model)
-        # CRITICAL: Re-validate model_id is still in available models before getting providers
-        initial_providers = []
-        initial_provider = None
-        if initial_model_id and initial_model_id in available_model_ids:
-            initial_providers = get_available_providers(initial_model_id, has_auth=has_auth)
-            # Ensure we have a valid provider value that's in the choices
-            if initial_providers:
-                available_provider_ids = [p[0] for p in initial_providers]
-                if available_provider_ids:
-                    initial_provider = available_provider_ids[0]  # Use first provider's ID
-                else:
-                    initial_provider = None
-            else:
-                initial_provider = None
-        else:
-            # Model not available - reset to None
-            initial_model_id = None
-            initial_provider = None
-
-        # Create dropdowns for model and provider selection
-        # Note: Components can be in a hidden row and still work with ChatInterface additional_inputs
-        # The visible=False just hides the row itself, but components are still accessible
+        # Create settings components (hidden - used only for additional_inputs)
+        # Model/provider selection removed to avoid dropdown value mismatch errors
+        # Settings will use defaults from configure_orchestrator
         with gr.Row(visible=False):
             mode_radio = gr.Radio(
                 choices=["simple", "advanced"],
@@ -552,116 +510,19 @@ def create_demo() -> gr.Blocks:
                 info="Simple: Linear | Advanced: Multi-Agent (Requires OpenAI)",
             )
 
-            # Final validation: ensure value is in choices before creating dropdown
-            # Gradio requires the value to be exactly one of the choice values (first element of tuples)
-            # CRITICAL: Always default to the first available choice to ensure value is always valid
-            # Extract model IDs from choices (first element of each tuple) - do this fresh right before creating dropdown
-            model_ids_in_choices = [m[0] for m in initial_models] if initial_models else []
-
-            # Determine the model value - must be in model_ids_in_choices
-            # CRITICAL: Only use values that are actually in the current choices list
-            model_value = None
-            if initial_models and model_ids_in_choices:
-                # First try to use initial_model_id if it's valid and in the current choices
-                if initial_model_id and initial_model_id in model_ids_in_choices:
-                    model_value = initial_model_id
-                else:
-                    # Fallback to first available model - guarantees a valid value
-                    model_value = model_ids_in_choices[0]
-
-            # Absolute final check: if we have choices but model_value is None or invalid, use first choice
-            # This is the last line of defense - ensure value is ALWAYS valid
-            if initial_models and model_ids_in_choices:
-                if not model_value or model_value not in model_ids_in_choices:
-                    model_value = model_ids_in_choices[0]
-            elif not initial_models:
-                # No models available - set to None (empty dropdown)
-                model_value = None
-
-            # CRITICAL: Only set value if it's actually in the choices list
-            # This prevents Gradio warnings about invalid values
-            # For safety, always use the first available choice to avoid mismatches
-            final_model_value = None
-            if initial_models and model_ids_in_choices:
-                # Always use the first available model to ensure it matches
-                # This prevents issues where preferred models might not be in the list
-                final_model_value = model_ids_in_choices[0]
-            # If no models available, leave as None (empty dropdown)
-
-            hf_model_dropdown = gr.Dropdown(
-                choices=initial_models if initial_models else [],
-                value=final_model_value,  # Always use first available to ensure match
+            # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
+            # These will be empty by default and use defaults in configure_orchestrator
+            hf_model_dropdown = gr.Textbox(
+                value="",  # Empty string - will be converted to None in research_agent
                 label="🤖 Reasoning Model",
-                info="Select AI model for evidence assessment. Sign in to access gated models.",
-                interactive=True,
-                allow_custom_value=False,  # Only allow values from choices
+                visible=False,  # Hidden from UI
             )
 
-            # Final validation for provider: ensure value is in choices
-            # CRITICAL: Always default to the first available choice to ensure value is always valid
-            # Extract provider IDs fresh right before creating dropdown
-            provider_ids_in_choices = [p[0] for p in initial_providers] if initial_providers else []
-            provider_value = None
-
-            # CRITICAL: Only use values that are actually in the current choices list
-            if initial_providers and provider_ids_in_choices:
-                # First try to use the preferred provider if it's available and in current choices
-                if initial_provider and initial_provider in provider_ids_in_choices:
-                    provider_value = initial_provider
-                else:
-                    # Fallback to first available provider - this ensures we always have a valid value
-                    provider_value = provider_ids_in_choices[0]
-
-            # Absolute final check: if we have choices but provider_value is None or invalid, use first choice
-            # This is the last line of defense - ensure value is ALWAYS valid
-            if initial_providers and provider_ids_in_choices:
-                if not provider_value or provider_value not in provider_ids_in_choices:
-                    provider_value = provider_ids_in_choices[0]
-            elif not initial_providers:
-                # No providers available - set to None (empty dropdown)
-                provider_value = None
-
-            # CRITICAL: Only set value if it's actually in the choices list
-            # This prevents Gradio warnings about invalid values
-            final_provider_value = None
-            if provider_value and initial_providers:
-                # Double-check the value is in the choices (defensive programming)
-                if provider_value in provider_ids_in_choices:
-                    final_provider_value = provider_value
-                elif provider_ids_in_choices:
-                    # If value is invalid, use first available
-                    final_provider_value = provider_ids_in_choices[0]
-
-            hf_provider_dropdown = gr.Dropdown(
-                choices=initial_providers if initial_providers else [],
-                value=final_provider_value,  # Only set if validated to be in choices
+            hf_provider_dropdown = gr.Textbox(
+                value="",  # Empty string - will be converted to None in research_agent
                 label="⚡ Inference Provider",
-                info="Select provider for model execution. Some require authentication.",
-                interactive=True,
-                allow_custom_value=False,  # Only allow values from choices
+                visible=False,  # Hidden from UI
             )
-
-        # Update providers when model changes
-        def update_providers(model_id: str, request: gr.Request | None = None) -> gr.Dropdown:
-            """Update provider list when model changes."""
-            # Check if user is authenticated
-            oauth_token, _ = extract_oauth_info(request)
-            has_auth = bool(
-                oauth_token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
-            )
-
-            providers = get_available_providers(model_id, has_auth=has_auth)
-            if providers:
-                # Always set value to first provider to ensure it's valid
-                return gr.Dropdown(choices=providers, value=providers[0][0])
-            # If no providers, return empty dropdown with no value
-            return gr.Dropdown(choices=[], value=None)
-
-        hf_model_dropdown.change(
-            fn=update_providers,
-            inputs=[hf_model_dropdown],
-            outputs=[hf_provider_dropdown],
-        )
 
         # Chat interface with model/provider selection
         gr.ChatInterface(
@@ -678,19 +539,24 @@ def create_demo() -> gr.Blocks:
             examples=[
                 # When additional_inputs are provided, examples must be lists of lists
                 # Each inner list: [message, mode, hf_model, hf_provider]
-                # Disabled example caching to avoid startup errors - examples still work but won't be pre-cached
+                # Using actual model IDs and provider names from inference_models.py
                 [
                     "What drugs could be repurposed for Alzheimer's disease?",
                     "simple",
-                    None,
-                    None,
+                    "Qwen/Qwen3-Next-80B-A3B-Thinking",  # Gated model - requires auth
+                    "together",  # Provider for Qwen3-Next models
                 ],
-                ["Is metformin effective for treating cancer?", "simple", None, None],
+                [
+                    "Is metformin effective for treating cancer?",
+                    "simple",
+                    "allenai/Olmo-3-7B-Instruct",  # Ungated model - no auth needed
+                    "publicai",  # Provider for Olmo models
+                ],
                 [
                     "What medications show promise for Long COVID treatment?",
                     "simple",
-                    None,
-                    None,
+                    "meta-llama/Llama-3.3-70B-Instruct",  # Gated model - requires auth
+                    "cerebras",  # Provider for Llama models
                 ],
             ],
             cache_examples=False,  # Disable example caching to prevent startup errors
