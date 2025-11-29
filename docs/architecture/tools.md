@@ -170,6 +170,3 @@ search_handler = SearchHandler(
 
 
 
-
-
-
