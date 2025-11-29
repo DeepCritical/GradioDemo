@@ -114,6 +114,3 @@ What are the active clinical trials investigating Alzheimer's disease treatments
 
 
 
-
-
-

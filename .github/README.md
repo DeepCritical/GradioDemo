@@ -1,38 +1,21 @@
----
-title: DeepCritical
-emoji: 🧬
-colorFrom: blue
-colorTo: purple
-sdk: gradio
-sdk_version: "6.0.1"
-python_version: "3.11"
-app_file: src/app.py
-pinned: false
-license: mit
-tags:
-  - mcp-in-action-track-enterprise
-  - mcp-hackathon
-  - drug-repurposing
-  - biomedical-ai
-  - pydantic-ai
-  - llamaindex
-  - modal
----
 
-# DeepCritical
+> [!IMPORTANT]
+> **You are reading the Github README!**
+> 
+> - 📚 **Documentation**: See our [technical documentation](https://deepcritical.github.io/GradioDemo/) for detailed information
+> - 📖 **Demo README**: Check out the [Demo README](..README.md) for setup, configuration, and contribution guidelines
+> - 🏆 **Hackathon Submission**: Keep reading below for more information about our MCP Hackathon submission
 
-## Intro
 
-## Features
+<div align="center">
 
-- **Multi-Source Search**: PubMed, ClinicalTrials.gov, bioRxiv/medRxiv
-- **MCP Integration**: Use our tools from Claude Desktop or any MCP client
-- **Modal Sandbox**: Secure execution of AI-generated statistical code
-- **LlamaIndex RAG**: Semantic search and evidence synthesis
-- **HuggingfaceInference**: 
-- **HuggingfaceMCP Custom Config To Use Community Tools**:
-- **Strongly Typed Composable Graphs**:
-- **Specialized Research Teams of Agents**: 
+[![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
+[![Documentation](https://img.shields.io/badge/Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](deepcritical.github.io/GradioDemo/)
+[![Demo](https://img.shields.io/badge/🚀%20Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
+[![codecov](https://codecov.io/gh/DeepCritical/GradioDemo/graph/badge.svg?token=B1f05RCGpz)](https://codecov.io/gh/DeepCritical/GradioDemo)
+[![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 
+
+</div>
 
 ## Quick Start
 
@@ -43,14 +26,14 @@ tags:
 pip install uv
 
 # Sync dependencies
-uv sync
+uv sync --all-extras
 ```
 
 ### 2. Run the UI
 
 ```bash
 # Start the Gradio app
-uv run gradio run src/app.py
+gradio run "src/app.py"
 ```
 
 Open your browser to `http://localhost:7860`.
@@ -72,132 +55,3 @@ Add this to your `claude_desktop_config.json`:
   }
 }
 ```
-
-**Available Tools**:
-- `search_pubmed`: Search peer-reviewed biomedical literature.
-- `search_clinical_trials`: Search ClinicalTrials.gov.
-- `search_biorxiv`: Search bioRxiv/medRxiv preprints.
-- `search_all`: Search all sources simultaneously.
-- `analyze_hypothesis`: Secure statistical analysis using Modal sandboxes.
-
-
-## Deep Research Flows 
-
-- iterativeResearch
-- deepResearch
-- researchTeam
-
-### Iterative Research
-
-sequenceDiagram
-    participant IterativeFlow
-    participant ThinkingAgent
-    participant KnowledgeGapAgent
-    participant ToolSelector
-    participant ToolExecutor
-    participant JudgeHandler
-    participant WriterAgent
-
-    IterativeFlow->>IterativeFlow: run(query)
-    
-    loop Until complete or max_iterations
-        IterativeFlow->>ThinkingAgent: generate_observations()
-        ThinkingAgent-->>IterativeFlow: observations
-        
-        IterativeFlow->>KnowledgeGapAgent: evaluate_gaps()
-        KnowledgeGapAgent-->>IterativeFlow: KnowledgeGapOutput
-        
-        alt Research complete
-            IterativeFlow->>WriterAgent: create_final_report()
-            WriterAgent-->>IterativeFlow: final_report
-        else Gaps remain
-            IterativeFlow->>ToolSelector: select_agents(gap)
-            ToolSelector-->>IterativeFlow: AgentSelectionPlan
-            
-            IterativeFlow->>ToolExecutor: execute_tool_tasks()
-            ToolExecutor-->>IterativeFlow: ToolAgentOutput[]
-            
-            IterativeFlow->>JudgeHandler: assess_evidence()
-            JudgeHandler-->>IterativeFlow: should_continue
-        end
-    end
-
-
-### Deep Research
-
-sequenceDiagram
-    actor User
-    participant GraphOrchestrator
-    participant InputParser
-    participant GraphBuilder
-    participant GraphExecutor
-    participant Agent
-    participant BudgetTracker
-    participant WorkflowState
-
-    User->>GraphOrchestrator: run(query)
-    GraphOrchestrator->>InputParser: detect_research_mode(query)
-    InputParser-->>GraphOrchestrator: mode (iterative/deep)
-    GraphOrchestrator->>GraphBuilder: build_graph(mode)
-    GraphBuilder-->>GraphOrchestrator: ResearchGraph
-    GraphOrchestrator->>WorkflowState: init_workflow_state()
-    GraphOrchestrator->>BudgetTracker: create_budget()
-    GraphOrchestrator->>GraphExecutor: _execute_graph(graph)
-    
-    loop For each node in graph
-        GraphExecutor->>Agent: execute_node(agent_node)
-        Agent->>Agent: process_input
-        Agent-->>GraphExecutor: result
-        GraphExecutor->>WorkflowState: update_state(result)
-        GraphExecutor->>BudgetTracker: add_tokens(used)
-        GraphExecutor->>BudgetTracker: check_budget()
-        alt Budget exceeded
-            GraphExecutor->>GraphOrchestrator: emit(error_event)
-        else Continue
-            GraphExecutor->>GraphOrchestrator: emit(progress_event)
-        end
-    end
-    
-    GraphOrchestrator->>User: AsyncGenerator[AgentEvent]
-
-### Research Team
-Critical Deep Research Agent
-
-## Development
-
-### Run Tests
-
-```bash
-uv run pytest
-```
-
-### Run Checks
-
-```bash
-make check
-```
-
-## Architecture
-
-DeepCritical uses a Vertical Slice Architecture:
-
-1.  **Search Slice**: Retrieving evidence from PubMed, ClinicalTrials.gov, and bioRxiv.
-2.  **Judge Slice**: Evaluating evidence quality using LLMs.
-3.  **Orchestrator Slice**: Managing the research loop and UI.
-
-Built with:
-- **PydanticAI**: For robust agent interactions.
-- **Gradio**: For the streaming user interface.
-- **PubMed, ClinicalTrials.gov, bioRxiv**: For biomedical data.
-- **MCP**: For universal tool access.
-- **Modal**: For secure code execution.
-
-## Team
-
-- The-Obstacle-Is-The-Way
-- MarioAderman
-- Josephrp
-
-## Links
-
-- [GitHub Repository](https://github.com/The-Obstacle-Is-The-Way/DeepCritical-1)

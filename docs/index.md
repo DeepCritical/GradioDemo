@@ -1,92 +1,63 @@
-# DeepCritical Documentation
+# DeepCritical
 
-## Medical Drug Repurposing Research Agent
+**AI-Native Drug Repurposing Research Agent**
 
-AI-powered deep research system for accelerating drug repurposing discovery.
-
----
-
-## Quick Links
-
-### Architecture
-- **[Overview](architecture/overview.md)** - Project overview, use case, architecture
-- **[Design Patterns](architecture/design-patterns.md)** - Technical patterns, data models
-
-### Implementation
-- **[Roadmap](implementation/roadmap.md)** - Phased execution plan with TDD
-- **[Phase 1: Foundation](implementation/01_phase_foundation.md)** ✅ - Tooling, config, first tests
-- **[Phase 2: Search](implementation/02_phase_search.md)** ✅ - PubMed search
-- **[Phase 3: Judge](implementation/03_phase_judge.md)** ✅ - LLM evidence assessment
-- **[Phase 4: UI](implementation/04_phase_ui.md)** ✅ - Orchestrator + Gradio
-- **[Phase 5: Magentic](implementation/05_phase_magentic.md)** ✅ - Multi-agent orchestration
-- **[Phase 6: Embeddings](implementation/06_phase_embeddings.md)** ✅ - Semantic search + dedup
-- **[Phase 7: Hypothesis](implementation/07_phase_hypothesis.md)** ✅ - Mechanistic reasoning
-- **[Phase 8: Report](implementation/08_phase_report.md)** ✅ - Structured scientific reports
-- **[Phase 9: Source Cleanup](implementation/09_phase_source_cleanup.md)** ✅ - Remove DuckDuckGo
-- **[Phase 10: ClinicalTrials](implementation/10_phase_clinicaltrials.md)** ✅ - Clinical trials API
-- **[Phase 11: bioRxiv](implementation/11_phase_biorxiv.md)** ✅ - Preprint search
-- **[Phase 12: MCP Server](implementation/12_phase_mcp_server.md)** ✅ - Claude Desktop integration
-- **[Phase 13: Modal Integration](implementation/13_phase_modal_integration.md)** ✅ - Secure code execution
-- **[Phase 14: Demo Submission](implementation/14_phase_demo_submission.md)** ✅ - Hackathon submission
-
-### Guides
-- **[Deployment Guide](guides/deployment.md)** - Gradio, MCP, and Modal launch steps
-
-### Development
-- **[Testing Strategy](development/testing.md)** - Unit, Integration, and E2E testing patterns
-
----
-
-## What We're Building
-
-**One-liner**: AI agent that searches medical literature to find existing drugs that might treat new diseases.
-
-**Example Query**:
-> "What existing drugs might help treat long COVID fatigue?"
-
-**Output**: Research report with drug candidates, mechanisms, evidence quality, and citations.
-
----
-
-## Architecture Summary
-
-```
-User Question → Research Agent (Orchestrator)
-                      ↓
-              Search Loop:
-                → Tools (PubMed, ClinicalTrials, bioRxiv)
-                → Judge (Quality + Budget)
-                → Repeat or Synthesize
-                      ↓
-              Research Report with Citations
-```
-
----
+DeepCritical is a deep research agent system that uses iterative search-and-judge loops to comprehensively answer research questions. The system supports multiple orchestration patterns, graph-based execution, parallel research workflows, and long-running task management with real-time streaming.
 
 ## Features
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Gradio UI** | ✅ Complete | Streaming chat interface |
-| **MCP Server** | ✅ Complete | Tools accessible from Claude Desktop |
-| **Modal Sandbox** | ✅ Complete | Secure statistical analysis |
-| **Multi-Source Search** | ✅ Complete | PubMed, ClinicalTrials, bioRxiv |
+- **Multi-Source Search**: PubMed, ClinicalTrials.gov, Europe PMC (includes bioRxiv/medRxiv)
+- **MCP Integration**: Use our tools from Claude Desktop or any MCP client
+- **HuggingFace OAuth**: Sign in with your HuggingFace account to automatically use your API token
+- **Modal Sandbox**: Secure execution of AI-generated statistical code
+- **LlamaIndex RAG**: Semantic search and evidence synthesis
+- **HuggingFace Inference**: Free tier support with automatic fallback
+- **Strongly Typed Composable Graphs**: Graph-based orchestration with Pydantic AI
+- **Specialized Research Teams of Agents**: Multi-agent coordination for complex research tasks
 
----
+## Quick Start
 
-## Team
+```bash
+# Install uv if you haven't already
+pip install uv
 
-- The-Obstacle-Is-The-Way
-- MarioAderman
-- Josephrp
+# Sync dependencies
+uv sync
 
----
+# Start the Gradio app
+uv run gradio run src/app.py
+```
 
-## Status
+Open your browser to `http://localhost:7860`.
 
-| Phase | Status |
-|-------|--------|
-| Phases 1-14 | ✅ COMPLETE |
+For detailed installation and setup instructions, see the [Getting Started Guide](getting-started/installation.md).
 
-**Test Coverage**: 65% (96 tests passing)
-**Architecture Review**: PASSED (98-99/100)
+## Architecture
+
+DeepCritical uses a Vertical Slice Architecture:
+
+1. **Search Slice**: Retrieving evidence from PubMed, ClinicalTrials.gov, and Europe PMC
+2. **Judge Slice**: Evaluating evidence quality using LLMs
+3. **Orchestrator Slice**: Managing the research loop and UI
+
+The system supports three main research patterns:
+
+- **Iterative Research**: Single research loop with search-judge-synthesize cycles
+- **Deep Research**: Multi-section parallel research with planning and synthesis
+- **Research Team**: Multi-agent coordination using Magentic framework
+
+Learn more about the [Architecture](overview/architecture.md).
+
+## Documentation
+
+- [Overview](overview/architecture.md) - System architecture and design
+- [Getting Started](getting-started/installation.md) - Installation and setup
+- [Configuration](configuration/index.md) - Configuration guide
+- [API Reference](api/agents.md) - API documentation
+- [Contributing](contributing.md) - Development guidelines
+
+## Links
+
+- [GitHub Repository](https://github.com/DeepCritical/GradioDemo)
+- [HuggingFace Space](https://huggingface.co/spaces/DataQuests/DeepCritical)
+
