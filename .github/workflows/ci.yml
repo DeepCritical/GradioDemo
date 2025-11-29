@@ -101,15 +101,14 @@ jobs:
         run: |
           uv sync --extra dev
 
-      - name: Build documentation
+      - name: Configure Git
         run: |
-          uv run mkdocs build --strict
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          publish_branch: gh-pages
-          cname: false
-          keep_files: false
+        run: |
+          uv run mkdocs gh-deploy --force --message "Deploy docs [skip ci]"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
