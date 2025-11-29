@@ -27,6 +27,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Debug info
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Branch: ${{ github.ref_name }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,8 +54,16 @@ jobs:
         run: |
           uv run mkdocs build --strict
 
+      - name: Verify site directory
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+        run: |
+          echo "Checking site directory..."
+          ls -la site/ | head -20
+          echo "Site directory exists: $(test -d site && echo 'yes' || echo 'no')"
+          echo "Index.html exists: $(test -f site/index.html && echo 'yes' || echo 'no')"
+
       - name: Deploy to GitHub Pages
-        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -55,6 +71,7 @@ jobs:
           publish_branch: dev
           cname: false
           keep_files: true
+          force_orphan: false
 
 
 

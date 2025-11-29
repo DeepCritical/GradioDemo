@@ -476,9 +476,11 @@ async def research_agent(
     except Exception as e:
         # Return error message without metadata to avoid issues during example caching
         # Metadata can cause validation errors when Gradio caches examples
+        # Gradio Chatbot doesn't accept markdown formatting, use plain text
+        error_msg = str(e).replace("**", "").replace("*", "")
         yield {
             "role": "assistant",
-            "content": f"❌ **Error**: {e!s}\n\n*Please check your configuration and try again.*",
+            "content": f"Error: {error_msg}\n\nPlease check your configuration and try again.",
         }
 
 
