@@ -489,10 +489,137 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
+    brand_css = """
+    :root {
+        --brand-orange: #ff7a1a;
+        --brand-red: #d7263d;
+        --brand-dark: #1f0f0f;
+    }
+
+    .gradio-container {
+        background: radial-gradient(circle at 20% 20%, rgba(255, 122, 26, 0.08), transparent 25%),
+            radial-gradient(circle at 80% 10%, rgba(215, 38, 61, 0.08), transparent 20%),
+            #0f0b0b;
+        color: #f6f0f0;
+    }
+
+    #hero-banner {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: linear-gradient(135deg, rgba(255, 122, 26, 0.12), rgba(215, 38, 61, 0.12));
+        border-radius: 16px;
+        padding: 22px 24px;
+        box-shadow: 0 22px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    #hero-text h1, #hero-text h2, #hero-text h3, #hero-text h4 {
+        color: #fff5f0;
+        margin-bottom: 8px;
+    }
+
+    #hero-text p {
+        color: #f3e5e2;
+        font-size: 16px;
+    }
+
+    #hero-login {
+        background: #1f1414;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    #hero-login h4 {
+        color: #ffe8d9;
+        margin-bottom: 10px;
+    }
+
+    #hf-login button {
+        width: 100%;
+        background: linear-gradient(135deg, var(--brand-orange), var(--brand-red));
+        color: white;
+        font-weight: 700;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 10px 25px rgba(215, 38, 61, 0.35);
+        transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    #hf-login button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 30px rgba(255, 122, 26, 0.45);
+    }
+
+    #hf-login .sso-status {
+        color: #ffe8d9;
+    }
+
+    #login-note {
+        color: #f8d8cf;
+        font-size: 14px;
+    }
+
+    #chat-panel .wrap {
+        background: #180f0f;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+    }
+
+    #chat-panel .message {
+        background: #120a0a;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    #chat-panel .accordion {
+        background: #1b1010;
+    }
+
+    #chat-panel .prose :where(h1, h2, h3, h4, h5, h6) {
+        color: #ffe8d9;
+    }
+
+    #chat-panel .prose :where(p, li) {
+        color: #f3e5e2;
+    }
+    """
+
     with gr.Blocks(title="🧬 DeepCritical") as demo:
-        # Add login button at the top
-        with gr.Row():
-            gr.LoginButton()
+        gr.HTML(f"<style>{brand_css}</style>")
+        is_space = bool(os.getenv("SPACE_ID"))
+
+        with gr.Row(elem_id="hero-banner"):
+            with gr.Column(scale=3, elem_id="hero-text"):
+                gr.Markdown(
+                    """## 🧬 DeepCritical Research Agent
+**Evidence-focused drug repurposing with MCP integration.**
+
+* Explore PubMed, ClinicalTrials.gov, and Europe PMC in one pass.
+* Traceable reasoning with accordion-style research steps.
+* Optimized for rapid expert review and collaboration.
+""",
+                )
+            with gr.Column(scale=2, elem_id="hero-login"):
+                gr.Markdown("#### Sign in to unlock premium reasoning models")
+                if is_space:
+                    gr.LoginButton(
+                        elem_id="hf-login",
+                        value="Sign in with Hugging Face",
+                    )
+                    login_note = (
+                        "Connect your Hugging Face account to access faster providers, gated models, and richer summaries."
+                    )
+                else:
+                    gr.Button(
+                        value="Sign in with Hugging Face",
+                        elem_id="hf-login",
+                        interactive=False,
+                    )
+                    login_note = (
+                        "Sign-in is available on the deployed Hugging Face Space. Local previews use public model access."
+                    )
+                gr.Markdown(login_note, elem_id="login-note")
 
         # Get initial model/provider lists (no auth by default)
         # Check if user has auth to determine which model list to use
@@ -689,41 +816,47 @@ def create_demo() -> gr.Blocks:
         )
 
         # Chat interface with model/provider selection
-        gr.ChatInterface(
-            fn=research_agent,
-            title="🧬 DeepCritical",
-            description=(
-                "*AI-Powered Drug Repurposing Agent — searches PubMed, "
-                "ClinicalTrials.gov & Europe PMC*\n\n"
-                "---\n"
-                "*Research tool only — not for medical advice.*  \n"
-                "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
-                "**Sign in with HuggingFace** above to access premium models and providers."
-            ),
-            examples=[
-                # When additional_inputs are provided, examples must be lists of lists
-                # Each inner list: [message, mode, hf_model, hf_provider]
-                [
-                    "What drugs could be repurposed for Alzheimer's disease?",
-                    "simple",
-                    None,
-                    None,
+        with gr.Column(elem_id="chat-panel"):
+            gr.ChatInterface(
+                fn=research_agent,
+                title="🧬 DeepCritical",
+                description=(
+                    "*AI-Powered Drug Repurposing Agent — searches PubMed, "
+                    "ClinicalTrials.gov & Europe PMC*\n\n"
+                    "---\n"
+                    "*Research tool only — not for medical advice.*  \n"
+                    "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
+                    "**Sign in with HuggingFace** above to access premium models and providers."
+                ),
+                examples=[
+                    # When additional_inputs are provided, examples must be lists of lists
+                    # Each inner list: [message, mode, hf_model, hf_provider]
+                    [
+                        "What drugs could be repurposed for Alzheimer's disease?",
+                        "simple",
+                        None,
+                        None,
+                    ],
+                    [
+                        "Is metformin effective for treating cancer?",
+                        "simple",
+                        None,
+                        None,
+                    ],
+                    [
+                        "What medications show promise for Long COVID treatment?",
+                        "simple",
+                        None,
+                        None,
+                    ],
                 ],
-                ["Is metformin effective for treating cancer?", "simple", None, None],
-                [
-                    "What medications show promise for Long COVID treatment?",
-                    "simple",
-                    None,
-                    None,
+                additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=False),
+                additional_inputs=[
+                    mode_radio,
+                    hf_model_dropdown,
+                    hf_provider_dropdown,
                 ],
-            ],
-            additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=False),
-            additional_inputs=[
-                mode_radio,
-                hf_model_dropdown,
-                hf_provider_dropdown,
-            ],
-        )
+            )
 
     return demo  # type: ignore[no-any-return]
 
