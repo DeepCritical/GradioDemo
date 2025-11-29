@@ -37,6 +37,7 @@ class TestIterativeResearchFlow:
             patch("src.orchestrator.research_flow.create_thinking_agent") as mock_thinking,
             patch("src.orchestrator.research_flow.create_writer_agent") as mock_writer,
             patch("src.orchestrator.research_flow.execute_tool_tasks") as mock_execute,
+            patch("src.orchestrator.research_flow.get_rag_service") as mock_rag,
         ):
             mock_kg.return_value = mock_agents["knowledge_gap"]
             mock_ts.return_value = mock_agents["tool_selector"]
@@ -45,6 +46,8 @@ class TestIterativeResearchFlow:
             mock_execute.return_value = {
                 "task_1": ToolAgentOutput(output="Finding 1", sources=["url1"]),
             }
+            # Mock RAG service to return None to avoid ChromaDB initialization
+            mock_rag.return_value = None
 
             yield IterativeResearchFlow(max_iterations=2, max_time_minutes=5)
 

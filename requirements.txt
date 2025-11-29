@@ -1,12 +1,18 @@
-# Core dependencies for HuggingFace Spaces
+########################## 
+# DO NOT USE THIS FILE
+# FOR GRADIO DEMO ONLY
+##########################
+
+
+#Core dependencies for HuggingFace Spaces
 pydantic>=2.7
 pydantic-settings>=2.2
 pydantic-ai>=0.0.16
 
 
-# AI Providers
+# OPTIONAL AI Providers
 openai>=1.0.0
-anthropic>=0.18.0
+# anthropic>=0.18.0
 
 # Multi-agent orchestration (Advanced mode)
 agent-framework-core>=1.0.0b251120
@@ -20,14 +26,14 @@ beautifulsoup4>=4.12
 xmltodict>=0.13
 
 # UI (Gradio with MCP server support)
-gradio[mcp]>=6.0.0
+# gradio[mcp]>=6.0.0
 
 # Utils
 python-dotenv>=1.0
 tenacity>=8.2
 structlog>=24.1
 requests>=2.32.5
-limits>=3.0  # Rate limiting (Phase 17)
+limits>=3.0  # Rate limiting 
 
 # Optional: Modal for code execution
 modal>=0.63.0
@@ -35,7 +41,7 @@ modal>=0.63.0
 # Optional: LlamaIndex RAG
 llama-index>=0.11.0
 llama-index-llms-openai
-llama-index-llms-huggingface  # Optional: For HuggingFace LLM support in RAG
+llama-index-llms-huggingface 
 llama-index-embeddings-openai
 llama-index-vector-stores-chroma
 chromadb>=0.4.0

@@ -1,6 +1,10 @@
+=0.22.0
+=0.22.0,
 folder/
+site/
 .cursor/
 .ruff_cache/
+docs/contributing/
 # Python
 __pycache__/
 *.py[cod]

@@ -5,12 +5,8 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import gradio as gr
-from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.huggingface import HuggingFaceModel
-from pydantic_ai.models.openai import OpenAIChatModel as OpenAIModel
-from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.huggingface import HuggingFaceProvider
-from pydantic_ai.providers.openai import OpenAIProvider
 
 from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
 from src.orchestrator_factory import create_orchestrator
@@ -19,14 +15,13 @@ from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
 from src.utils.config import settings
-from src.utils.models import OrchestratorConfig
+from src.utils.models import AgentEvent, OrchestratorConfig
 
 
 def configure_orchestrator(
     use_mock: bool = False,
     mode: str = "simple",
-    user_api_key: str | None = None,
-    api_provider: str = "huggingface",
+    oauth_token: str | None = None,
 ) -> tuple[Any, str]:
     """
     Create an orchestrator instance.
@@ -34,8 +29,7 @@ def configure_orchestrator(
     Args:
         use_mock: If True, use MockJudgeHandler (no API key needed)
         mode: Orchestrator mode ("simple" or "advanced")
-        user_api_key: Optional user-provided API key (BYOK)
-        api_provider: API provider ("huggingface", "openai", or "anthropic")
+        oauth_token: Optional OAuth token from HuggingFace login
 
     Returns:
         Tuple of (Orchestrator instance, backend_name)
@@ -61,37 +55,16 @@ def configure_orchestrator(
         judge_handler = MockJudgeHandler()
         backend_info = "Mock (Testing)"
 
-    # 2. API Key (User provided or Env) - HuggingFace, OpenAI, or Anthropic
-    elif (
-        user_api_key
-        or (
-            api_provider == "huggingface"
-            and (os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY"))
-        )
-        or (api_provider == "openai" and os.getenv("OPENAI_API_KEY"))
-        or (api_provider == "anthropic" and os.getenv("ANTHROPIC_API_KEY"))
-    ):
-        model: AnthropicModel | HuggingFaceModel | OpenAIModel | None = None
-        if user_api_key:
-            # Validate key/provider match to prevent silent auth failures
-            if api_provider == "openai" and user_api_key.startswith("sk-ant-"):
-                raise ValueError("Anthropic key provided but OpenAI provider selected")
-            is_openai_key = user_api_key.startswith("sk-") and not user_api_key.startswith(
-                "sk-ant-"
-            )
-            if api_provider == "anthropic" and is_openai_key:
-                raise ValueError("OpenAI key provided but Anthropic provider selected")
-            if api_provider == "huggingface":
-                model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-                hf_provider = HuggingFaceProvider(api_key=user_api_key)
-                model = HuggingFaceModel(model_name, provider=hf_provider)
-            elif api_provider == "anthropic":
-                anthropic_provider = AnthropicProvider(api_key=user_api_key)
-                model = AnthropicModel(settings.anthropic_model, provider=anthropic_provider)
-            elif api_provider == "openai":
-                openai_provider = OpenAIProvider(api_key=user_api_key)
-                model = OpenAIModel(settings.openai_model, provider=openai_provider)
-            backend_info = f"API ({api_provider.upper()})"
+    # 2. API Key (OAuth or Env) - HuggingFace only (OAuth provides HF token)
+    # Priority: oauth_token > env vars
+    effective_api_key = oauth_token
+    if effective_api_key or (os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")):
+        model: HuggingFaceModel | None = None
+        if effective_api_key:
+            model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
+            hf_provider = HuggingFaceProvider(api_key=effective_api_key)
+            model = HuggingFaceModel(model_name, provider=hf_provider)
+            backend_info = "API (HuggingFace OAuth)"
         else:
             backend_info = "API (Env Config)"
 
@@ -112,13 +85,255 @@ def configure_orchestrator(
     return orchestrator, backend_info
 
 
+def event_to_chat_message(event: AgentEvent) -> gr.ChatMessage:
+    """
+    Convert AgentEvent to gr.ChatMessage with metadata for accordion display.
+
+    Args:
+        event: The AgentEvent to convert
+
+    Returns:
+        ChatMessage with metadata for collapsible accordion
+    """
+    # Map event types to accordion titles and determine if pending
+    event_configs: dict[str, dict[str, Any]] = {
+        "started": {"title": "🚀 Starting Research", "status": "done", "icon": "🚀"},
+        "searching": {"title": "🔍 Searching Literature", "status": "pending", "icon": "🔍"},
+        "search_complete": {"title": "📚 Search Results", "status": "done", "icon": "📚"},
+        "judging": {"title": "🧠 Evaluating Evidence", "status": "pending", "icon": "🧠"},
+        "judge_complete": {"title": "✅ Evidence Assessment", "status": "done", "icon": "✅"},
+        "looping": {"title": "🔄 Research Iteration", "status": "pending", "icon": "🔄"},
+        "synthesizing": {"title": "📝 Synthesizing Report", "status": "pending", "icon": "📝"},
+        "hypothesizing": {"title": "🔬 Generating Hypothesis", "status": "pending", "icon": "🔬"},
+        "analyzing": {"title": "📊 Statistical Analysis", "status": "pending", "icon": "📊"},
+        "analysis_complete": {"title": "📈 Analysis Results", "status": "done", "icon": "📈"},
+        "streaming": {"title": "📡 Processing", "status": "pending", "icon": "📡"},
+        "complete": {"title": None, "status": "done", "icon": "🎉"},  # Main response, no accordion
+        "error": {"title": "❌ Error", "status": "done", "icon": "❌"},
+    }
+
+    config = event_configs.get(
+        event.type, {"title": f"• {event.type}", "status": "done", "icon": "•"}
+    )
+
+    # For complete events, return main response without accordion
+    if event.type == "complete":
+        return gr.ChatMessage(
+            role="assistant",
+            content=event.message,
+        )
+
+    # Build metadata for accordion
+    metadata: dict[str, Any] = {}
+    if config["title"]:
+        metadata["title"] = config["title"]
+
+    # Set status (pending shows spinner, done is collapsed)
+    if config["status"] == "pending":
+        metadata["status"] = "pending"
+
+    # Add duration if available in data
+    if event.data and isinstance(event.data, dict) and "duration" in event.data:
+        metadata["duration"] = event.data["duration"]
+
+    # Add log info (iteration number, etc.)
+    log_parts: list[str] = []
+    if event.iteration > 0:
+        log_parts.append(f"Iteration {event.iteration}")
+    if event.data and isinstance(event.data, dict):
+        if "tool" in event.data:
+            log_parts.append(f"Tool: {event.data['tool']}")
+        if "results_count" in event.data:
+            log_parts.append(f"Results: {event.data['results_count']}")
+    if log_parts:
+        metadata["log"] = " | ".join(log_parts)
+
+    return gr.ChatMessage(
+        role="assistant",
+        content=event.message,
+        metadata=metadata if metadata else None,
+    )
+
+
+def extract_oauth_info(request: gr.Request | None) -> tuple[str | None, str | None]:
+    """
+    Extract OAuth token and username from Gradio request.
+
+    Args:
+        request: Gradio request object containing OAuth information
+
+    Returns:
+        Tuple of (oauth_token, oauth_username)
+    """
+    oauth_token: str | None = None
+    oauth_username: str | None = None
+
+    if request is None:
+        return oauth_token, oauth_username
+
+    # Try multiple ways to access OAuth token (Gradio API may vary)
+    # Pattern 1: request.oauth_token.token
+    if hasattr(request, "oauth_token") and request.oauth_token is not None:
+        if hasattr(request.oauth_token, "token"):
+            oauth_token = request.oauth_token.token
+        elif isinstance(request.oauth_token, str):
+            oauth_token = request.oauth_token
+    # Pattern 2: request.headers (fallback)
+    elif hasattr(request, "headers"):
+        # OAuth token might be in headers
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            oauth_token = auth_header.replace("Bearer ", "")
+
+    # Access username from request
+    if hasattr(request, "username") and request.username:
+        oauth_username = request.username
+    # Also try accessing via oauth_profile if available
+    elif hasattr(request, "oauth_profile") and request.oauth_profile is not None:
+        if hasattr(request.oauth_profile, "username"):
+            oauth_username = request.oauth_profile.username
+        elif hasattr(request.oauth_profile, "name"):
+            oauth_username = request.oauth_profile.name
+
+    return oauth_token, oauth_username
+
+
+async def yield_auth_messages(
+    oauth_username: str | None,
+    oauth_token: str | None,
+    has_huggingface: bool,
+    mode: str,
+) -> AsyncGenerator[gr.ChatMessage, None]:
+    """
+    Yield authentication and mode status messages.
+
+    Args:
+        oauth_username: OAuth username if available
+        oauth_token: OAuth token if available
+        has_huggingface: Whether HuggingFace credentials are available
+        mode: Orchestrator mode
+
+    Yields:
+        ChatMessage objects with authentication status
+    """
+    # Show user greeting if logged in via OAuth
+    if oauth_username:
+        yield gr.ChatMessage(
+            role="assistant",
+            content=f"👋 **Welcome, {oauth_username}!** Using your HuggingFace account.\n\n",
+        )
+
+    # Advanced mode is not supported without OpenAI (which requires manual setup)
+    # For now, we only support simple mode with HuggingFace
+    if mode == "advanced":
+        yield gr.ChatMessage(
+            role="assistant",
+            content=(
+                "⚠️ **Warning**: Advanced mode requires OpenAI API key configuration. "
+                "Falling back to simple mode.\n\n"
+            ),
+        )
+
+    # Inform user about authentication status
+    if oauth_token:
+        yield gr.ChatMessage(
+            role="assistant",
+            content=(
+                "🔐 **Using HuggingFace OAuth token** - "
+                "Authenticated via your HuggingFace account.\n\n"
+            ),
+        )
+    elif not has_huggingface:
+        # No keys at all - will use FREE HuggingFace Inference (public models)
+        yield gr.ChatMessage(
+            role="assistant",
+            content=(
+                "🤗 **Free Tier**: Using HuggingFace Inference (Llama 3.1 / Mistral) for AI analysis.\n"
+                "For premium models or higher rate limits, sign in with HuggingFace above.\n\n"
+            ),
+        )
+
+
+async def handle_orchestrator_events(
+    orchestrator: Any,
+    message: str,
+) -> AsyncGenerator[gr.ChatMessage, None]:
+    """
+    Handle orchestrator events and yield ChatMessages.
+
+    Args:
+        orchestrator: The orchestrator instance
+        message: The research question
+
+    Yields:
+        ChatMessage objects from orchestrator events
+    """
+    # Track pending accordions for real-time updates
+    pending_accordions: dict[str, str] = {}  # title -> accumulated content
+
+    async for event in orchestrator.run(message):
+        # Convert event to ChatMessage with metadata
+        chat_msg = event_to_chat_message(event)
+
+        # Handle complete events (main response)
+        if event.type == "complete":
+            # Close any pending accordions first
+            if pending_accordions:
+                for title, content in pending_accordions.items():
+                    yield gr.ChatMessage(
+                        role="assistant",
+                        content=content.strip(),
+                        metadata={"title": title, "status": "done"},
+                    )
+                pending_accordions.clear()
+
+            # Yield final response (no accordion for main response)
+            yield chat_msg
+            continue
+
+        # Handle events with metadata (accordions)
+        if chat_msg.metadata:
+            title = chat_msg.metadata.get("title")
+            status = chat_msg.metadata.get("status")
+
+            if title:
+                # For pending operations, accumulate content and show spinner
+                if status == "pending":
+                    if title not in pending_accordions:
+                        pending_accordions[title] = ""
+                    pending_accordions[title] += chat_msg.content + "\n"
+                    # Yield updated accordion with accumulated content
+                    yield gr.ChatMessage(
+                        role="assistant",
+                        content=pending_accordions[title].strip(),
+                        metadata=chat_msg.metadata,
+                    )
+                elif title in pending_accordions:
+                    # Combine pending content with final content
+                    final_content = pending_accordions[title] + chat_msg.content
+                    del pending_accordions[title]
+                    yield gr.ChatMessage(
+                        role="assistant",
+                        content=final_content.strip(),
+                        metadata={"title": title, "status": "done"},
+                    )
+                else:
+                    # New done accordion (no pending state)
+                    yield chat_msg
+            else:
+                # No title, yield as-is
+                yield chat_msg
+        else:
+            # No metadata, yield as plain message
+            yield chat_msg
+
+
 async def research_agent(
     message: str,
     history: list[dict[str, Any]],
     mode: str = "simple",
-    api_key: str = "",
-    api_provider: str = "huggingface",
-) -> AsyncGenerator[str, None]:
+    request: gr.Request | None = None,
+) -> AsyncGenerator[gr.ChatMessage | list[gr.ChatMessage], None]:
     """
     Gradio chat function that runs the research agent.
 
@@ -126,140 +341,101 @@ async def research_agent(
         message: User's research question
         history: Chat history (Gradio format)
         mode: Orchestrator mode ("simple" or "advanced")
-        api_key: Optional user-provided API key (BYOK - Bring Your Own Key)
-        api_provider: API provider ("huggingface", "openai", or "anthropic")
+        request: Gradio request object containing OAuth information
 
     Yields:
-        Markdown-formatted responses for streaming
+        ChatMessage objects with metadata for accordion display
     """
     if not message.strip():
-        yield "Please enter a research question."
+        yield gr.ChatMessage(
+            role="assistant",
+            content="Please enter a research question.",
+        )
         return
 
-    # Clean user-provided API key
-    user_api_key = api_key.strip() if api_key else None
+    # Extract OAuth token from request if available
+    oauth_token, oauth_username = extract_oauth_info(request)
 
     # Check available keys
-    has_huggingface = bool(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY"))
-    has_openai = bool(os.getenv("OPENAI_API_KEY"))
-    has_anthropic = bool(os.getenv("ANTHROPIC_API_KEY"))
-    has_user_key = bool(user_api_key)
-    has_paid_key = has_openai or has_anthropic or has_user_key
+    has_huggingface = bool(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY") or oauth_token)
 
-    # Advanced mode requires OpenAI specifically (due to agent-framework binding)
-    if mode == "advanced" and not (has_openai or (has_user_key and api_provider == "openai")):
-        yield (
-            "⚠️ **Warning**: Advanced mode currently requires OpenAI API key. "
-            "Falling back to simple mode.\n\n"
-        )
-        mode = "simple"
+    # Adjust mode if needed
+    effective_mode = mode
+    if mode == "advanced":
+        effective_mode = "simple"
 
-    # Inform user about their key being used
-    if has_user_key:
-        yield (
-            f"🔑 **Using your {api_provider.upper()} API key** - "
-            "Your key is used only for this session and is never stored.\n\n"
-        )
-    elif not has_paid_key and not has_huggingface:
-        # No keys at all - will use FREE HuggingFace Inference (public models)
-        yield (
-            "🤗 **Free Tier**: Using HuggingFace Inference (Llama 3.1 / Mistral) for AI analysis.\n"
-            "For premium models or higher rate limits, enter a HuggingFace, OpenAI, or Anthropic API key below.\n\n"
-        )
+    # Yield authentication and mode status messages
+    async for msg in yield_auth_messages(oauth_username, oauth_token, has_huggingface, mode):
+        yield msg
 
     # Run the agent and stream events
-    response_parts: list[str] = []
-
     try:
         # use_mock=False - let configure_orchestrator decide based on available keys
-        # It will use: Paid API > HF Inference (free tier)
+        # It will use: OAuth token > Env vars > HF Inference (free tier)
         orchestrator, backend_name = configure_orchestrator(
             use_mock=False,  # Never use mock in production - HF Inference is the free fallback
-            mode=mode,
-            user_api_key=user_api_key,
-            api_provider=api_provider,
+            mode=effective_mode,
+            oauth_token=oauth_token,
         )
 
-        yield f"🧠 **Backend**: {backend_name}\n\n"
+        yield gr.ChatMessage(
+            role="assistant",
+            content=f"🧠 **Backend**: {backend_name}\n\n",
+        )
 
-        async for event in orchestrator.run(message):
-            # Format event as markdown
-            event_md = event.to_markdown()
-            response_parts.append(event_md)
-
-            # If complete, show full response
-            if event.type == "complete":
-                yield event.message
-            else:
-                # Show progress
-                yield "\n\n".join(response_parts)
+        # Handle orchestrator events
+        async for msg in handle_orchestrator_events(orchestrator, message):
+            yield msg
 
     except Exception as e:
-        yield f"❌ **Error**: {e!s}"
+        yield gr.ChatMessage(
+            role="assistant",
+            content=f"❌ **Error**: {e!s}",
+            metadata={"title": "❌ Error", "status": "done"},
+        )
 
 
-def create_demo() -> gr.ChatInterface:
+def create_demo() -> gr.Blocks:
     """
-    Create the Gradio demo interface with MCP support.
+    Create the Gradio demo interface with MCP support and OAuth login.
 
     Returns:
-        Configured Gradio Blocks interface with MCP server enabled
+        Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
-    # 1. Unwrapped ChatInterface (Fixes Accordion Bug)
-    demo = gr.ChatInterface(
-        fn=research_agent,
-        title="🧬 DeepCritical",
-        description=(
-            "*AI-Powered Drug Repurposing Agent — searches PubMed, "
-            "ClinicalTrials.gov & Europe PMC*\n\n"
-            "---\n"
-            "*Research tool only — not for medical advice.*  \n"
-            "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`"
-        ),
-        examples=[
-            [
-                "What drugs could be repurposed for Alzheimer's disease?",
-                "simple",
-                "",
-                "openai",
+    with gr.Blocks(title="🧬 DeepCritical") as demo:
+        # Add login button at the top
+        with gr.Row():
+            gr.LoginButton()
+
+        # Chat interface
+        gr.ChatInterface(
+            fn=research_agent,
+            title="🧬 DeepCritical",
+            description=(
+                "*AI-Powered Drug Repurposing Agent — searches PubMed, "
+                "ClinicalTrials.gov & Europe PMC*\n\n"
+                "---\n"
+                "*Research tool only — not for medical advice.*  \n"
+                "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
+                "**Sign in with HuggingFace** above to use your account's API token automatically."
+            ),
+            examples=[
+                ["What drugs could be repurposed for Alzheimer's disease?", "simple"],
+                ["Is metformin effective for treating cancer?", "simple"],
+                ["What medications show promise for Long COVID treatment?", "simple"],
             ],
-            [
-                "Is metformin effective for treating cancer?",
-                "simple",
-                "",
-                "openai",
-            ],
-            [
-                "What medications show promise for Long COVID treatment?",
-                "simple",
-                "",
-                "openai",
-            ],
-        ],
-        additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=False),
-        additional_inputs=[
-            gr.Radio(
-                choices=["simple", "advanced"],
-                value="simple",
-                label="Orchestrator Mode",
-                info=(
-                    "Simple: Linear (Free Tier Friendly) | Advanced: Multi-Agent (Requires OpenAI)"
+            additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=False),
+            additional_inputs=[
+                gr.Radio(
+                    choices=["simple", "advanced"],
+                    value="simple",
+                    label="Orchestrator Mode",
+                    info=(
+                        "Simple: Linear (Free Tier Friendly) | Advanced: Multi-Agent (Requires OpenAI - not available without manual config)"
+                    ),
                 ),
-            ),
-            gr.Textbox(
-                label="🔑 API Key (Optional - BYOK)",
-                placeholder="sk-... or sk-ant-...",
-                type="password",
-                info="Enter your own API key. Never stored.",
-            ),
-            gr.Radio(
-                choices=["huggingface", "openai", "anthropic"],
-                value="huggingface",
-                label="API Provider",
-                info="Select the provider for your API key (HuggingFace is default and free)",
-            ),
-        ],
-    )
+            ],
+        )
 
     return demo
 
