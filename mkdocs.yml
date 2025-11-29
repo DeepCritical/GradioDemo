@@ -5,7 +5,7 @@ site_url: https://deepcritical.github.io/GradioDemo/
 
 repo_name: DeepCritical/GradioDemo
 repo_url: https://github.com/DeepCritical/GradioDemo
-edit_uri: edit/main/docs/
+edit_uri: edit/dev/docs/
 
 theme:
   name: material
@@ -55,8 +55,6 @@ markdown_extensions:
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
       preserve_tabs: true
-  - dev.docs_plugins:
-      base_path: .
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.tasklist:
@@ -78,20 +76,16 @@ nav:
   - Overview:
     - overview/architecture.md
     - overview/features.md
-    - overview/quick-start.md
   - Getting Started:
     - getting-started/installation.md
     - getting-started/quick-start.md
     - getting-started/mcp-integration.md
     - getting-started/examples.md
-  - Configuration:
-    - configuration/index.md
-    - configuration/CONFIGURATION.md
+  - Configuration: CONFIGURATION.md
   - Architecture:
-    - architecture/graph-orchestration.md
+    - architecture/overview.md
+    - architecture/design-patterns.md
     - architecture/graph_orchestration.md
-    - architecture/workflows.md
-    - architecture/workflow-diagrams.md
     - architecture/agents.md
     - architecture/orchestrators.md
     - architecture/tools.md
@@ -103,7 +97,14 @@ nav:
     - api/orchestrators.md
     - api/services.md
     - api/models.md
-  - Contributing: contributing.md
+  - Contributing:
+    - contributing/index.md
+    - contributing/code-quality.md
+    - contributing/code-style.md
+    - contributing/error-handling.md
+    - contributing/implementation-patterns.md
+    - contributing/prompt-engineering.md
+    - contributing/testing.md
   - License: license.md
   - Team: team.md
 
@@ -115,4 +116,3 @@ extra:
       link: https://huggingface.co/spaces/DataQuests/DeepCritical
 
 copyright: Copyright &copy; 2024 DeepCritical Team
-
