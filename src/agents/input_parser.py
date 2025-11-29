@@ -22,7 +22,7 @@ logger = structlog.get_logger()
 SYSTEM_PROMPT = """
 You are an expert research query analyzer. Your job is to analyze user queries and determine:
 1. Whether the query requires iterative research (single focused question) or deep research (multiple sections/topics)
-2. Improve and refine the query for better research results
+2. Improve and refine the query for better research results. make it specific, scientific, and clear.
 3. Extract key entities (drugs, diseases, targets, companies, etc.)
 4. Extract specific research questions
 
@@ -36,7 +36,7 @@ Guidelines for determining research mode:
 
 Your output must be valid JSON matching the ParsedQuery schema. Always provide:
 - original_query: The exact input query
-- improved_query: A refined, clearer version of the query
+- improved_query: A refined, clearer version of the query. Expand abbreviations, add necessary context.
 - research_mode: Either "iterative" or "deep"
 - key_entities: List of important entities (drugs, diseases, companies, etc.)
 - research_questions: List of specific questions to answer
@@ -97,7 +97,14 @@ class InputParserAgent:
             # Validate parsed query
             if not parsed_query.original_query:
                 self.logger.warning("Parsed query missing original_query", query=query[:100])
-                raise JudgeError("Parsed query must have original_query")
+                # We can correct this
+                parsed_query = ParsedQuery(
+                    original_query=query,
+                    improved_query=parsed_query.improved_query,
+                    research_mode=parsed_query.research_mode,
+                    key_entities=parsed_query.key_entities,
+                    research_questions=parsed_query.research_questions,
+                )
 
             if not parsed_query.improved_query:
                 self.logger.warning("Parsed query missing improved_query", query=query[:100])
@@ -115,6 +122,7 @@ class InputParserAgent:
                 mode=parsed_query.research_mode,
                 entities=len(parsed_query.key_entities),
                 questions=len(parsed_query.research_questions),
+                improved=parsed_query.improved_query,
             )
 
             return parsed_query

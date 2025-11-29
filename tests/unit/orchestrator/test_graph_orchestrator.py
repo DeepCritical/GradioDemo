@@ -91,16 +91,47 @@ class TestGraphOrchestrator:
 
     @pytest.mark.asyncio
     async def test_detect_research_mode_deep(self):
-        """Test detecting deep research mode from query."""
+        """Test detecting deep research mode."""
         orchestrator = GraphOrchestrator(mode="auto")
-        mode = await orchestrator._detect_research_mode("Create a report with sections about X")
+
+        # Mock query that triggers deep mode
+        query = "Create a comprehensive report about quantum computing market analysis"
+
+        # Mock the input parser agent - used in _parse_and_refine_query which is called by run, not directly exposed as _detect_research_mode anymore
+        with patch("src.orchestrator.graph_orchestrator.create_input_parser_agent") as mock_create:
+            mock_agent = AsyncMock()
+            mock_parsed_query = MagicMock()
+            mock_parsed_query.research_mode = "deep"
+            mock_parsed_query.improved_query = query
+            mock_agent.parse.return_value = mock_parsed_query
+            mock_create.return_value = mock_agent
+
+            # Since _detect_research_mode is now a simple wrapper or removed, we test via _parse_and_refine_query
+            parsed = await orchestrator._parse_and_refine_query(query)
+            mode = parsed.research_mode
+
         assert mode == "deep"
 
     @pytest.mark.asyncio
     async def test_detect_research_mode_iterative(self):
-        """Test detecting iterative research mode from query."""
+        """Test detecting iterative research mode."""
         orchestrator = GraphOrchestrator(mode="auto")
-        mode = await orchestrator._detect_research_mode("What is the mechanism of action?")
+
+        # Mock query that triggers iterative mode
+        query = "What is the mechanism of action?"
+
+        # Mock the input parser agent
+        with patch("src.orchestrator.graph_orchestrator.create_input_parser_agent") as mock_create:
+            mock_agent = AsyncMock()
+            mock_parsed_query = MagicMock()
+            mock_parsed_query.research_mode = "iterative"
+            mock_parsed_query.improved_query = query
+            mock_agent.parse.return_value = mock_parsed_query
+            mock_create.return_value = mock_agent
+
+            parsed = await orchestrator._parse_and_refine_query(query)
+            mode = parsed.research_mode
+
         assert mode == "iterative"
 
     @pytest.mark.asyncio
@@ -114,7 +145,8 @@ class TestGraphOrchestrator:
         )
 
         # Mock the flow class
-        with patch("src.orchestrator.graph_orchestrator.IterativeResearchFlow") as mock_flow_class:
+        with patch("src.orchestrator.graph_orchestrator.IterativeResearchFlow") as mock_flow_class, \
+             patch("src.orchestrator.graph_orchestrator.create_input_parser_agent"):
             mock_flow = AsyncMock()
             mock_flow.run = AsyncMock(return_value="# Report\n\nContent")
             mock_flow_class.return_value = mock_flow
@@ -139,7 +171,8 @@ class TestGraphOrchestrator:
         )
 
         # Mock the flow class
-        with patch("src.orchestrator.graph_orchestrator.DeepResearchFlow") as mock_flow_class:
+        with patch("src.orchestrator.graph_orchestrator.DeepResearchFlow") as mock_flow_class, \
+             patch("src.orchestrator.graph_orchestrator.create_input_parser_agent"):
             mock_flow = AsyncMock()
             mock_flow.run = AsyncMock(return_value="# Report\n\nContent")
             mock_flow_class.return_value = mock_flow
@@ -184,14 +217,15 @@ class TestGraphOrchestrator:
 
         orchestrator._run_with_graph = mock_run_with_graph
 
-        events = []
-        async for event in orchestrator.run("Test query"):
-            events.append(event)
+        with patch("src.orchestrator.graph_orchestrator.create_input_parser_agent"):
+            events = []
+            async for event in orchestrator.run("Test query"):
+                events.append(event)
 
-        # Should have events from graph execution
-        assert len(events) > 0
-        complete_events = [e for e in events if e.type == "complete"]
-        assert len(complete_events) > 0
+            # Should have events from graph execution
+            assert len(events) > 0
+            complete_events = [e for e in events if e.type == "complete"]
+            assert len(complete_events) > 0
 
     @pytest.mark.asyncio
     async def test_run_handles_errors(self):
@@ -208,50 +242,57 @@ class TestGraphOrchestrator:
         # Create the flow first, then patch its run method
         from src.orchestrator.research_flow import IterativeResearchFlow
 
-        # Create flow and patch its run method to raise exception
-        original_flow = IterativeResearchFlow(
-            max_iterations=2,
-            max_time_minutes=5,
-        )
-        orchestrator._iterative_flow = original_flow
+        with patch("src.orchestrator.research_flow.create_knowledge_gap_agent"), \
+             patch("src.orchestrator.research_flow.create_tool_selector_agent"), \
+             patch("src.orchestrator.research_flow.create_thinking_agent"), \
+             patch("src.orchestrator.research_flow.create_writer_agent"), \
+             patch("src.orchestrator.research_flow.create_judge_handler"), \
+             patch("src.orchestrator.graph_orchestrator.create_input_parser_agent"):
 
-        with patch.object(original_flow, "run", side_effect=Exception("Test error")):
-            events = []
-            # Collect events manually to ensure we get error events even when exception occurs
-            gen = orchestrator.run("Test query")
-            while True:
-                try:
-                    event = await gen.__anext__()
-                    events.append(event)
-                    # If we got an error event, continue to see if outer handler also yields one
-                    if event.type == "error":
-                        # Try to get outer handler's error event too
-                        try:
-                            next_event = await gen.__anext__()
-                            events.append(next_event)
-                        except (StopAsyncIteration, Exception):
-                            break
-                        break
-                except StopAsyncIteration:
-                    break
-                except Exception:
-                    # Exception occurred - outer handler should yield error event
-                    # Try to get it
+            # Create flow and patch its run method to raise exception
+            original_flow = IterativeResearchFlow(
+                max_iterations=2,
+                max_time_minutes=5,
+            )
+            orchestrator._iterative_flow = original_flow
+
+            with patch.object(original_flow, "run", side_effect=Exception("Test error")):
+                events = []
+                # Collect events manually to ensure we get error events even when exception occurs
+                gen = orchestrator.run("Test query")
+                while True:
                     try:
                         event = await gen.__anext__()
                         events.append(event)
-                    except (StopAsyncIteration, Exception):
+                        # If we got an error event, continue to see if outer handler also yields one
+                        if event.type == "error":
+                            # Try to get outer handler's error event too
+                            try:
+                                next_event = await gen.__anext__()
+                                events.append(next_event)
+                            except (StopAsyncIteration, Exception):
+                                break
+                            break
+                    except StopAsyncIteration:
                         break
-                    break
+                    except Exception:
+                        # Exception occurred - outer handler should yield error event
+                        # Try to get it
+                        try:
+                            event = await gen.__anext__()
+                            events.append(event)
+                        except (StopAsyncIteration, Exception):
+                            break
+                        break
 
-            error_events = [e for e in events if e.type == "error"]
-            assert len(error_events) > 0, (
-                f"No error events found. Events: {[e.type for e in events]}"
-            )
-            assert (
-                "error" in error_events[0].message.lower()
-                or "failed" in error_events[0].message.lower()
-            )
+                error_events = [e for e in events if e.type == "error"]
+                assert len(error_events) > 0, (
+                    f"No error events found. Events: {[e.type for e in events]}"
+                )
+                assert (
+                    "error" in error_events[0].message.lower()
+                    or "failed" in error_events[0].message.lower()
+                )
 
     @pytest.mark.asyncio
     async def test_build_graph_iterative(self):

@@ -12,7 +12,7 @@ from src.utils.llm_factory import get_chat_client_for_agent
 logger = structlog.get_logger()
 
 
-@ai_function  # type: ignore[arg-type, misc]
+@ai_function  # type: ignore[arg-type, misc, untyped-decorator]
 async def execute_python_code(code: str) -> str:
     """Execute Python code in a secure sandbox.
 

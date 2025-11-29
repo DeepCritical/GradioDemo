@@ -31,7 +31,7 @@ from src.agent_factory.graph_builder import (
 from src.middleware.budget_tracker import BudgetTracker
 from src.middleware.state_machine import WorkflowState, init_workflow_state
 from src.orchestrator.research_flow import DeepResearchFlow, IterativeResearchFlow
-from src.utils.models import AgentEvent
+from src.utils.models import AgentEvent, ParsedQuery
 
 if TYPE_CHECKING:
     pass
@@ -169,17 +169,36 @@ class GraphOrchestrator:
         )
 
         try:
+            # Parse and refine query first
+            parsed_query = await self._parse_and_refine_query(query)
+
+            # Emit event for refined query
+            if parsed_query.improved_query != query:
+                yield AgentEvent(
+                    type="started",
+                    message=f"Refined query: {parsed_query.improved_query}",
+                    iteration=0,
+                    data={"original": query, "improved": parsed_query.improved_query},
+                )
+
+            # Update query to improved version
+            refined_query = parsed_query.improved_query
+
             # Determine research mode
             research_mode = self.mode
             if research_mode == "auto":
-                research_mode = await self._detect_research_mode(query)
+                research_mode = parsed_query.research_mode
+
+            self.logger.info(
+                "Research mode determined", mode=research_mode, refined_query=refined_query[:100]
+            )
 
             # Use graph execution if enabled, otherwise fall back to agent chains
             if self.use_graph:
-                async for event in self._run_with_graph(query, research_mode):
+                async for event in self._run_with_graph(refined_query, research_mode):
                     yield event
             else:
-                async for event in self._run_with_chains(query, research_mode):
+                async for event in self._run_with_chains(refined_query, research_mode):
                     yield event
 
         except Exception as e:
@@ -188,6 +207,23 @@ class GraphOrchestrator:
                 type="error",
                 message=f"Research failed: {e!s}",
                 iteration=0,
+            )
+
+    async def _parse_and_refine_query(self, query: str) -> ParsedQuery:
+        """Parse and refine the user query using InputParserAgent."""
+        try:
+            input_parser = create_input_parser_agent()
+            parsed_query = await input_parser.parse(query)
+            return parsed_query
+        except Exception as e:
+            self.logger.warning("Query parsing failed, using original", error=str(e))
+            # Fallback
+            return ParsedQuery(
+                original_query=query,
+                improved_query=query,
+                research_mode="iterative",  # default
+                key_entities=[],
+                research_questions=[],
             )
 
     async def _run_with_graph(
@@ -913,38 +949,13 @@ class GraphOrchestrator:
         Returns:
             Detected research mode
         """
+        # This is now handled in _parse_and_refine_query but kept for compatibility if needed
         try:
-            # Use input parser agent for intelligent mode detection
             input_parser = create_input_parser_agent()
             parsed_query = await input_parser.parse(query)
-            self.logger.info(
-                "Research mode detected by input parser",
-                mode=parsed_query.research_mode,
-                query=query[:100],
-            )
             return parsed_query.research_mode
-        except Exception as e:
-            # Fallback to heuristic if parser fails
-            self.logger.warning(
-                "Input parser failed, using heuristic",
-                error=str(e),
-                query=query[:100],
-            )
-            query_lower = query.lower()
-            if any(
-                keyword in query_lower
-                for keyword in [
-                    "section",
-                    "sections",
-                    "report",
-                    "outline",
-                    "structure",
-                    "comprehensive",
-                    "analyze",
-                    "analysis",
-                ]
-            ):
-                return "deep"
+        except Exception:
+            # Fallback
             return "iterative"
 
 

@@ -81,7 +81,14 @@ Add this to your `claude_desktop_config.json`:
 - `analyze_hypothesis`: Secure statistical analysis using Modal sandboxes.
 
 
-## Deep Research Flows 
+
+## Architecture
+
+DeepCritical uses a Vertical Slice Architecture:
+
+1.  **Search Slice**: Retrieving evidence from PubMed, ClinicalTrials.gov, and bioRxiv.
+2.  **Judge Slice**: Evaluating evidence quality using LLMs.
+3.  **Orchestrator Slice**: Managing the research loop and UI.
 
 - iterativeResearch
 - deepResearch
@@ -89,6 +96,7 @@ Add this to your `claude_desktop_config.json`:
 
 ### Iterative Research
 
+```mermaid
 sequenceDiagram
     participant IterativeFlow
     participant ThinkingAgent
@@ -121,10 +129,12 @@ sequenceDiagram
             JudgeHandler-->>IterativeFlow: should_continue
         end
     end
+```
 
 
 ### Deep Research
 
+```mermaid
 sequenceDiagram
     actor User
     participant GraphOrchestrator
@@ -159,8 +169,10 @@ sequenceDiagram
     end
     
     GraphOrchestrator->>User: AsyncGenerator[AgentEvent]
+```
 
 ### Research Team
+
 Critical Deep Research Agent
 
 ## Development
@@ -177,22 +189,7 @@ uv run pytest
 make check
 ```
 
-## Architecture
-
-DeepCritical uses a Vertical Slice Architecture:
-
-1.  **Search Slice**: Retrieving evidence from PubMed, ClinicalTrials.gov, and bioRxiv.
-2.  **Judge Slice**: Evaluating evidence quality using LLMs.
-3.  **Orchestrator Slice**: Managing the research loop and UI.
-
-Built with:
-- **PydanticAI**: For robust agent interactions.
-- **Gradio**: For the streaming user interface.
-- **PubMed, ClinicalTrials.gov, bioRxiv**: For biomedical data.
-- **MCP**: For universal tool access.
-- **Modal**: For secure code execution.
-
-## Team
+## Join Us
 
 - The-Obstacle-Is-The-Way
 - MarioAderman
