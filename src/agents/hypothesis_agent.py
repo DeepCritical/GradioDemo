@@ -42,7 +42,7 @@ class HypothesisAgent(BaseAgent):  # type: ignore[misc]
         if self._agent is None:
             self._agent = Agent(  # type: ignore[call-overload]
                 model=get_model(),  # Uses configured LLM (OpenAI/Anthropic)
-                result_type=HypothesisAssessment,
+                output_type=HypothesisAssessment,
                 system_prompt=SYSTEM_PROMPT,
             )
         return self._agent

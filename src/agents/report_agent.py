@@ -43,7 +43,7 @@ class ReportAgent(BaseAgent):  # type: ignore[misc]
         if self._agent is None:
             self._agent = Agent(  # type: ignore[call-overload]
                 model=get_model(),
-                result_type=ResearchReport,
+                output_type=ResearchReport,
                 system_prompt=SYSTEM_PROMPT,
             )
         return self._agent

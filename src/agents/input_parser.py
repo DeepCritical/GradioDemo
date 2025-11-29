@@ -66,7 +66,7 @@ class InputParserAgent:
         # Initialize Pydantic AI Agent
         self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            result_type=ParsedQuery,
+            output_type=ParsedQuery,
             system_prompt=SYSTEM_PROMPT,
             retries=3,
         )

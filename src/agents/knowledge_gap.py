@@ -58,7 +58,7 @@ class KnowledgeGapAgent:
         # Initialize Pydantic AI Agent
         self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            result_type=KnowledgeGapOutput,
+            output_type=KnowledgeGapOutput,
             system_prompt=SYSTEM_PROMPT,
             retries=3,
         )

@@ -125,7 +125,7 @@ class JudgeHandler:
         self.model = model or get_model()
         self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            result_type=JudgeAssessment,
+            output_type=JudgeAssessment,
             system_prompt=SYSTEM_PROMPT,
             retries=3,
         )

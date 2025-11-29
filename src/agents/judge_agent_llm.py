@@ -18,7 +18,7 @@ class LLMSubIterationJudge:
         self.model = get_model()
         self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            result_type=JudgeAssessment,
+            output_type=JudgeAssessment,
             system_prompt="""You are a strict judge evaluating a research task.
 
 Evaluate if the result is sufficient to answer the task.

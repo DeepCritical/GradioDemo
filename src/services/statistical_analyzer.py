@@ -73,7 +73,7 @@ class StatisticalAnalyzer:
             library_versions = get_sandbox_library_prompt()
             self._agent = Agent(  # type: ignore[call-overload]
                 model=get_model(),
-                result_type=str,
+                output_type=str,
                 system_prompt=f"""You are a biomedical data scientist.
 
 Generate Python code to analyze research evidence and test hypotheses.

@@ -82,7 +82,7 @@ class PlannerAgent:
         # Initialize Pydantic AI Agent
         self.agent = Agent(  # type: ignore[call-overload]
             model=self.model,
-            result_type=ReportPlan,
+            output_type=ReportPlan,
             system_prompt=SYSTEM_PROMPT,
             tools=[self.web_search_tool, self.crawl_tool],
             retries=3,
