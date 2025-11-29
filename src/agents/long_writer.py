@@ -176,7 +176,7 @@ class LongWriterAgent:
             try:
                 # Run the agent
                 result = await self.agent.run(user_message)
-                output = result.output
+                output = result.data
 
                 # Validate output
                 if not output or not isinstance(output, LongWriterOutput):

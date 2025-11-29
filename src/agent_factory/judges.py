@@ -8,9 +8,17 @@ from typing import Any
 import structlog
 from huggingface_hub import InferenceClient
 from pydantic_ai import Agent
-from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.openai import OpenAIModel  # type: ignore[attr-defined]
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+# Try to import AnthropicModel (may not be available if anthropic package is missing)
+try:
+    from pydantic_ai.models.anthropic import AnthropicModel
+
+    _ANTHROPIC_AVAILABLE = True
+except ImportError:
+    AnthropicModel = None  # type: ignore[assignment, misc]
+    _ANTHROPIC_AVAILABLE = False
 
 # Try to import HuggingFace support (may not be available in all pydantic-ai versions)
 # According to https://ai.pydantic.dev/models/huggingface/, HuggingFace support requires
@@ -50,6 +58,11 @@ def get_model() -> Any:
     llm_provider = settings.llm_provider
 
     if llm_provider == "anthropic":
+        if not _ANTHROPIC_AVAILABLE:
+            raise ImportError(
+                "Anthropic models are not available. "
+                "Please install with: uv add 'pydantic-ai[anthropic]' or use 'openai'/'huggingface' as the LLM provider."
+            )
         return AnthropicModel(settings.anthropic_model, api_key=settings.anthropic_api_key)  # type: ignore[call-arg]
 
     if llm_provider == "huggingface":
@@ -144,7 +157,7 @@ class JudgeHandler:
         try:
             # Run the agent with structured output
             result = await self.agent.run(user_prompt)
-            assessment = result.output  # type: ignore[attr-defined]
+            assessment = result.data
 
             logger.info(
                 "Assessment complete",

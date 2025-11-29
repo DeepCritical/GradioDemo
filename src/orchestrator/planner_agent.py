@@ -109,7 +109,7 @@ class PlannerAgent:
         try:
             # Run the agent
             result = await self.agent.run(user_message)
-            report_plan = result.output
+            report_plan = result.data
 
             # Validate report plan
             if not report_plan.report_outline:

@@ -113,7 +113,7 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
         try:
             # Run the agent
             result = await self.agent.run(user_message)
-            evaluation = result.output
+            evaluation = result.data
 
             self.logger.info(
                 "Knowledge gap evaluation complete",

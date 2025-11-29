@@ -133,7 +133,7 @@ REPORT DRAFT:
             try:
                 # Run the agent
                 result = await self.agent.run(user_message)
-                final_report = result.output
+                final_report = result.data  # type: ignore[attr-defined]
 
                 # Validate output
                 if not final_report or not final_report.strip():
@@ -142,7 +142,7 @@ REPORT DRAFT:
 
                 self.logger.info("Report proofread", length=len(final_report), attempt=attempt + 1)
 
-                return final_report
+                return final_report  # type: ignore[no-any-return]
 
             except (TimeoutError, ConnectionError) as e:
                 # Transient errors - retry

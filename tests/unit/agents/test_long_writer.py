@@ -17,6 +17,13 @@ def mock_model() -> MagicMock:
     return model
 
 
+@pytest.fixture(autouse=True)
+def patch_infer_model(mock_model: MagicMock):
+    """Auto-patch infer_model for all tests to avoid OpenAI API key requirements."""
+    with patch("pydantic_ai.models.infer_model", return_value=mock_model):
+        yield
+
+
 @pytest.fixture
 def mock_long_writer_output() -> LongWriterOutput:
     """Create a mock LongWriterOutput."""
@@ -31,7 +38,9 @@ def mock_agent_result(
     mock_long_writer_output: LongWriterOutput,
 ) -> RunResult[LongWriterOutput]:
     """Create a mock agent result."""
-    result = MagicMock(spec=RunResult)
+    result = MagicMock()
+    # Configure the mock to return the actual output when .data is accessed
+    type(result).data = mock_long_writer_output
     result.output = mock_long_writer_output
     return result
 
@@ -340,9 +349,11 @@ class TestWriteReport:
             references=["[1] https://example.com/2"],
         )
 
-        result1 = MagicMock(spec=RunResult)
+        result1 = MagicMock()
+        type(result1).data = output1  # pydantic-ai uses .data for structured output
         result1.output = output1
-        result2 = MagicMock(spec=RunResult)
+        result2 = MagicMock()
+        type(result2).data = output2  # pydantic-ai uses .data for structured output
         result2.output = output2
         results = [result1, result2]
         long_writer_agent.agent.run = AsyncMock(side_effect=results)

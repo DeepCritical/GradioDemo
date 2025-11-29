@@ -1,28 +1,3 @@
----
-title: DeepCritical
-emoji: 🧬
-colorFrom: blue
-colorTo: purple
-sdk: gradio
-sdk_version: "6.0.1"
-python_version: "3.11"
-app_file: src/app.py
-hf_oauth: true
-hf_oauth_expiration_minutes: 480
-hf_oauth_scopes:
- - inference-api
-pinned: true
-license: mit
-tags:
-  - mcp-in-action-track-enterprise
-  - mcp-hackathon
-  - drug-repurposing
-  - biomedical-ai
-  - pydantic-ai
-  - llamaindex
-  - modal
----
-
 <div align="center">
 
 [![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)

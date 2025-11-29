@@ -136,7 +136,8 @@ class LlamaIndexRAGService:
             }
         except ImportError as e:
             raise ImportError(
-                "LlamaIndex dependencies not installed. Run: uv sync --extra modal"
+                "LlamaIndex dependencies not installed. Required packages: chromadb, llama-index, "
+                "and their dependencies. If rpds is missing, try: uv pip install rpds-py"
             ) from e
 
     def _configure_embeddings(

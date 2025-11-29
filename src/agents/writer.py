@@ -136,7 +136,7 @@ FINDINGS:
             try:
                 # Run the agent
                 result = await self.agent.run(user_message)
-                report = result.output
+                report = result.data  # type: ignore[attr-defined]
 
                 # Validate output
                 if not report or not report.strip():
@@ -145,7 +145,7 @@ FINDINGS:
 
                 self.logger.info("Report written", length=len(report), attempt=attempt + 1)
 
-                return report
+                return report  # type: ignore[no-any-return]
 
             except (TimeoutError, ConnectionError) as e:
                 # Transient errors - retry

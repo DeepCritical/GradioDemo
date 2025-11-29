@@ -92,7 +92,7 @@ class InputParserAgent:
         try:
             # Run the agent
             result = await self.agent.run(user_message)
-            parsed_query = result.output
+            parsed_query = result.data
 
             # Validate parsed query
             if not parsed_query.original_query:

@@ -41,5 +41,5 @@ History of previous attempts: {len(history)}
 Evaluate validity and sufficiency."""
 
         run_result = await self.agent.run(prompt)
-        logger.info("LLM judge assessment complete", sufficient=run_result.output.sufficient)
-        return run_result.output  # type: ignore[no-any-return]
+        logger.info("LLM judge assessment complete", sufficient=run_result.data.sufficient)  # type: ignore[attr-defined]
+        return run_result.data  # type: ignore[no-any-return,attr-defined]

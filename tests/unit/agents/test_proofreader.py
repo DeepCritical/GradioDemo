@@ -18,6 +18,13 @@ def mock_model() -> MagicMock:
     return model
 
 
+@pytest.fixture(autouse=True)
+def patch_infer_model(mock_model: MagicMock):
+    """Auto-patch infer_model for all tests to avoid OpenAI API key requirements."""
+    with patch("pydantic_ai.models.infer_model", return_value=mock_model):
+        yield
+
+
 @pytest.fixture
 def mock_agent_result() -> RunResult[Any]:
     """Create a mock agent result."""

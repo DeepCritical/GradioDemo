@@ -121,9 +121,12 @@ class TestRAGServiceIntegration:
             assert len(response) > 0
             assert "python" in response.lower()
         except Exception as e:
-            # If model is not available (404), skip the test
-            if "404" in str(e) or "Not Found" in str(e):
+            # If model is not available (404) or authentication required (401), skip the test
+            error_str = str(e)
+            if "404" in error_str or "Not Found" in error_str:
                 pytest.skip(f"HuggingFace model not available via inference API: {e}")
+            if "401" in error_str or "Unauthorized" in error_str or "Invalid username or password" in error_str:
+                pytest.skip(f"HuggingFace authentication required but not available: {e}")
             raise
 
         # Cleanup

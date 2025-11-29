@@ -18,6 +18,13 @@ def mock_model() -> MagicMock:
     return model
 
 
+@pytest.fixture(autouse=True)
+def patch_infer_model(mock_model: MagicMock):
+    """Auto-patch infer_model for all tests to avoid OpenAI API key requirements."""
+    with patch("pydantic_ai.models.infer_model", return_value=mock_model):
+        yield
+
+
 @pytest.fixture
 def mock_parsed_query_iterative() -> ParsedQuery:
     """Create a mock ParsedQuery for iterative mode."""
@@ -51,7 +58,9 @@ def mock_agent_result_iterative(
     mock_parsed_query_iterative: ParsedQuery,
 ) -> RunResult[ParsedQuery]:
     """Create a mock agent result for iterative mode."""
-    result = MagicMock(spec=RunResult)
+    result = MagicMock()
+    # Configure the mock to return the actual output when .data is accessed
+    type(result).data = mock_parsed_query_iterative
     result.output = mock_parsed_query_iterative
     return result
 
@@ -61,7 +70,9 @@ def mock_agent_result_deep(
     mock_parsed_query_deep: ParsedQuery,
 ) -> RunResult[ParsedQuery]:
     """Create a mock agent result for deep mode."""
-    result = MagicMock(spec=RunResult)
+    result = MagicMock()
+    # Configure the mock to return the actual output when .data is accessed
+    type(result).data = mock_parsed_query_deep
     result.output = mock_parsed_query_deep
     return result
 
@@ -72,33 +83,52 @@ def input_parser_agent(mock_model: MagicMock) -> InputParserAgent:
     return InputParserAgent(model=mock_model)
 
 
+@pytest.fixture(autouse=True)
+def patch_infer_model(mock_model: MagicMock):
+    """Auto-patch infer_model for all tests to avoid OpenAI API key requirements."""
+    with patch("pydantic_ai.models.infer_model", return_value=mock_model):
+        yield
+
+
 class TestInputParserAgentInit:
     """Test InputParserAgent initialization."""
 
-    def test_input_parser_agent_init_with_model(self, mock_model: MagicMock) -> None:
+    @patch("pydantic_ai.models.infer_model")
+    def test_input_parser_agent_init_with_model(
+        self, mock_infer_model: MagicMock, mock_model: MagicMock
+    ) -> None:
         """Test InputParserAgent initialization with provided model."""
+        mock_infer_model.return_value = mock_model
         agent = InputParserAgent(model=mock_model)
         assert agent.model == mock_model
         assert agent.agent is not None
 
     @patch("src.agents.input_parser.get_model")
+    @patch("pydantic_ai.models.infer_model")
     def test_input_parser_agent_init_without_model(
-        self, mock_get_model: MagicMock, mock_model: MagicMock
+        self,
+        mock_infer_model: MagicMock,
+        mock_get_model: MagicMock,
+        mock_model: MagicMock,
     ) -> None:
         """Test InputParserAgent initialization without model (uses default)."""
         mock_get_model.return_value = mock_model
+        mock_infer_model.return_value = mock_model
         agent = InputParserAgent()
         assert agent.model == mock_model
         mock_get_model.assert_called_once()
 
+    @patch("pydantic_ai.models.infer_model")
     def test_input_parser_agent_has_correct_system_prompt(
-        self, input_parser_agent: InputParserAgent
+        self, mock_infer_model: MagicMock, mock_model: MagicMock
     ) -> None:
         """Test that InputParserAgent has correct system prompt."""
+        mock_infer_model.return_value = mock_model
+        agent = InputParserAgent(model=mock_model)
         # System prompt should contain key instructions
         # In pydantic_ai, system_prompt is a property that returns the prompt string
         # For mocked agents, we check that the agent was created with a system prompt
-        assert input_parser_agent.agent is not None
+        assert agent.agent is not None
         # The actual system prompt is set during agent creation
         # We verify the agent exists and was properly initialized
         # Note: Direct access to system_prompt may not work with mocks

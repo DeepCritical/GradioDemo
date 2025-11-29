@@ -1,6 +1,6 @@
 """Unit tests for ResearchFlow classes."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -31,6 +31,27 @@ class TestIterativeResearchFlow:
     @pytest.fixture
     def flow(self, mock_agents):
         """Create an IterativeResearchFlow with mocked agents."""
+        from src.utils.models import JudgeAssessment, AssessmentDetails
+        
+        mock_judge = MagicMock()
+        # Mock judge assessment - default to insufficient so loops continue
+        default_assessment = JudgeAssessment(
+            details=AssessmentDetails(
+                mechanism_score=5,
+                mechanism_reasoning="Test reasoning for mechanism assessment",
+                clinical_evidence_score=5,
+                clinical_reasoning="Test reasoning for clinical evidence assessment",
+                drug_candidates=[],
+                key_findings=[],
+            ),
+            sufficient=False,
+            confidence=0.5,
+            recommendation="continue",
+            next_search_queries=[],
+            reasoning="Test assessment for research flow testing purposes",
+        )
+        mock_judge.assess = AsyncMock(return_value=default_assessment)
+        
         with (
             patch("src.orchestrator.research_flow.create_knowledge_gap_agent") as mock_kg,
             patch("src.orchestrator.research_flow.create_tool_selector_agent") as mock_ts,
@@ -38,14 +59,18 @@ class TestIterativeResearchFlow:
             patch("src.orchestrator.research_flow.create_writer_agent") as mock_writer,
             patch("src.orchestrator.research_flow.execute_tool_tasks") as mock_execute,
             patch("src.orchestrator.research_flow.get_rag_service") as mock_rag,
+            patch("src.orchestrator.research_flow.create_judge_handler", return_value=mock_judge),
         ):
             mock_kg.return_value = mock_agents["knowledge_gap"]
             mock_ts.return_value = mock_agents["tool_selector"]
             mock_thinking.return_value = mock_agents["thinking"]
             mock_writer.return_value = mock_agents["writer"]
-            mock_execute.return_value = {
-                "task_1": ToolAgentOutput(output="Finding 1", sources=["url1"]),
-            }
+            # execute_tool_tasks is async, so make the mock async
+            async def mock_execute_async(*args, **kwargs):
+                return {
+                    "task_1": ToolAgentOutput(output="Finding 1", sources=["url1"]),
+                }
+            mock_execute.side_effect = mock_execute_async
             # Mock RAG service to return None to avoid ChromaDB initialization
             mock_rag.return_value = None
 
@@ -54,6 +79,26 @@ class TestIterativeResearchFlow:
     @pytest.mark.asyncio
     async def test_iterative_flow_completes_when_research_complete(self, flow, mock_agents):
         """IterativeResearchFlow should complete when research is marked complete."""
+        from src.utils.models import JudgeAssessment, AssessmentDetails
+        
+        # Mock judge to return sufficient=True so loop completes
+        sufficient_assessment = JudgeAssessment(
+            details=AssessmentDetails(
+                mechanism_score=8,
+                mechanism_reasoning="Strong evidence for mechanism of action",
+                clinical_evidence_score=7,
+                clinical_reasoning="Good support from clinical studies",
+                drug_candidates=["TestDrug"],
+                key_findings=["Finding 1"],
+            ),
+            sufficient=True,
+            confidence=0.9,
+            recommendation="synthesize",
+            next_search_queries=[],
+            reasoning="Evidence is sufficient",
+        )
+        flow.judge_handler.assess = AsyncMock(return_value=sufficient_assessment)
+        
         # Mock knowledge gap agent to return complete
         mock_agents["knowledge_gap"].evaluate = AsyncMock(
             return_value=KnowledgeGapOutput(
@@ -202,10 +247,32 @@ class TestDeepResearchFlow:
     @pytest.fixture
     def flow(self, mock_agents):
         """Create a DeepResearchFlow with mocked agents."""
+        from src.utils.models import JudgeAssessment, AssessmentDetails
+        
+        mock_judge = MagicMock()
+        # Mock judge assessment - default to insufficient so loops continue
+        default_assessment = JudgeAssessment(
+            details=AssessmentDetails(
+                mechanism_score=5,
+                mechanism_reasoning="Test reasoning for mechanism assessment",
+                clinical_evidence_score=5,
+                clinical_reasoning="Test reasoning for clinical evidence assessment",
+                drug_candidates=[],
+                key_findings=[],
+            ),
+            sufficient=False,
+            confidence=0.5,
+            recommendation="continue",
+            next_search_queries=[],
+            reasoning="Test assessment for research flow testing purposes",
+        )
+        mock_judge.assess = AsyncMock(return_value=default_assessment)
+        
         with (
             patch("src.orchestrator.research_flow.create_planner_agent") as mock_planner,
             patch("src.orchestrator.research_flow.create_long_writer_agent") as mock_long_writer,
             patch("src.orchestrator.research_flow.create_proofreader_agent") as mock_proofreader,
+            patch("src.orchestrator.research_flow.create_judge_handler", return_value=mock_judge),
         ):
             mock_planner.return_value = mock_agents["planner"]
             mock_long_writer.return_value = mock_agents["long_writer"]

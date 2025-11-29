@@ -172,20 +172,29 @@ def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
             "content": event.message,
         }
 
-    # Build metadata for accordion
+    # Build metadata for accordion according to Gradio ChatMessage spec
+    # Metadata keys: title (str), status ("pending"|"done"), log (str), duration (float)
+    # See: https://www.gradio.app/guides/agents-and-tool-usage
     metadata: dict[str, Any] = {}
+
+    # Title is required for accordion display - must be string
     if config["title"]:
-        metadata["title"] = config["title"]
+        metadata["title"] = str(config["title"])
 
     # Set status (pending shows spinner, done is collapsed)
+    # Must be exactly "pending" or "done" per Gradio spec
     if config["status"] == "pending":
         metadata["status"] = "pending"
+    elif config["status"] == "done":
+        metadata["status"] = "done"
 
-    # Add duration if available in data
+    # Add duration if available in data (must be float)
     if event.data and isinstance(event.data, dict) and "duration" in event.data:
-        metadata["duration"] = event.data["duration"]
+        duration = event.data["duration"]
+        if isinstance(duration, int | float):
+            metadata["duration"] = float(duration)
 
-    # Add log info (iteration number, etc.)
+    # Add log info (iteration number, etc.) - must be string
     log_parts: list[str] = []
     if event.iteration > 0:
         log_parts.append(f"Iteration {event.iteration}")
@@ -198,12 +207,22 @@ def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
         metadata["log"] = " | ".join(log_parts)
 
     # Return as dict format for Gradio Chatbot compatibility
-    # Gradio Chatbot expects dict format, not gr.ChatMessage objects
+    # According to Gradio docs: https://www.gradio.app/guides/agents-and-tool-usage
+    # ChatMessage format: {"role": "assistant", "content": "...", "metadata": {...}}
+    # Metadata must have "title" key for accordion display
+    # Valid metadata keys: title (str), status ("pending"|"done"), log (str), duration (float)
     result: dict[str, Any] = {
         "role": "assistant",
         "content": event.message,
     }
-    if metadata:
+    # Only add metadata if it has a title (required for accordion display)
+    # Ensure metadata values match Gradio's expected types
+    if metadata and metadata.get("title"):
+        # Ensure status is valid if present
+        if "status" in metadata:
+            status = metadata["status"]
+            if status not in ("pending", "done"):
+                metadata["status"] = "done"  # Default to "done" if invalid
         result["metadata"] = metadata
     return result
 
@@ -455,10 +474,11 @@ async def research_agent(
             yield msg
 
     except Exception as e:
+        # Return error message without metadata to avoid issues during example caching
+        # Metadata can cause validation errors when Gradio caches examples
         yield {
             "role": "assistant",
-            "content": f"❌ **Error**: {e!s}",
-            "metadata": {"title": "❌ Error", "status": "done"},
+            "content": f"❌ **Error**: {e!s}\n\n*Please check your configuration and try again.*",
         }
 
 
@@ -681,9 +701,21 @@ def create_demo() -> gr.Blocks:
                 "**Sign in with HuggingFace** above to access premium models and providers."
             ),
             examples=[
-                ["What drugs could be repurposed for Alzheimer's disease?", "simple"],
-                ["Is metformin effective for treating cancer?", "simple"],
-                ["What medications show promise for Long COVID treatment?", "simple"],
+                # When additional_inputs are provided, examples must be lists of lists
+                # Each inner list: [message, mode, hf_model, hf_provider]
+                [
+                    "What drugs could be repurposed for Alzheimer's disease?",
+                    "iterative",
+                    None,
+                    None,
+                ],
+                ["Is metformin effective for treating cancer?", "iterative", None, None],
+                [
+                    "What medications show promise for Long COVID treatment?",
+                    "iterative",
+                    None,
+                    None,
+                ],
             ],
             additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=False),
             additional_inputs=[

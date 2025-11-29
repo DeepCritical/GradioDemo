@@ -117,7 +117,7 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
         try:
             # Run the agent
             result = await self.agent.run(user_message)
-            selection_plan = result.output
+            selection_plan = result.data
 
             self.logger.info(
                 "Tool selection complete",

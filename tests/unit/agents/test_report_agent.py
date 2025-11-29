@@ -102,6 +102,7 @@ async def test_report_agent_generates_report(
     ):
         mock_get_model.return_value = MagicMock()
         mock_result = MagicMock()
+        type(mock_result).data = mock_report  # pydantic-ai uses .data for structured output
         mock_result.output = mock_report
         mock_agent_class.return_value.run = AsyncMock(return_value=mock_result)
 

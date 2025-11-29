@@ -91,7 +91,7 @@ class ReportAgent(BaseAgent):  # type: ignore[misc]
         )
 
         result = await self._get_agent().run(prompt)
-        report = result.output
+        report = result.data  # type: ignore[attr-defined]
 
         # ═══════════════════════════════════════════════════════════════════
         # 🚨 CRITICAL: Validate citations to prevent hallucination

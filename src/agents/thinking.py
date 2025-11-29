@@ -112,11 +112,11 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
         try:
             # Run the agent
             result = await self.agent.run(user_message)
-            observations = result.output
+            observations = result.data  # type: ignore[attr-defined]
 
             self.logger.info("Observations generated", length=len(observations))
 
-            return observations
+            return observations  # type: ignore[no-any-return]
 
         except Exception as e:
             self.logger.error("Observation generation failed", error=str(e))

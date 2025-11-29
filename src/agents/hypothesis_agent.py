@@ -75,7 +75,7 @@ class HypothesisAgent(BaseAgent):  # type: ignore[misc]
         # Generate hypotheses with diverse evidence selection
         prompt = await format_hypothesis_prompt(query, evidence, embeddings=self._embeddings)
         result = await self._get_agent().run(prompt)
-        assessment = result.output  # pydantic-ai returns .output for structured output
+        assessment = result.data  # type: ignore[attr-defined]
 
         # Store hypotheses in shared context
         existing = self._evidence_store.get("hypotheses", [])

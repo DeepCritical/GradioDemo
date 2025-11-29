@@ -135,7 +135,7 @@ Generate executable Python code to analyze this evidence."""
             # Generate code
             agent = self._get_agent()
             code_result = await agent.run(prompt)
-            generated_code = code_result.output
+            generated_code = code_result.data  # type: ignore[attr-defined]
 
             # Execute in Modal sandbox
             loop = asyncio.get_running_loop()

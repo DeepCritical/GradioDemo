@@ -54,9 +54,10 @@ class TestStatisticalAnalyzer:
             patch.object(analyzer, "_get_code_executor") as mock_executor,
         ):
             # Mock LLM
-            mock_agent.return_value.run = AsyncMock(
-                return_value=MagicMock(output="print('SUPPORTED')")
-            )
+            mock_code_result = MagicMock()
+            type(mock_code_result).data = "print('SUPPORTED')"  # pydantic-ai uses .data
+            mock_code_result.output = "print('SUPPORTED')"
+            mock_agent.return_value.run = AsyncMock(return_value=mock_code_result)
 
             # Mock Modal
             mock_executor.return_value.execute.return_value = {
