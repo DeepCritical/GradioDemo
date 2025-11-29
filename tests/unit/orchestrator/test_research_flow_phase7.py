@@ -68,6 +68,7 @@ def flow_with_judge(mock_agents, mock_judge_handler):
         patch("src.orchestrator.research_flow.create_judge_handler") as mock_judge_factory,
         patch("src.orchestrator.research_flow.execute_tool_tasks") as mock_execute,
         patch("src.orchestrator.research_flow.get_workflow_state") as mock_state,
+        patch("src.orchestrator.research_flow.get_rag_service") as mock_rag,
     ):
         mock_kg.return_value = mock_agents["knowledge_gap"]
         mock_ts.return_value = mock_agents["tool_selector"]
@@ -77,6 +78,8 @@ def flow_with_judge(mock_agents, mock_judge_handler):
         mock_execute.return_value = {
             "task_1": ToolAgentOutput(output="Finding 1", sources=["url1"]),
         }
+        # Mock RAG service to return None to avoid ChromaDB initialization
+        mock_rag.return_value = None
 
         # Mock workflow state
         mock_state_obj = MagicMock()
@@ -84,7 +87,7 @@ def flow_with_judge(mock_agents, mock_judge_handler):
         mock_state_obj.add_evidence = MagicMock(return_value=1)
         mock_state.return_value = mock_state_obj
 
-        return IterativeResearchFlow(max_iterations=2, max_time_minutes=5)
+        yield IterativeResearchFlow(max_iterations=2, max_time_minutes=5)
 
 
 @pytest.mark.unit

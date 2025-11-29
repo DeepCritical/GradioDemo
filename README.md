@@ -1,13 +1,17 @@
 ---
-title: DeepCritical
-emoji: 🧬
-colorFrom: blue
-colorTo: purple
+title: Critical Deep Resarch
+emoji: 🐉
+colorFrom: red
+colorTo: yellow
 sdk: gradio
 sdk_version: "6.0.1"
 python_version: "3.11"
 app_file: src/app.py
-pinned: false
+hf_oauth: true
+hf_oauth_expiration_minutes: 480
+hf_oauth_scopes:
+ - inference-api
+pinned: true
 license: mit
 tags:
   - mcp-in-action-track-enterprise
@@ -19,178 +23,100 @@ tags:
   - modal
 ---
 
+> [!IMPORTANT]
+> **You are reading the Gradio Demo README!**
+> 
+> - 📚 **Documentation**: See our [technical documentation](docs/index.md) for detailed information
+> - 📖 **Complete README**: Check out the [full README](.github/README.md) for setup, configuration, and contribution guidelines
+> - 🏆 **Hackathon Submission**: Keep reading below for more information about our MCP Hackathon submission
+
+<div align="center">
+
+[![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
+[![Documentation](https://img.shields.io/badge/📚%20Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](docs/index.md)
+[![Demo](https://img.shields.io/badge/🚀%20Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
+[![CodeCov](https://img.shields.io/badge/📊%20Coverage-F01F7A?style=for-the-badge&logo=codecov&logoColor=white&labelColor=F01F7A&color=F01F7A)](https://codecov.io/gh/DeepCritical/GradioDemo)
+[![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 
+
+
+</div>
+
 # DeepCritical
 
-## Intro
+## About
 
-## Features
+The [Deep Critical Gradio Hackathon Team](### Team) met online in the Alzheimer's Critical Literature Review Group in the Hugging Science initiative. We're building the agent framework we want to use for ai assisted research to [turn the vast amounts of clinical data into cures](https://github.com/DeepCritical/GradioDemo).
 
-- **Multi-Source Search**: PubMed, ClinicalTrials.gov, bioRxiv/medRxiv
-- **MCP Integration**: Use our tools from Claude Desktop or any MCP client
-- **Modal Sandbox**: Secure execution of AI-generated statistical code
-- **LlamaIndex RAG**: Semantic search and evidence synthesis
-- **HuggingfaceInference**: 
-- **HuggingfaceMCP Custom Config To Use Community Tools**:
-- **Strongly Typed Composable Graphs**:
-- **Specialized Research Teams of Agents**: 
+For this hackathon we're proposing a simple yet powerful Deep Research Agent that iteratively looks for the answer until it finds it using general purpose websearch and special purpose retrievers for technical retrievers. 
 
-## Quick Start
+## Deep Critical In the Medial 
 
-### 1. Environment Setup
+- Social Medial Posts about Deep Critical :
+  - 
+  -
+  -
+  -
+  -
+  -
+  -
 
-```bash
-# Install uv if you haven't already
-pip install uv
+## Important information
 
-# Sync dependencies
-uv sync
-```
+- **[readme](.github\README.md)**: configure, deploy , contribute and learn more here.
+- **[docs]**: want to know how all this works ? read our detailed technical documentation here.
+- **[demo](https://huggingface/spaces/DataQuests/DeepCritical)**: Try our demo on huggingface
+- **[team](### Team)**: Join us , or follow us !
+- **[video]**: See our demo video
 
-### 2. Run the UI
+## Future Developments
 
-```bash
-# Start the Gradio app
-uv run gradio run src/app.py
-```
+- [] Apply Deep Research Systems To Generate Short Form Video (up to 5 minutes)
+- [] Visualize Pydantic Graphs as Loading Screens in the UI
+- [] Improve Data Science with more Complex Graph Agents
+- [] Create Deep Critical Drug Reporposing / Discovery Demo
+- [] Create Deep Critical Literal Review
+- [] Create Deep Critical Hypothesis Generator
 
-Open your browser to `http://localhost:7860`.
+## Completed
 
-### 3. Connect via MCP
-
-This application exposes a Model Context Protocol (MCP) server, allowing you to use its search tools directly from Claude Desktop or other MCP clients.
-
-**MCP Server URL**: `http://localhost:7860/gradio_api/mcp/`
-
-**Claude Desktop Configuration**:
-Add this to your `claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "deepcritical": {
-      "url": "http://localhost:7860/gradio_api/mcp/"
-    }
-  }
-}
-```
-
-**Available Tools**:
-- `search_pubmed`: Search peer-reviewed biomedical literature.
-- `search_clinical_trials`: Search ClinicalTrials.gov.
-- `search_biorxiv`: Search bioRxiv/medRxiv preprints.
-- `search_all`: Search all sources simultaneously.
-- `analyze_hypothesis`: Secure statistical analysis using Modal sandboxes.
+- [] **Multi-Source Search**: PubMed, ClinicalTrials.gov, bioRxiv/medRxiv
+- [] **MCP Integration**: Use our tools from Claude Desktop or any MCP client
+- [] **HuggingFace OAuth**: Sign in with HuggingFace 
+- [] **Modal Sandbox**: Secure execution of AI-generated statistical code
+- [] **LlamaIndex RAG**: Semantic search and evidence synthesis
+- [] **HuggingfaceInference**: 
+- [] **HuggingfaceMCP Custom Config To Use Community Tools**:
+- [] **Strongly Typed Composable Graphs**:
+- [] **Specialized Research Teams of Agents**: 
 
 
 
-## Architecture
+### Team
 
-DeepCritical uses a Vertical Slice Architecture:
-
-1.  **Search Slice**: Retrieving evidence from PubMed, ClinicalTrials.gov, and bioRxiv.
-2.  **Judge Slice**: Evaluating evidence quality using LLMs.
-3.  **Orchestrator Slice**: Managing the research loop and UI.
-
-- iterativeResearch
-- deepResearch
-- researchTeam
-
-### Iterative Research
-
-sequenceDiagram
-    participant IterativeFlow
-    participant ThinkingAgent
-    participant KnowledgeGapAgent
-    participant ToolSelector
-    participant ToolExecutor
-    participant JudgeHandler
-    participant WriterAgent
-
-    IterativeFlow->>IterativeFlow: run(query)
-    
-    loop Until complete or max_iterations
-        IterativeFlow->>ThinkingAgent: generate_observations()
-        ThinkingAgent-->>IterativeFlow: observations
-        
-        IterativeFlow->>KnowledgeGapAgent: evaluate_gaps()
-        KnowledgeGapAgent-->>IterativeFlow: KnowledgeGapOutput
-        
-        alt Research complete
-            IterativeFlow->>WriterAgent: create_final_report()
-            WriterAgent-->>IterativeFlow: final_report
-        else Gaps remain
-            IterativeFlow->>ToolSelector: select_agents(gap)
-            ToolSelector-->>IterativeFlow: AgentSelectionPlan
-            
-            IterativeFlow->>ToolExecutor: execute_tool_tasks()
-            ToolExecutor-->>IterativeFlow: ToolAgentOutput[]
-            
-            IterativeFlow->>JudgeHandler: assess_evidence()
-            JudgeHandler-->>IterativeFlow: should_continue
-        end
-    end
-
-
-### Deep Research
-
-sequenceDiagram
-    actor User
-    participant GraphOrchestrator
-    participant InputParser
-    participant GraphBuilder
-    participant GraphExecutor
-    participant Agent
-    participant BudgetTracker
-    participant WorkflowState
-
-    User->>GraphOrchestrator: run(query)
-    GraphOrchestrator->>InputParser: detect_research_mode(query)
-    InputParser-->>GraphOrchestrator: mode (iterative/deep)
-    GraphOrchestrator->>GraphBuilder: build_graph(mode)
-    GraphBuilder-->>GraphOrchestrator: ResearchGraph
-    GraphOrchestrator->>WorkflowState: init_workflow_state()
-    GraphOrchestrator->>BudgetTracker: create_budget()
-    GraphOrchestrator->>GraphExecutor: _execute_graph(graph)
-    
-    loop For each node in graph
-        GraphExecutor->>Agent: execute_node(agent_node)
-        Agent->>Agent: process_input
-        Agent-->>GraphExecutor: result
-        GraphExecutor->>WorkflowState: update_state(result)
-        GraphExecutor->>BudgetTracker: add_tokens(used)
-        GraphExecutor->>BudgetTracker: check_budget()
-        alt Budget exceeded
-            GraphExecutor->>GraphOrchestrator: emit(error_event)
-        else Continue
-            GraphExecutor->>GraphOrchestrator: emit(progress_event)
-        end
-    end
-    
-    GraphOrchestrator->>User: AsyncGenerator[AgentEvent]
-
-### Research Team
-
-Critical Deep Research Agent
-
-## Development
-
-### Run Tests
-
-```bash
-uv run pytest
-```
-
-### Run Checks
-
-```bash
-make check
-```
-
-## Join Us
-
-- The-Obstacle-Is-The-Way
+- ZJ
 - MarioAderman
 - Josephrp
 
+
+## Acknowledgements
+
+- McSwaggins
+- Magentic
+- Huggingface
+- Gradio
+- DeepCritical
+- Sponsors
+- Microsoft
+- Pydantic
+- Llama-index
+- Anthhropic/MCP
+- List of Tools Makers
+
+
 ## Links
 
-- [GitHub Repository](https://github.com/The-Obstacle-Is-The-Way/DeepCritical-1)
+[![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
+[![Documentation](https://img.shields.io/badge/📚%20Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](docs/index.md)
+[![Demo](https://img.shields.io/badge/🚀%20Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
+[![CodeCov](https://img.shields.io/badge/📊%20Coverage-F01F7A?style=for-the-badge&logo=codecov&logoColor=white&labelColor=F01F7A&color=F01F7A)](https://codecov.io/gh/DeepCritical/GradioDemo)
+[![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 

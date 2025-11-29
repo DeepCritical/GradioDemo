@@ -31,14 +31,9 @@ repos:
         types: [python]
         args: [
           "run",
-          "pytest",
-          "tests/unit/",
-          "-v",
-          "-m",
-          "not openai and not embedding_provider",
-          "--tb=short",
-          "-p",
-          "no:logfire",
+          "python",
+          ".pre-commit-hooks/run_pytest_with_sync.py",
+          "unit",
         ]
         pass_filenames: false
         always_run: true
@@ -50,14 +45,9 @@ repos:
         types: [python]
         args: [
           "run",
-          "pytest",
-          "tests/",
-          "-v",
-          "-m",
-          "local_embeddings",
-          "--tb=short",
-          "-p",
-          "no:logfire",
+          "python",
+          ".pre-commit-hooks/run_pytest_with_sync.py",
+          "embeddings",
         ]
         pass_filenames: false
         always_run: true
