@@ -516,37 +516,10 @@ def create_demo() -> gr.Blocks:
         # Extract available model IDs (first element of tuples) - this is what Gradio uses as values
         available_model_ids = [m[0] for m in initial_models] if initial_models else []
 
-        # Prefer latest reasoning models if available, otherwise use fallback
-        preferred_models = [
-            "Qwen/Qwen3-Next-80B-A3B-Thinking",
-            "Qwen/Qwen3-Next-80B-A3B-Instruct",
-            "meta-llama/Llama-3.3-70B-Instruct",
-        ]
-
-        # Find first available preferred model from the actual available models list
-        # CRITICAL: Only use models that are actually in available_model_ids
-        initial_model_id = None
-        for preferred in preferred_models:
-            if preferred in available_model_ids:
-                initial_model_id = preferred
-                break
-
-        # Fall back to first available model from the actual list
-        # CRITICAL: Always use a model that's guaranteed to be in available_model_ids
-        if not initial_model_id:
-            if available_model_ids:
-                initial_model_id = available_model_ids[0]  # First model ID from available list
-            else:
-                # No models available - this shouldn't happen, but handle gracefully
-                initial_model_id = None
-
-        # Final safety check: ensure initial_model_id is actually in the available models
-        # This is the last line of defense - if it's not in the list, use the first available
-        if initial_model_id and initial_model_id not in available_model_ids:
-            if available_model_ids:
-                initial_model_id = available_model_ids[0]
-            else:
-                initial_model_id = None
+        # Always use the first available model to ensure it matches the choices
+        # This prevents mismatches between preferred models and actual available models
+        # (e.g., preferred models might require auth but user doesn't have it)
+        initial_model_id = available_model_ids[0] if available_model_ids else None
 
         # Get providers for the selected model (only if we have a valid model)
         # CRITICAL: Re-validate model_id is still in available models before getting providers
@@ -607,18 +580,17 @@ def create_demo() -> gr.Blocks:
 
             # CRITICAL: Only set value if it's actually in the choices list
             # This prevents Gradio warnings about invalid values
+            # For safety, always use the first available choice to avoid mismatches
             final_model_value = None
-            if model_value and initial_models:
-                # Double-check the value is in the choices (defensive programming)
-                if model_value in model_ids_in_choices:
-                    final_model_value = model_value
-                elif model_ids_in_choices:
-                    # If value is invalid, use first available
-                    final_model_value = model_ids_in_choices[0]
+            if initial_models and model_ids_in_choices:
+                # Always use the first available model to ensure it matches
+                # This prevents issues where preferred models might not be in the list
+                final_model_value = model_ids_in_choices[0]
+            # If no models available, leave as None (empty dropdown)
 
             hf_model_dropdown = gr.Dropdown(
                 choices=initial_models if initial_models else [],
-                value=final_model_value,  # Only set if validated to be in choices
+                value=final_model_value,  # Always use first available to ensure match
                 label="🤖 Reasoning Model",
                 info="Select AI model for evidence assessment. Sign in to access gated models.",
                 interactive=True,
