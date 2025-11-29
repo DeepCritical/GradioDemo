@@ -1,0 +1,503 @@
+<!DOCTYPE html><html class=no-js lang=en> <head><meta charset=utf-8><meta content="width=device-width,initial-scale=1" name=viewport><meta content="AI-Native Drug Repurposing Research Agent" name=description><meta content="DeepCritical Team" name=author><link href=https://deepcritical.github.io/GradioDemo/architecture/workflows/ rel=canonical><link href=../graph_orchestration/ rel=prev><link href=../workflow-diagrams/ rel=next><link href=../../assets/images/favicon.png rel=icon><meta content="mkdocs-1.6.1, mkdocs-material-9.7.0" name=generator><title>DeepCritical Workflow - Simplified Magentic Architecture - DeepCritical</title><link href=../../assets/stylesheets/main.618322db.min.css rel=stylesheet><link href=../../assets/stylesheets/palette.ab4e12ef.min.css rel=stylesheet><link crossorigin href=https://fonts.gstatic.com rel=preconnect><link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback" rel=stylesheet><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body data-md-color-accent=red data-md-color-primary=orange data-md-color-scheme=default dir=ltr> <input autocomplete=off class=md-toggle data-md-toggle=drawer id=__drawer type=checkbox> <input autocomplete=off class=md-toggle data-md-toggle=search id=__search type=checkbox> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a class=md-skip href=#deepcritical-workflow-simplified-magentic-architecture> Skip to content </a> </div> <div data-md-component=announce> </div> <header class=md-header data-md-component=header> <nav aria-label=Header class="md-header__inner md-grid"> <a aria-label=DeepCritical class="md-header__button md-logo" data-md-component=logo href=../.. title=DeepCritical> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg> </a> <label class="md-header__button md-icon" for=__drawer> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> DeepCritical </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> DeepCritical Workflow - Simplified Magentic Architecture </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input aria-label="Switch to dark mode" class=md-option data-md-color-accent=red data-md-color-media data-md-color-primary=orange data-md-color-scheme=default id=__palette_0 name=__palette type=radio> <label class="md-header__button md-icon" for=__palette_1 hidden title="Switch to dark mode"> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg> </label> <input aria-label="Switch to light mode" class=md-option data-md-color-accent=red data-md-color-media data-md-color-primary=orange data-md-color-scheme=slate id=__palette_1 name=__palette type=radio> <label class="md-header__button md-icon" for=__palette_0 hidden title="Switch to light mode"> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input aria-label=Search autocapitalize=off autocomplete=off autocorrect=off class=md-search__input data-md-component=search-query name=query placeholder=Search required spellcheck=false type=text> <label class="md-search__icon md-icon" for=__search> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg> </label> <nav aria-label=Search class=md-search__options> <button aria-label=Clear class="md-search__icon md-icon" tabindex=-1 title=Clear type=reset> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg> </button> </nav> <div class=md-search__suggest data-md-component=search-suggest></div> </form> <div class=md-search__output> <div class=md-search__scrollwrap data-md-scrollfix tabindex=0> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> <div class=md-header__source> <a class=md-source data-md-component=source href=https://github.com/DeepCritical/GradioDemo title="Go to repository"> <div class="md-source__icon md-icon"> <svg viewbox="0 0 512 512" xmlns=http://www.w3.org/2000/svg><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg> </div> <div class=md-source__repository> DeepCritical/GradioDemo </div> </a> </div> </nav> </header> <div class=md-container data-md-component=container> <nav aria-label=Tabs class=md-tabs data-md-component=tabs> <div class=md-grid> <ul class=md-tabs__list> <li class=md-tabs__item> <a class=md-tabs__link href=../..> Home </a> </li> <li class=md-tabs__item> <a href=../../overview/architecture/ class=md-tabs__link> Overview </a> </li> <li class=md-tabs__item> <a href=../../getting-started/installation/ class=md-tabs__link> Getting Started </a> </li> <li class=md-tabs__item> <a href=../../configuration/ class=md-tabs__link> Configuration </a> </li> <li class="md-tabs__item md-tabs__item--active"> <a href=../graph-orchestration/ class=md-tabs__link> Architecture </a> </li> <li class=md-tabs__item> <a href=../../api/agents/ class=md-tabs__link> API Reference </a> </li> <li class=md-tabs__item> <a href=../../contributing/ class=md-tabs__link> Contributing </a> </li> <li class=md-tabs__item> <a href=../../license/ class=md-tabs__link> License </a> </li> <li class=md-tabs__item> <a href=../../team/ class=md-tabs__link> Team </a> </li> </ul> </div> </nav> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav aria-label=Navigation class="md-nav md-nav--primary md-nav--lifted" data-md-level=0> <label class=md-nav__title for=__drawer> <a aria-label=DeepCritical class="md-nav__button md-logo" data-md-component=logo href=../.. title=DeepCritical> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg> </a> DeepCritical </label> <div class=md-nav__source> <a class=md-source data-md-component=source href=https://github.com/DeepCritical/GradioDemo title="Go to repository"> <div class="md-source__icon md-icon"> <svg viewbox="0 0 512 512" xmlns=http://www.w3.org/2000/svg><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg> </div> <div class=md-source__repository> DeepCritical/GradioDemo </div> </a> </div> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a class=md-nav__link href=../..> <span class=md-ellipsis> Home </span> </a> </li> <li class="md-nav__item md-nav__item--nested"> <input class="md-nav__toggle md-toggle md-toggle--indeterminate" id=__nav_2 type=checkbox> <label class=md-nav__link for=__nav_2 id=__nav_2_label tabindex=0> <span class=md-ellipsis> Overview </span> <span class="md-nav__icon md-icon"></span> </label> <nav aria-expanded=false aria-labelledby=__nav_2_label class=md-nav data-md-level=1> <label class=md-nav__title for=__nav_2> <span class="md-nav__icon md-icon"></span> Overview </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../overview/architecture/ class=md-nav__link> <span class=md-ellipsis> Architecture Overview </span> </a> </li> <li class=md-nav__item> <a href=../../overview/features/ class=md-nav__link> <span class=md-ellipsis> Features </span> </a> </li> <li class=md-nav__item> <a href=../../overview/quick-start/ class=md-nav__link> <span class=md-ellipsis> Quick Start </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--nested"> <input class="md-nav__toggle md-toggle md-toggle--indeterminate" id=__nav_3 type=checkbox> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex=0> <span class=md-ellipsis> Getting Started </span> <span class="md-nav__icon md-icon"></span> </label> <nav aria-expanded=false aria-labelledby=__nav_3_label class=md-nav data-md-level=1> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Getting Started </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../getting-started/installation/ class=md-nav__link> <span class=md-ellipsis> Installation </span> </a> </li> <li class=md-nav__item> <a href=../../getting-started/quick-start/ class=md-nav__link> <span class=md-ellipsis> Quick Start Guide </span> </a> </li> <li class=md-nav__item> <a href=../../getting-started/mcp-integration/ class=md-nav__link> <span class=md-ellipsis> MCP Integration </span> </a> </li> <li class=md-nav__item> <a href=../../getting-started/examples/ class=md-nav__link> <span class=md-ellipsis> Examples </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--nested"> <input class="md-nav__toggle md-toggle md-toggle--indeterminate" id=__nav_4 type=checkbox> <label class=md-nav__link for=__nav_4 id=__nav_4_label tabindex=0> <span class=md-ellipsis> Configuration </span> <span class="md-nav__icon md-icon"></span> </label> <nav aria-expanded=false aria-labelledby=__nav_4_label class=md-nav data-md-level=1> <label class=md-nav__title for=__nav_4> <span class="md-nav__icon md-icon"></span> Configuration </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../configuration/ class=md-nav__link> <span class=md-ellipsis> Configuration Guide </span> </a> </li> <li class=md-nav__item> <a href=../../configuration/CONFIGURATION/ class=md-nav__link> <span class=md-ellipsis> Configuration Guide </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input checked class="md-nav__toggle md-toggle" id=__nav_5 type=checkbox> <label class=md-nav__link for=__nav_5 id=__nav_5_label tabindex> <span class=md-ellipsis> Architecture </span> <span class="md-nav__icon md-icon"></span> </label> <nav aria-expanded=true aria-labelledby=__nav_5_label class=md-nav data-md-level=1> <label class=md-nav__title for=__nav_5> <span class="md-nav__icon md-icon"></span> Architecture </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../graph-orchestration/ class=md-nav__link> <span class=md-ellipsis> Graph Orchestration Architecture </span> </a> </li> <li class=md-nav__item> <a href=../graph_orchestration/ class=md-nav__link> <span class=md-ellipsis> Graph Orchestration Architecture </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" id=__toc type=checkbox> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> DeepCritical Workflow - Simplified Magentic Architecture </span> <span class="md-nav__icon md-icon"></span> </label> <a href=./ class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> DeepCritical Workflow - Simplified Magentic Architecture </span> </a> <nav aria-label="Table of contents" class="md-nav md-nav--secondary"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a class=md-nav__link href=#1-high-level-magentic-workflow> <span class=md-ellipsis> 1. High-Level Magentic Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#2-magentic-manager-the-6-phase-cycle> <span class=md-ellipsis> 2. Magentic Manager: The 6-Phase Cycle </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#3-simplified-agent-architecture> <span class=md-ellipsis> 3. Simplified Agent Architecture </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#4-dynamic-workflow-example> <span class=md-ellipsis> 4. Dynamic Workflow Example </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#5-manager-decision-logic> <span class=md-ellipsis> 5. Manager Decision Logic </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#6-hypothesis-agent-workflow> <span class=md-ellipsis> 6. Hypothesis Agent Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#7-search-agent-workflow> <span class=md-ellipsis> 7. Search Agent Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#8-analysis-agent-workflow> <span class=md-ellipsis> 8. Analysis Agent Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#9-report-agent-workflow> <span class=md-ellipsis> 9. Report Agent Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#10-data-flow-event-streaming> <span class=md-ellipsis> 10. Data Flow &amp; Event Streaming </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#11-mcp-tool-architecture> <span class=md-ellipsis> 11. MCP Tool Architecture </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#12-progress-tracking-stall-detection> <span class=md-ellipsis> 12. Progress Tracking &amp; Stall Detection </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#13-gradio-ui-integration> <span class=md-ellipsis> 13. Gradio UI Integration </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#14-complete-system-context> <span class=md-ellipsis> 14. Complete System Context </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#15-workflow-timeline-simplified> <span class=md-ellipsis> 15. Workflow Timeline (Simplified) </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#key-differences-from-original-design> <span class=md-ellipsis> Key Differences from Original Design </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#simplified-design-principles> <span class=md-ellipsis> Simplified Design Principles </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#legend> <span class=md-ellipsis> Legend </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#implementation-highlights> <span class=md-ellipsis> Implementation Highlights </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../workflow-diagrams/ class=md-nav__link> <span class=md-ellipsis> DeepCritical Workflow - Simplified Magentic Architecture </span> </a> </li> <li class=md-nav__item> <a href=../agents/ class=md-nav__link> <span class=md-ellipsis> Agents Architecture </span> </a> </li> <li class=md-nav__item> <a href=../orchestrators/ class=md-nav__link> <span class=md-ellipsis> Orchestrators Architecture </span> </a> </li> <li class=md-nav__item> <a href=../tools/ class=md-nav__link> <span class=md-ellipsis> Tools Architecture </span> </a> </li> <li class=md-nav__item> <a href=../middleware/ class=md-nav__link> <span class=md-ellipsis> Middleware Architecture </span> </a> </li> <li class=md-nav__item> <a href=../services/ class=md-nav__link> <span class=md-ellipsis> Services Architecture </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--nested"> <input class="md-nav__toggle md-toggle md-toggle--indeterminate" id=__nav_6 type=checkbox> <label class=md-nav__link for=__nav_6 id=__nav_6_label tabindex=0> <span class=md-ellipsis> API Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav aria-expanded=false aria-labelledby=__nav_6_label class=md-nav data-md-level=1> <label class=md-nav__title for=__nav_6> <span class="md-nav__icon md-icon"></span> API Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../api/agents/ class=md-nav__link> <span class=md-ellipsis> Agents API Reference </span> </a> </li> <li class=md-nav__item> <a href=../../api/tools/ class=md-nav__link> <span class=md-ellipsis> Tools API Reference </span> </a> </li> <li class=md-nav__item> <a href=../../api/orchestrators/ class=md-nav__link> <span class=md-ellipsis> Orchestrators API Reference </span> </a> </li> <li class=md-nav__item> <a href=../../api/services/ class=md-nav__link> <span class=md-ellipsis> Services API Reference </span> </a> </li> <li class=md-nav__item> <a href=../../api/models/ class=md-nav__link> <span class=md-ellipsis> Models API Reference </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../../contributing/ class=md-nav__link> <span class=md-ellipsis> Contributing </span> </a> </li> <li class=md-nav__item> <a href=../../license/ class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class=md-nav__item> <a href=../../team/ class=md-nav__link> <span class=md-ellipsis> Team </span> </a> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav aria-label="Table of contents" class="md-nav md-nav--secondary"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a class=md-nav__link href=#1-high-level-magentic-workflow> <span class=md-ellipsis> 1. High-Level Magentic Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#2-magentic-manager-the-6-phase-cycle> <span class=md-ellipsis> 2. Magentic Manager: The 6-Phase Cycle </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#3-simplified-agent-architecture> <span class=md-ellipsis> 3. Simplified Agent Architecture </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#4-dynamic-workflow-example> <span class=md-ellipsis> 4. Dynamic Workflow Example </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#5-manager-decision-logic> <span class=md-ellipsis> 5. Manager Decision Logic </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#6-hypothesis-agent-workflow> <span class=md-ellipsis> 6. Hypothesis Agent Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#7-search-agent-workflow> <span class=md-ellipsis> 7. Search Agent Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#8-analysis-agent-workflow> <span class=md-ellipsis> 8. Analysis Agent Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#9-report-agent-workflow> <span class=md-ellipsis> 9. Report Agent Workflow </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#10-data-flow-event-streaming> <span class=md-ellipsis> 10. Data Flow &amp; Event Streaming </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#11-mcp-tool-architecture> <span class=md-ellipsis> 11. MCP Tool Architecture </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#12-progress-tracking-stall-detection> <span class=md-ellipsis> 12. Progress Tracking &amp; Stall Detection </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#13-gradio-ui-integration> <span class=md-ellipsis> 13. Gradio UI Integration </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#14-complete-system-context> <span class=md-ellipsis> 14. Complete System Context </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#15-workflow-timeline-simplified> <span class=md-ellipsis> 15. Workflow Timeline (Simplified) </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#key-differences-from-original-design> <span class=md-ellipsis> Key Differences from Original Design </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#simplified-design-principles> <span class=md-ellipsis> Simplified Design Principles </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#legend> <span class=md-ellipsis> Legend </span> </a> </li> <li class=md-nav__item> <a class=md-nav__link href=#implementation-highlights> <span class=md-ellipsis> Implementation Highlights </span> </a> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1 id=deepcritical-workflow-simplified-magentic-architecture>DeepCritical Workflow - Simplified Magentic Architecture<a class=headerlink href=#deepcritical-workflow-simplified-magentic-architecture title="Permanent link">¶</a></h1> <blockquote> <p><strong>Architecture Pattern</strong>: Microsoft Magentic Orchestration <strong>Design Philosophy</strong>: Simple, dynamic, manager-driven coordination <strong>Key Innovation</strong>: Intelligent manager replaces rigid sequential phases</p> </blockquote> <hr> <h2 id=1-high-level-magentic-workflow>1. High-Level Magentic Workflow<a class=headerlink href=#1-high-level-magentic-workflow title="Permanent link">¶</a></h2> <pre class=mermaid><code>flowchart TD
+    Start([User Query]) --&gt; Manager[Magentic Manager&lt;br/&gt;Plan • Select • Assess • Adapt]
+
+    Manager --&gt;|Plans| Task1[Task Decomposition]
+    Task1 --&gt; Manager
+
+    Manager --&gt;|Selects &amp; Executes| HypAgent[Hypothesis Agent]
+    Manager --&gt;|Selects &amp; Executes| SearchAgent[Search Agent]
+    Manager --&gt;|Selects &amp; Executes| AnalysisAgent[Analysis Agent]
+    Manager --&gt;|Selects &amp; Executes| ReportAgent[Report Agent]
+
+    HypAgent --&gt;|Results| Manager
+    SearchAgent --&gt;|Results| Manager
+    AnalysisAgent --&gt;|Results| Manager
+    ReportAgent --&gt;|Results| Manager
+
+    Manager --&gt;|Assesses Quality| Decision{Good Enough?}
+    Decision --&gt;|No - Refine| Manager
+    Decision --&gt;|No - Different Agent| Manager
+    Decision --&gt;|No - Stalled| Replan[Reset Plan]
+    Replan --&gt; Manager
+
+    Decision --&gt;|Yes| Synthesis[Synthesize Final Result]
+    Synthesis --&gt; Output([Research Report])
+
+    style Start fill:#e1f5e1
+    style Manager fill:#ffe6e6
+    style HypAgent fill:#fff4e6
+    style SearchAgent fill:#fff4e6
+    style AnalysisAgent fill:#fff4e6
+    style ReportAgent fill:#fff4e6
+    style Decision fill:#ffd6d6
+    style Synthesis fill:#d4edda
+    style Output fill:#e1f5e1</code></pre> <h2 id=2-magentic-manager-the-6-phase-cycle>2. Magentic Manager: The 6-Phase Cycle<a class=headerlink href=#2-magentic-manager-the-6-phase-cycle title="Permanent link">¶</a></h2> <pre class=mermaid><code>flowchart LR
+    P1[1. Planning&lt;br/&gt;Analyze task&lt;br/&gt;Create strategy] --&gt; P2[2. Agent Selection&lt;br/&gt;Pick best agent&lt;br/&gt;for subtask]
+    P2 --&gt; P3[3. Execution&lt;br/&gt;Run selected&lt;br/&gt;agent with tools]
+    P3 --&gt; P4[4. Assessment&lt;br/&gt;Evaluate quality&lt;br/&gt;Check progress]
+    P4 --&gt; Decision{Quality OK?&lt;br/&gt;Progress made?}
+    Decision --&gt;|Yes| P6[6. Synthesis&lt;br/&gt;Combine results&lt;br/&gt;Generate report]
+    Decision --&gt;|No| P5[5. Iteration&lt;br/&gt;Adjust plan&lt;br/&gt;Try again]
+    P5 --&gt; P2
+    P6 --&gt; Done([Complete])
+
+    style P1 fill:#fff4e6
+    style P2 fill:#ffe6e6
+    style P3 fill:#e6f3ff
+    style P4 fill:#ffd6d6
+    style P5 fill:#fff3cd
+    style P6 fill:#d4edda
+    style Done fill:#e1f5e1</code></pre> <h2 id=3-simplified-agent-architecture>3. Simplified Agent Architecture<a class=headerlink href=#3-simplified-agent-architecture title="Permanent link">¶</a></h2> <pre class=mermaid><code>graph TB
+    subgraph "Orchestration Layer"
+        Manager[Magentic Manager&lt;br/&gt;• Plans workflow&lt;br/&gt;• Selects agents&lt;br/&gt;• Assesses quality&lt;br/&gt;• Adapts strategy]
+        SharedContext[(Shared Context&lt;br/&gt;• Hypotheses&lt;br/&gt;• Search Results&lt;br/&gt;• Analysis&lt;br/&gt;• Progress)]
+        Manager &lt;--&gt; SharedContext
+    end
+
+    subgraph "Specialist Agents"
+        HypAgent[Hypothesis Agent&lt;br/&gt;• Domain understanding&lt;br/&gt;• Hypothesis generation&lt;br/&gt;• Testability refinement]
+        SearchAgent[Search Agent&lt;br/&gt;• Multi-source search&lt;br/&gt;• RAG retrieval&lt;br/&gt;• Result ranking]
+        AnalysisAgent[Analysis Agent&lt;br/&gt;• Evidence extraction&lt;br/&gt;• Statistical analysis&lt;br/&gt;• Code execution]
+        ReportAgent[Report Agent&lt;br/&gt;• Report assembly&lt;br/&gt;• Visualization&lt;br/&gt;• Citation formatting]
+    end
+
+    subgraph "MCP Tools"
+        WebSearch[Web Search&lt;br/&gt;PubMed • arXiv • bioRxiv]
+        CodeExec[Code Execution&lt;br/&gt;Sandboxed Python]
+        RAG[RAG Retrieval&lt;br/&gt;Vector DB • Embeddings]
+        Viz[Visualization&lt;br/&gt;Charts • Graphs]
+    end
+
+    Manager --&gt;|Selects &amp; Directs| HypAgent
+    Manager --&gt;|Selects &amp; Directs| SearchAgent
+    Manager --&gt;|Selects &amp; Directs| AnalysisAgent
+    Manager --&gt;|Selects &amp; Directs| ReportAgent
+
+    HypAgent --&gt; SharedContext
+    SearchAgent --&gt; SharedContext
+    AnalysisAgent --&gt; SharedContext
+    ReportAgent --&gt; SharedContext
+
+    SearchAgent --&gt; WebSearch
+    SearchAgent --&gt; RAG
+    AnalysisAgent --&gt; CodeExec
+    ReportAgent --&gt; CodeExec
+    ReportAgent --&gt; Viz
+
+    style Manager fill:#ffe6e6
+    style SharedContext fill:#ffe6f0
+    style HypAgent fill:#fff4e6
+    style SearchAgent fill:#fff4e6
+    style AnalysisAgent fill:#fff4e6
+    style ReportAgent fill:#fff4e6
+    style WebSearch fill:#e6f3ff
+    style CodeExec fill:#e6f3ff
+    style RAG fill:#e6f3ff
+    style Viz fill:#e6f3ff</code></pre> <h2 id=4-dynamic-workflow-example>4. Dynamic Workflow Example<a class=headerlink href=#4-dynamic-workflow-example title="Permanent link">¶</a></h2> <pre class=mermaid><code>sequenceDiagram
+    participant User
+    participant Manager
+    participant HypAgent
+    participant SearchAgent
+    participant AnalysisAgent
+    participant ReportAgent
+
+    User-&gt;&gt;Manager: "Research protein folding in Alzheimer's"
+
+    Note over Manager: PLAN: Generate hypotheses → Search → Analyze → Report
+
+    Manager-&gt;&gt;HypAgent: Generate 3 hypotheses
+    HypAgent--&gt;&gt;Manager: Returns 3 hypotheses
+    Note over Manager: ASSESS: Good quality, proceed
+
+    Manager-&gt;&gt;SearchAgent: Search literature for hypothesis 1
+    SearchAgent--&gt;&gt;Manager: Returns 15 papers
+    Note over Manager: ASSESS: Good results, continue
+
+    Manager-&gt;&gt;SearchAgent: Search for hypothesis 2
+    SearchAgent--&gt;&gt;Manager: Only 2 papers found
+    Note over Manager: ASSESS: Insufficient, refine search
+
+    Manager-&gt;&gt;SearchAgent: Refined query for hypothesis 2
+    SearchAgent--&gt;&gt;Manager: Returns 12 papers
+    Note over Manager: ASSESS: Better, proceed
+
+    Manager-&gt;&gt;AnalysisAgent: Analyze evidence for all hypotheses
+    AnalysisAgent--&gt;&gt;Manager: Returns analysis with code
+    Note over Manager: ASSESS: Complete, generate report
+
+    Manager-&gt;&gt;ReportAgent: Create comprehensive report
+    ReportAgent--&gt;&gt;Manager: Returns formatted report
+    Note over Manager: SYNTHESIZE: Combine all results
+
+    Manager-&gt;&gt;User: Final Research Report</code></pre> <h2 id=5-manager-decision-logic>5. Manager Decision Logic<a class=headerlink href=#5-manager-decision-logic title="Permanent link">¶</a></h2> <pre class=mermaid><code>flowchart TD
+    Start([Manager Receives Task]) --&gt; Plan[Create Initial Plan]
+
+    Plan --&gt; Select[Select Agent for Next Subtask]
+    Select --&gt; Execute[Execute Agent]
+    Execute --&gt; Collect[Collect Results]
+
+    Collect --&gt; Assess[Assess Quality &amp; Progress]
+
+    Assess --&gt; Q1{Quality Sufficient?}
+    Q1 --&gt;|No| Q2{Same Agent Can Fix?}
+    Q2 --&gt;|Yes| Feedback[Provide Specific Feedback]
+    Feedback --&gt; Execute
+    Q2 --&gt;|No| Different[Try Different Agent]
+    Different --&gt; Select
+
+    Q1 --&gt;|Yes| Q3{Task Complete?}
+    Q3 --&gt;|No| Q4{Making Progress?}
+    Q4 --&gt;|Yes| Select
+    Q4 --&gt;|No - Stalled| Replan[Reset Plan &amp; Approach]
+    Replan --&gt; Plan
+
+    Q3 --&gt;|Yes| Synth[Synthesize Final Result]
+    Synth --&gt; Done([Return Report])
+
+    style Start fill:#e1f5e1
+    style Plan fill:#fff4e6
+    style Select fill:#ffe6e6
+    style Execute fill:#e6f3ff
+    style Assess fill:#ffd6d6
+    style Q1 fill:#ffe6e6
+    style Q2 fill:#ffe6e6
+    style Q3 fill:#ffe6e6
+    style Q4 fill:#ffe6e6
+    style Synth fill:#d4edda
+    style Done fill:#e1f5e1</code></pre> <h2 id=6-hypothesis-agent-workflow>6. Hypothesis Agent Workflow<a class=headerlink href=#6-hypothesis-agent-workflow title="Permanent link">¶</a></h2> <pre class=mermaid><code>flowchart LR
+    Input[Research Query] --&gt; Domain[Identify Domain&lt;br/&gt;&amp; Key Concepts]
+    Domain --&gt; Context[Retrieve Background&lt;br/&gt;Knowledge]
+    Context --&gt; Generate[Generate 3-5&lt;br/&gt;Initial Hypotheses]
+    Generate --&gt; Refine[Refine for&lt;br/&gt;Testability]
+    Refine --&gt; Rank[Rank by&lt;br/&gt;Quality Score]
+    Rank --&gt; Output[Return Top&lt;br/&gt;Hypotheses]
+
+    Output --&gt; Struct[Hypothesis Structure:&lt;br/&gt;• Statement&lt;br/&gt;• Rationale&lt;br/&gt;• Testability Score&lt;br/&gt;• Data Requirements&lt;br/&gt;• Expected Outcomes]
+
+    style Input fill:#e1f5e1
+    style Output fill:#fff4e6
+    style Struct fill:#e6f3ff</code></pre> <h2 id=7-search-agent-workflow>7. Search Agent Workflow<a class=headerlink href=#7-search-agent-workflow title="Permanent link">¶</a></h2> <pre class=mermaid><code>flowchart TD
+    Input[Hypotheses] --&gt; Strategy[Formulate Search&lt;br/&gt;Strategy per Hypothesis]
+
+    Strategy --&gt; Multi[Multi-Source Search]
+
+    Multi --&gt; PubMed[PubMed Search&lt;br/&gt;via MCP]
+    Multi --&gt; ArXiv[arXiv Search&lt;br/&gt;via MCP]
+    Multi --&gt; BioRxiv[bioRxiv Search&lt;br/&gt;via MCP]
+
+    PubMed --&gt; Aggregate[Aggregate Results]
+    ArXiv --&gt; Aggregate
+    BioRxiv --&gt; Aggregate
+
+    Aggregate --&gt; Filter[Filter &amp; Rank&lt;br/&gt;by Relevance]
+    Filter --&gt; Dedup[Deduplicate&lt;br/&gt;Cross-Reference]
+    Dedup --&gt; Embed[Embed Documents&lt;br/&gt;via MCP]
+    Embed --&gt; Vector[(Vector DB)]
+    Vector --&gt; RAGRetrieval[RAG Retrieval&lt;br/&gt;Top-K per Hypothesis]
+    RAGRetrieval --&gt; Output[Return Contextualized&lt;br/&gt;Search Results]
+
+    style Input fill:#fff4e6
+    style Multi fill:#ffe6e6
+    style Vector fill:#ffe6f0
+    style Output fill:#e6f3ff</code></pre> <h2 id=8-analysis-agent-workflow>8. Analysis Agent Workflow<a class=headerlink href=#8-analysis-agent-workflow title="Permanent link">¶</a></h2> <pre class=mermaid><code>flowchart TD
+    Input1[Hypotheses] --&gt; Extract
+    Input2[Search Results] --&gt; Extract[Extract Evidence&lt;br/&gt;per Hypothesis]
+
+    Extract --&gt; Methods[Determine Analysis&lt;br/&gt;Methods Needed]
+
+    Methods --&gt; Branch{Requires&lt;br/&gt;Computation?}
+    Branch --&gt;|Yes| GenCode[Generate Python&lt;br/&gt;Analysis Code]
+    Branch --&gt;|No| Qual[Qualitative&lt;br/&gt;Synthesis]
+
+    GenCode --&gt; Execute[Execute Code&lt;br/&gt;via MCP Sandbox]
+    Execute --&gt; Interpret1[Interpret&lt;br/&gt;Results]
+    Qual --&gt; Interpret2[Interpret&lt;br/&gt;Findings]
+
+    Interpret1 --&gt; Synthesize[Synthesize Evidence&lt;br/&gt;Across Sources]
+    Interpret2 --&gt; Synthesize
+
+    Synthesize --&gt; Verdict[Determine Verdict&lt;br/&gt;per Hypothesis]
+    Verdict --&gt; Support[• Supported&lt;br/&gt;• Refuted&lt;br/&gt;• Inconclusive]
+    Support --&gt; Gaps[Identify Knowledge&lt;br/&gt;Gaps &amp; Limitations]
+    Gaps --&gt; Output[Return Analysis&lt;br/&gt;Report]
+
+    style Input1 fill:#fff4e6
+    style Input2 fill:#e6f3ff
+    style Execute fill:#ffe6e6
+    style Output fill:#e6ffe6</code></pre> <h2 id=9-report-agent-workflow>9. Report Agent Workflow<a class=headerlink href=#9-report-agent-workflow title="Permanent link">¶</a></h2> <pre class=mermaid><code>flowchart TD
+    Input1[Query] --&gt; Assemble
+    Input2[Hypotheses] --&gt; Assemble
+    Input3[Search Results] --&gt; Assemble
+    Input4[Analysis] --&gt; Assemble[Assemble Report&lt;br/&gt;Sections]
+
+    Assemble --&gt; Exec[Executive Summary]
+    Assemble --&gt; Intro[Introduction]
+    Assemble --&gt; Methods[Methods]
+    Assemble --&gt; Results[Results per&lt;br/&gt;Hypothesis]
+    Assemble --&gt; Discussion[Discussion]
+    Assemble --&gt; Future[Future Directions]
+    Assemble --&gt; Refs[References]
+
+    Results --&gt; VizCheck{Needs&lt;br/&gt;Visualization?}
+    VizCheck --&gt;|Yes| GenViz[Generate Viz Code]
+    GenViz --&gt; ExecViz[Execute via MCP&lt;br/&gt;Create Charts]
+    ExecViz --&gt; Combine
+    VizCheck --&gt;|No| Combine[Combine All&lt;br/&gt;Sections]
+
+    Exec --&gt; Combine
+    Intro --&gt; Combine
+    Methods --&gt; Combine
+    Discussion --&gt; Combine
+    Future --&gt; Combine
+    Refs --&gt; Combine
+
+    Combine --&gt; Format[Format Output]
+    Format --&gt; MD[Markdown]
+    Format --&gt; PDF[PDF]
+    Format --&gt; JSON[JSON]
+
+    MD --&gt; Output[Return Final&lt;br/&gt;Report]
+    PDF --&gt; Output
+    JSON --&gt; Output
+
+    style Input1 fill:#e1f5e1
+    style Input2 fill:#fff4e6
+    style Input3 fill:#e6f3ff
+    style Input4 fill:#e6ffe6
+    style Output fill:#d4edda</code></pre> <h2 id=10-data-flow-event-streaming>10. Data Flow &amp; Event Streaming<a class=headerlink href=#10-data-flow-event-streaming title="Permanent link">¶</a></h2> <pre class=mermaid><code>flowchart TD
+    User[👤 User] --&gt;|Research Query| UI[Gradio UI]
+    UI --&gt;|Submit| Manager[Magentic Manager]
+
+    Manager --&gt;|Event: Planning| UI
+    Manager --&gt;|Select Agent| HypAgent[Hypothesis Agent]
+    HypAgent --&gt;|Event: Delta/Message| UI
+    HypAgent --&gt;|Hypotheses| Context[(Shared Context)]
+
+    Context --&gt;|Retrieved by| Manager
+    Manager --&gt;|Select Agent| SearchAgent[Search Agent]
+    SearchAgent --&gt;|MCP Request| WebSearch[Web Search Tool]
+    WebSearch --&gt;|Results| SearchAgent
+    SearchAgent --&gt;|Event: Delta/Message| UI
+    SearchAgent --&gt;|Documents| Context
+    SearchAgent --&gt;|Embeddings| VectorDB[(Vector DB)]
+
+    Context --&gt;|Retrieved by| Manager
+    Manager --&gt;|Select Agent| AnalysisAgent[Analysis Agent]
+    AnalysisAgent --&gt;|MCP Request| CodeExec[Code Execution Tool]
+    CodeExec --&gt;|Results| AnalysisAgent
+    AnalysisAgent --&gt;|Event: Delta/Message| UI
+    AnalysisAgent --&gt;|Analysis| Context
+
+    Context --&gt;|Retrieved by| Manager
+    Manager --&gt;|Select Agent| ReportAgent[Report Agent]
+    ReportAgent --&gt;|MCP Request| CodeExec
+    ReportAgent --&gt;|Event: Delta/Message| UI
+    ReportAgent --&gt;|Report| Context
+
+    Manager --&gt;|Event: Final Result| UI
+    UI --&gt;|Display| User
+
+    style User fill:#e1f5e1
+    style UI fill:#e6f3ff
+    style Manager fill:#ffe6e6
+    style Context fill:#ffe6f0
+    style VectorDB fill:#ffe6f0
+    style WebSearch fill:#f0f0f0
+    style CodeExec fill:#f0f0f0</code></pre> <h2 id=11-mcp-tool-architecture>11. MCP Tool Architecture<a class=headerlink href=#11-mcp-tool-architecture title="Permanent link">¶</a></h2> <pre class=mermaid><code>graph TB
+    subgraph "Agent Layer"
+        Manager[Magentic Manager]
+        HypAgent[Hypothesis Agent]
+        SearchAgent[Search Agent]
+        AnalysisAgent[Analysis Agent]
+        ReportAgent[Report Agent]
+    end
+
+    subgraph "MCP Protocol Layer"
+        Registry[MCP Tool Registry&lt;br/&gt;• Discovers tools&lt;br/&gt;• Routes requests&lt;br/&gt;• Manages connections]
+    end
+
+    subgraph "MCP Servers"
+        Server1[Web Search Server&lt;br/&gt;localhost:8001&lt;br/&gt;• PubMed&lt;br/&gt;• arXiv&lt;br/&gt;• bioRxiv]
+        Server2[Code Execution Server&lt;br/&gt;localhost:8002&lt;br/&gt;• Sandboxed Python&lt;br/&gt;• Package management]
+        Server3[RAG Server&lt;br/&gt;localhost:8003&lt;br/&gt;• Vector embeddings&lt;br/&gt;• Similarity search]
+        Server4[Visualization Server&lt;br/&gt;localhost:8004&lt;br/&gt;• Chart generation&lt;br/&gt;• Plot rendering]
+    end
+
+    subgraph "External Services"
+        PubMed[PubMed API]
+        ArXiv[arXiv API]
+        BioRxiv[bioRxiv API]
+        Modal[Modal Sandbox]
+        ChromaDB[(ChromaDB)]
+    end
+
+    SearchAgent --&gt;|Request| Registry
+    AnalysisAgent --&gt;|Request| Registry
+    ReportAgent --&gt;|Request| Registry
+
+    Registry --&gt; Server1
+    Registry --&gt; Server2
+    Registry --&gt; Server3
+    Registry --&gt; Server4
+
+    Server1 --&gt; PubMed
+    Server1 --&gt; ArXiv
+    Server1 --&gt; BioRxiv
+    Server2 --&gt; Modal
+    Server3 --&gt; ChromaDB
+
+    style Manager fill:#ffe6e6
+    style Registry fill:#fff4e6
+    style Server1 fill:#e6f3ff
+    style Server2 fill:#e6f3ff
+    style Server3 fill:#e6f3ff
+    style Server4 fill:#e6f3ff</code></pre> <h2 id=12-progress-tracking-stall-detection>12. Progress Tracking &amp; Stall Detection<a class=headerlink href=#12-progress-tracking-stall-detection title="Permanent link">¶</a></h2> <pre class=mermaid><code>stateDiagram-v2
+    [*] --&gt; Initialization: User Query
+
+    Initialization --&gt; Planning: Manager starts
+
+    Planning --&gt; AgentExecution: Select agent
+
+    AgentExecution --&gt; Assessment: Collect results
+
+    Assessment --&gt; QualityCheck: Evaluate output
+
+    QualityCheck --&gt; AgentExecution: Poor quality&lt;br/&gt;(retry &lt; max_rounds)
+    QualityCheck --&gt; Planning: Poor quality&lt;br/&gt;(try different agent)
+    QualityCheck --&gt; NextAgent: Good quality&lt;br/&gt;(task incomplete)
+    QualityCheck --&gt; Synthesis: Good quality&lt;br/&gt;(task complete)
+
+    NextAgent --&gt; AgentExecution: Select next agent
+
+    state StallDetection &lt;&lt;choice&gt;&gt;
+    Assessment --&gt; StallDetection: Check progress
+    StallDetection --&gt; Planning: No progress&lt;br/&gt;(stall count &lt; max)
+    StallDetection --&gt; ErrorRecovery: No progress&lt;br/&gt;(max stalls reached)
+
+    ErrorRecovery --&gt; PartialReport: Generate partial results
+    PartialReport --&gt; [*]
+
+    Synthesis --&gt; FinalReport: Combine all outputs
+    FinalReport --&gt; [*]
+
+    note right of QualityCheck
+        Manager assesses:
+        • Output completeness
+        • Quality metrics
+        • Progress made
+    end note
+
+    note right of StallDetection
+        Stall = no new progress
+        after agent execution
+        Triggers plan reset
+    end note</code></pre> <h2 id=13-gradio-ui-integration>13. Gradio UI Integration<a class=headerlink href=#13-gradio-ui-integration title="Permanent link">¶</a></h2> <pre class=mermaid><code>graph TD
+    App[Gradio App&lt;br/&gt;DeepCritical Research Agent]
+
+    App --&gt; Input[Input Section]
+    App --&gt; Status[Status Section]
+    App --&gt; Output[Output Section]
+
+    Input --&gt; Query[Research Question&lt;br/&gt;Text Area]
+    Input --&gt; Controls[Controls]
+    Controls --&gt; MaxHyp[Max Hypotheses: 1-10]
+    Controls --&gt; MaxRounds[Max Rounds: 5-20]
+    Controls --&gt; Submit[Start Research Button]
+
+    Status --&gt; Log[Real-time Event Log&lt;br/&gt;• Manager planning&lt;br/&gt;• Agent selection&lt;br/&gt;• Execution updates&lt;br/&gt;• Quality assessment]
+    Status --&gt; Progress[Progress Tracker&lt;br/&gt;• Current agent&lt;br/&gt;• Round count&lt;br/&gt;• Stall count]
+
+    Output --&gt; Tabs[Tabbed Results]
+    Tabs --&gt; Tab1[Hypotheses Tab&lt;br/&gt;Generated hypotheses with scores]
+    Tabs --&gt; Tab2[Search Results Tab&lt;br/&gt;Papers &amp; sources found]
+    Tabs --&gt; Tab3[Analysis Tab&lt;br/&gt;Evidence &amp; verdicts]
+    Tabs --&gt; Tab4[Report Tab&lt;br/&gt;Final research report]
+    Tab4 --&gt; Download[Download Report&lt;br/&gt;MD / PDF / JSON]
+
+    Submit -.-&gt;|Triggers| Workflow[Magentic Workflow]
+    Workflow -.-&gt;|MagenticOrchestratorMessageEvent| Log
+    Workflow -.-&gt;|MagenticAgentDeltaEvent| Log
+    Workflow -.-&gt;|MagenticAgentMessageEvent| Log
+    Workflow -.-&gt;|MagenticFinalResultEvent| Tab4
+
+    style App fill:#e1f5e1
+    style Input fill:#fff4e6
+    style Status fill:#e6f3ff
+    style Output fill:#e6ffe6
+    style Workflow fill:#ffe6e6</code></pre> <h2 id=14-complete-system-context>14. Complete System Context<a class=headerlink href=#14-complete-system-context title="Permanent link">¶</a></h2> <pre class=mermaid><code>graph LR
+    User[👤 Researcher&lt;br/&gt;Asks research questions] --&gt;|Submits query| DC[DeepCritical&lt;br/&gt;Magentic Workflow]
+
+    DC --&gt;|Literature search| PubMed[PubMed API&lt;br/&gt;Medical papers]
+    DC --&gt;|Preprint search| ArXiv[arXiv API&lt;br/&gt;Scientific preprints]
+    DC --&gt;|Biology search| BioRxiv[bioRxiv API&lt;br/&gt;Biology preprints]
+    DC --&gt;|Agent reasoning| Claude[Claude API&lt;br/&gt;Sonnet 4 / Opus]
+    DC --&gt;|Code execution| Modal[Modal Sandbox&lt;br/&gt;Safe Python env]
+    DC --&gt;|Vector storage| Chroma[ChromaDB&lt;br/&gt;Embeddings &amp; RAG]
+
+    DC --&gt;|Deployed on| HF[HuggingFace Spaces&lt;br/&gt;Gradio 6.0]
+
+    PubMed --&gt;|Results| DC
+    ArXiv --&gt;|Results| DC
+    BioRxiv --&gt;|Results| DC
+    Claude --&gt;|Responses| DC
+    Modal --&gt;|Output| DC
+    Chroma --&gt;|Context| DC
+
+    DC --&gt;|Research report| User
+
+    style User fill:#e1f5e1
+    style DC fill:#ffe6e6
+    style PubMed fill:#e6f3ff
+    style ArXiv fill:#e6f3ff
+    style BioRxiv fill:#e6f3ff
+    style Claude fill:#ffd6d6
+    style Modal fill:#f0f0f0
+    style Chroma fill:#ffe6f0
+    style HF fill:#d4edda</code></pre> <h2 id=15-workflow-timeline-simplified>15. Workflow Timeline (Simplified)<a class=headerlink href=#15-workflow-timeline-simplified title="Permanent link">¶</a></h2> <pre class=mermaid><code>gantt
+    title DeepCritical Magentic Workflow - Typical Execution
+    dateFormat mm:ss
+    axisFormat %M:%S
+
+    section Manager Planning
+    Initial planning         :p1, 00:00, 10s
+
+    section Hypothesis Agent
+    Generate hypotheses      :h1, after p1, 30s
+    Manager assessment       :h2, after h1, 5s
+
+    section Search Agent
+    Search hypothesis 1      :s1, after h2, 20s
+    Search hypothesis 2      :s2, after s1, 20s
+    Search hypothesis 3      :s3, after s2, 20s
+    RAG processing          :s4, after s3, 15s
+    Manager assessment      :s5, after s4, 5s
+
+    section Analysis Agent
+    Evidence extraction     :a1, after s5, 15s
+    Code generation        :a2, after a1, 20s
+    Code execution         :a3, after a2, 25s
+    Synthesis              :a4, after a3, 20s
+    Manager assessment     :a5, after a4, 5s
+
+    section Report Agent
+    Report assembly        :r1, after a5, 30s
+    Visualization          :r2, after r1, 15s
+    Formatting             :r3, after r2, 10s
+
+    section Manager Synthesis
+    Final synthesis        :f1, after r3, 10s</code></pre> <hr> <h2 id=key-differences-from-original-design>Key Differences from Original Design<a class=headerlink href=#key-differences-from-original-design title="Permanent link">¶</a></h2> <table> <thead> <tr> <th>Aspect</th> <th>Original (Judge-in-Loop)</th> <th>New (Magentic)</th> </tr> </thead> <tbody> <tr> <td><strong>Control Flow</strong></td> <td>Fixed sequential phases</td> <td>Dynamic agent selection</td> </tr> <tr> <td><strong>Quality Control</strong></td> <td>Separate Judge Agent</td> <td>Manager assessment built-in</td> </tr> <tr> <td><strong>Retry Logic</strong></td> <td>Phase-level with feedback</td> <td>Agent-level with adaptation</td> </tr> <tr> <td><strong>Flexibility</strong></td> <td>Rigid 4-phase pipeline</td> <td>Adaptive workflow</td> </tr> <tr> <td><strong>Complexity</strong></td> <td>5 agents (including Judge)</td> <td>4 agents (no Judge)</td> </tr> <tr> <td><strong>Progress Tracking</strong></td> <td>Manual state management</td> <td>Built-in round/stall detection</td> </tr> <tr> <td><strong>Agent Coordination</strong></td> <td>Sequential handoff</td> <td>Manager-driven dynamic selection</td> </tr> <tr> <td><strong>Error Recovery</strong></td> <td>Retry same phase</td> <td>Try different agent or replan</td> </tr> </tbody> </table> <hr> <h2 id=simplified-design-principles>Simplified Design Principles<a class=headerlink href=#simplified-design-principles title="Permanent link">¶</a></h2> <ol> <li><strong>Manager is Intelligent</strong>: LLM-powered manager handles planning, selection, and quality assessment</li> <li><strong>No Separate Judge</strong>: Manager's assessment phase replaces dedicated Judge Agent</li> <li><strong>Dynamic Workflow</strong>: Agents can be called multiple times in any order based on need</li> <li><strong>Built-in Safety</strong>: max_round_count (15) and max_stall_count (3) prevent infinite loops</li> <li><strong>Event-Driven UI</strong>: Real-time streaming updates to Gradio interface</li> <li><strong>MCP-Powered Tools</strong>: All external capabilities via Model Context Protocol</li> <li><strong>Shared Context</strong>: Centralized state accessible to all agents</li> <li><strong>Progress Awareness</strong>: Manager tracks what's been done and what's needed</li> </ol> <hr> <h2 id=legend>Legend<a class=headerlink href=#legend title="Permanent link">¶</a></h2> <ul> <li>🔴 <strong>Red/Pink</strong>: Manager, orchestration, decision-making</li> <li>🟡 <strong>Yellow/Orange</strong>: Specialist agents, processing</li> <li>🔵 <strong>Blue</strong>: Data, tools, MCP services</li> <li>🟣 <strong>Purple/Pink</strong>: Storage, databases, state</li> <li>🟢 <strong>Green</strong>: User interactions, final outputs</li> <li>⚪ <strong>Gray</strong>: External services, APIs</li> </ul> <hr> <h2 id=implementation-highlights>Implementation Highlights<a class=headerlink href=#implementation-highlights title="Permanent link">¶</a></h2> <p><strong>Simple 4-Agent Setup:</strong> <div class=highlight><pre><span></span><code><a href=#__codelineno-0-1 id=__codelineno-0-1 name=__codelineno-0-1></a><span class=n>workflow</span> <span class=o>=</span> <span class=p>(</span>
+<a href=#__codelineno-0-2 id=__codelineno-0-2 name=__codelineno-0-2></a>    <span class=n>MagenticBuilder</span><span class=p>()</span>
+<a href=#__codelineno-0-3 id=__codelineno-0-3 name=__codelineno-0-3></a>    <span class=o>.</span><span class=n>participants</span><span class=p>(</span>
+<a href=#__codelineno-0-4 id=__codelineno-0-4 name=__codelineno-0-4></a>        <span class=n>hypothesis</span><span class=o>=</span><span class=n>HypothesisAgent</span><span class=p>(</span><span class=n>tools</span><span class=o>=</span><span class=p>[</span><span class=n>background_tool</span><span class=p>]),</span>
+<a href=#__codelineno-0-5 id=__codelineno-0-5 name=__codelineno-0-5></a>        <span class=n>search</span><span class=o>=</span><span class=n>SearchAgent</span><span class=p>(</span><span class=n>tools</span><span class=o>=</span><span class=p>[</span><span class=n>web_search</span><span class=p>,</span> <span class=n>rag_tool</span><span class=p>]),</span>
+<a href=#__codelineno-0-6 id=__codelineno-0-6 name=__codelineno-0-6></a>        <span class=n>analysis</span><span class=o>=</span><span class=n>AnalysisAgent</span><span class=p>(</span><span class=n>tools</span><span class=o>=</span><span class=p>[</span><span class=n>code_execution</span><span class=p>]),</span>
+<a href=#__codelineno-0-7 id=__codelineno-0-7 name=__codelineno-0-7></a>        <span class=n>report</span><span class=o>=</span><span class=n>ReportAgent</span><span class=p>(</span><span class=n>tools</span><span class=o>=</span><span class=p>[</span><span class=n>code_execution</span><span class=p>,</span> <span class=n>visualization</span><span class=p>])</span>
+<a href=#__codelineno-0-8 id=__codelineno-0-8 name=__codelineno-0-8></a>    <span class=p>)</span>
+<a href=#__codelineno-0-9 id=__codelineno-0-9 name=__codelineno-0-9></a>    <span class=o>.</span><span class=n>with_standard_manager</span><span class=p>(</span>
+<a href=#__codelineno-0-10 id=__codelineno-0-10 name=__codelineno-0-10></a>        <span class=n>chat_client</span><span class=o>=</span><span class=n>AnthropicClient</span><span class=p>(</span><span class=n>model</span><span class=o>=</span><span class=s2>"claude-sonnet-4"</span><span class=p>),</span>
+<a href=#__codelineno-0-11 id=__codelineno-0-11 name=__codelineno-0-11></a>        <span class=n>max_round_count</span><span class=o>=</span><span class=mi>15</span><span class=p>,</span>    <span class=c1># Prevent infinite loops</span>
+<a href=#__codelineno-0-12 id=__codelineno-0-12 name=__codelineno-0-12></a>        <span class=n>max_stall_count</span><span class=o>=</span><span class=mi>3</span>      <span class=c1># Detect stuck workflows</span>
+<a href=#__codelineno-0-13 id=__codelineno-0-13 name=__codelineno-0-13></a>    <span class=p>)</span>
+<a href=#__codelineno-0-14 id=__codelineno-0-14 name=__codelineno-0-14></a>    <span class=o>.</span><span class=n>build</span><span class=p>()</span>
+<a href=#__codelineno-0-15 id=__codelineno-0-15 name=__codelineno-0-15></a><span class=p>)</span>
+</code></pre></div></p> <p><strong>Manager handles quality assessment in its instructions:</strong> - Checks hypothesis quality (testable, novel, clear) - Validates search results (relevant, authoritative, recent) - Assesses analysis soundness (methodology, evidence, conclusions) - Ensures report completeness (all sections, proper citations)</p> <p>No separate Judge Agent needed - manager does it all!</p> <hr> <p><strong>Document Version</strong>: 2.0 (Magentic Simplified) <strong>Last Updated</strong>: 2025-11-24 <strong>Architecture</strong>: Microsoft Magentic Orchestration Pattern <strong>Agents</strong>: 4 (Hypothesis, Search, Analysis, Report) + 1 Manager <strong>License</strong>: MIT</p> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> <button class="md-top md-icon" data-md-component=top hidden type=button> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg> Back to top </button> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> <div class=md-copyright__highlight> Copyright © 2024 DeepCritical Team </div> Made with <a href=https://squidfunk.github.io/mkdocs-material/ rel=noopener target=_blank> Material for MkDocs </a> </div> <div class=md-social> <a class=md-social__link href=https://github.com/DeepCritical/GradioDemo rel=noopener target=_blank title=github.com> <svg viewbox="0 0 512 512" xmlns=http://www.w3.org/2000/svg><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg> </a> <a class=md-social__link href=https://huggingface.co/spaces/DataQuests/DeepCritical rel=noopener target=_blank title=huggingface.co> <svg viewbox="0 0 24 24" xmlns=http://www.w3.org/2000/svg><path d="M16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2m-5.15 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56M14.34 14H9.66c-.1-.66-.16-1.32-.16-2s.06-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2M12 19.96c-.83-1.2-1.5-2.53-1.91-3.96h3.82c-.41 1.43-1.08 2.76-1.91 3.96M8 8H5.08A7.92 7.92 0 0 1 9.4 4.44C8.8 5.55 8.35 6.75 8 8m-2.92 8H8c.35 1.25.8 2.45 1.4 3.56A8 8 0 0 1 5.08 16m-.82-2C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2M12 4.03c.83 1.2 1.5 2.54 1.91 3.97h-3.82c.41-1.43 1.08-2.77 1.91-3.97M18.92 8h-2.95a15.7 15.7 0 0 0-1.38-3.56c1.84.63 3.37 1.9 4.33 3.56M12 2C6.47 2 2 6.5 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"></path></svg> </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.annotate", "content.code.copy"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script> <script src=../../assets/javascripts/bundle.e71a0d61.min.js></script> </body> </html>
