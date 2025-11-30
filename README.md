@@ -94,8 +94,7 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
 
 - MarioAderman
 - Josephrp
-[ZJ](https://huggingface.co/ZijianGuan)
-  > "As a developer, stepping into the interdisciplinary world of bioinformatics has been a transformative experience. Building **DeepCritical**—my first experience of building an autonomous deep research agent and its prototypes—opened my eyes to the immense potential of combining code with clinical science. It has been incredibly rewarding to learn directly from the gurus of the agent-building industry, adopting their architectural patterns to create something that doesn't just process data, but reasons, hypothesizes, and helps solve real human problems."
+[ZJ](https://www.linkedin.com/in/zijianguan/)
 
 
 ## Acknowledgements
