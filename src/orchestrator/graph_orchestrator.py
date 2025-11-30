@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import structlog
 
+from src.legacy_orchestrator import JudgeHandlerProtocol, SearchHandlerProtocol
 from src.agent_factory.agents import (
     create_input_parser_agent,
     create_knowledge_gap_agent,
@@ -121,6 +122,8 @@ class GraphOrchestrator:
         max_iterations: int = 5,
         max_time_minutes: int = 10,
         use_graph: bool = True,
+        search_handler: SearchHandlerProtocol | None = None,
+        judge_handler: JudgeHandlerProtocol | None = None,
     ) -> None:
         """
         Initialize graph orchestrator.
@@ -130,11 +133,15 @@ class GraphOrchestrator:
             max_iterations: Maximum iterations per loop
             max_time_minutes: Maximum time per loop
             use_graph: Whether to use graph execution (True) or agent chains (False)
+            search_handler: Optional shared search handler for agent chains
+            judge_handler: Optional shared judge handler for agent chains
         """
         self.mode = mode
         self.max_iterations = max_iterations
         self.max_time_minutes = max_time_minutes
         self.use_graph = use_graph
+        self.search_handler = search_handler
+        self.judge_handler = judge_handler
         self.logger = logger
 
         # Initialize flows (for backward compatibility)
@@ -248,6 +255,7 @@ class GraphOrchestrator:
                 self._iterative_flow = IterativeResearchFlow(
                     max_iterations=self.max_iterations,
                     max_time_minutes=self.max_time_minutes,
+                    judge_handler=self.judge_handler,
                 )
 
             try:
@@ -798,7 +806,7 @@ class GraphOrchestrator:
         )
 
         # Create judge handler for iterative flows
-        judge_handler = create_judge_handler()
+        judge_handler = self.judge_handler or create_judge_handler()
 
         # Create and execute iterative research flows for each section
         async def run_section_research(section_index: int) -> str:
@@ -953,6 +961,8 @@ def create_graph_orchestrator(
     max_iterations: int = 5,
     max_time_minutes: int = 10,
     use_graph: bool = True,
+    search_handler: SearchHandlerProtocol | None = None,
+    judge_handler: JudgeHandlerProtocol | None = None,
 ) -> GraphOrchestrator:
     """
     Factory function to create a graph orchestrator.
@@ -962,6 +972,8 @@ def create_graph_orchestrator(
         max_iterations: Maximum iterations per loop
         max_time_minutes: Maximum time per loop
         use_graph: Whether to use graph execution (True) or agent chains (False)
+        search_handler: Optional shared search handler for agent chains
+        judge_handler: Optional shared judge handler for agent chains
 
     Returns:
         Configured GraphOrchestrator instance
@@ -971,4 +983,6 @@ def create_graph_orchestrator(
         max_iterations=max_iterations,
         max_time_minutes=max_time_minutes,
         use_graph=use_graph,
+        search_handler=search_handler,
+        judge_handler=judge_handler,
     )

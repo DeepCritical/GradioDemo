@@ -28,11 +28,20 @@ def _get_magentic_orchestrator_class() -> Any:
         ) from e
 
 
+def _get_graph_orchestrator_class() -> Any:
+    """Import GraphOrchestrator lazily to avoid circular imports."""
+    from src.orchestrator.graph_orchestrator import GraphOrchestrator
+
+    return GraphOrchestrator
+
+
 def create_orchestrator(
     search_handler: SearchHandlerProtocol | None = None,
     judge_handler: JudgeHandlerProtocol | None = None,
     config: OrchestratorConfig | None = None,
     mode: Literal["simple", "magentic", "advanced"] | None = None,
+    graph_mode: Literal["iterative", "deep", "auto"] | None = None,
+    use_graph: bool | None = None,
 ) -> Any:
     """
     Create an orchestrator instance.
@@ -42,12 +51,32 @@ def create_orchestrator(
         judge_handler: The judge handler (required for simple mode)
         config: Optional configuration
         mode: "simple", "magentic", "advanced" or None (auto-detect)
+        graph_mode: Graph research mode (iterative/deep/auto)
+        use_graph: Whether to run the graph orchestrator path
 
     Returns:
         Orchestrator instance
     """
     effective_mode = _determine_mode(mode)
-    logger.info("Creating orchestrator", mode=effective_mode)
+    effective_graph_mode = graph_mode or "auto"
+    use_graph_execution = settings.use_graph_execution if use_graph is None else use_graph
+    logger.info(
+        "Creating orchestrator",
+        mode=effective_mode,
+        use_graph=use_graph_execution,
+        graph_mode=effective_graph_mode,
+    )
+
+    if use_graph_execution:
+        orchestrator_cls = _get_graph_orchestrator_class()
+        return orchestrator_cls(
+            mode=effective_graph_mode,  # type: ignore[arg-type]
+            max_iterations=config.max_iterations if config else settings.default_iterations_limit,
+            max_time_minutes=settings.default_time_limit_minutes,
+            use_graph=use_graph_execution,
+            search_handler=search_handler,
+            judge_handler=judge_handler,
+        )
 
     if effective_mode == "advanced":
         orchestrator_cls = _get_magentic_orchestrator_class()

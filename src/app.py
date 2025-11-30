@@ -40,7 +40,9 @@ def configure_orchestrator(
     oauth_token: str | None = None,
     hf_model: str | None = None,
     hf_provider: str | None = None,
-) -> tuple[Any, str]:
+    graph_mode: str = "auto",
+    use_graph: bool | None = None,
+) -> tuple[Any, str, bool]:
     """
     Create an orchestrator instance.
 
@@ -50,14 +52,20 @@ def configure_orchestrator(
         oauth_token: Optional OAuth token from HuggingFace login
         hf_model: Selected HuggingFace model ID
         hf_provider: Selected inference provider
+        graph_mode: Research graph mode ("iterative", "deep", or "auto")
+        use_graph: Whether to enable graph execution
 
     Returns:
-        Tuple of (Orchestrator instance, backend_name)
+        Tuple of (Orchestrator instance, backend_name, graph_enabled)
     """
     # Create orchestrator config
     config = OrchestratorConfig(
         max_iterations=10,
         max_results_per_tool=10,
+    )
+
+    graph_execution_enabled = (
+        settings.use_graph_execution if use_graph is None else bool(use_graph)
     )
 
     # Create search tools
@@ -127,9 +135,11 @@ def configure_orchestrator(
         judge_handler=judge_handler,
         config=config,
         mode=mode,  # type: ignore
+        graph_mode=graph_mode,
+        use_graph=graph_execution_enabled,
     )
 
-    return orchestrator, backend_info
+    return orchestrator, backend_info, graph_execution_enabled
 
 
 def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
@@ -412,6 +422,8 @@ async def research_agent(
     mode: str = "simple",
     hf_model: str | None = None,
     hf_provider: str | None = None,
+    graph_mode: str = "auto",
+    use_graph: bool | None = None,
     oauth_token: gr.OAuthToken | None = None,
     oauth_profile: gr.OAuthProfile | None = None,
 ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
@@ -424,6 +436,8 @@ async def research_agent(
         mode: Orchestrator mode ("simple" or "advanced")
         hf_model: Selected HuggingFace model ID (from dropdown)
         hf_provider: Selected inference provider (from dropdown)
+        graph_mode: Research graph execution mode
+        use_graph: Whether to enable graph execution
         oauth_token: Gradio OAuth token (None if user not logged in)
         oauth_profile: Gradio OAuth profile (None if user not logged in)
 
@@ -497,17 +511,26 @@ async def research_agent(
         model_id = hf_model if hf_model and hf_model.strip() else None
         provider_name = hf_provider if hf_provider and hf_provider.strip() else None
 
-        orchestrator, backend_name = configure_orchestrator(
+        orchestrator, backend_name, graph_execution_enabled = configure_orchestrator(
             use_mock=False,  # Never use mock in production - HF Inference is the free fallback
             mode=effective_mode,
             oauth_token=token_value,  # Use extracted token value
             hf_model=model_id,  # None will use defaults in configure_orchestrator
             hf_provider=provider_name,  # None will use defaults in configure_orchestrator
+            graph_mode=graph_mode,
+            use_graph=use_graph,
         )
 
         yield {
             "role": "assistant",
             "content": f"🧠 **Backend**: {backend_name}\n\n",
+        }
+
+        yield {
+            "role": "assistant",
+            "content": (
+                "🛰️ **Graph Execution**: Enabled\n\n" if graph_execution_enabled else "🛰️ **Graph Execution**: Disabled\n\n"
+            ),
         }
 
         # Handle orchestrator events
@@ -552,10 +575,8 @@ def create_demo() -> gr.Blocks:
                 "- Europe PMC"
             )
         
-        # Create settings components (hidden - used only for additional_inputs)
-        # Model/provider selection removed to avoid dropdown value mismatch errors
-        # Settings will use defaults from configure_orchestrator
-        with gr.Row(visible=False):
+        # Create settings components (shown in settings accordion)
+        with gr.Row():
             mode_radio = gr.Radio(
                 choices=["simple", "advanced"],
                 value="simple",
@@ -565,16 +586,30 @@ def create_demo() -> gr.Blocks:
 
             # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
             # These will be empty by default and use defaults in configure_orchestrator
-            hf_model_dropdown = gr.Textbox(
-                value="",  # Empty string - will be converted to None in research_agent
-                label="🤖 Reasoning Model",
-                visible=False,  # Hidden from UI
+            with gr.Column(visible=False):
+                hf_model_dropdown = gr.Textbox(
+                    value="",  # Empty string - will be converted to None in research_agent
+                    label="🤖 Reasoning Model",
+                    visible=False,  # Hidden from UI
+                )
+
+                hf_provider_dropdown = gr.Textbox(
+                    value="",  # Empty string - will be converted to None in research_agent
+                    label="⚡ Inference Provider",
+                    visible=False,  # Hidden from UI
+                )
+
+            graph_mode_radio = gr.Radio(
+                choices=["auto", "iterative", "deep"],
+                value="auto",
+                label="Research Graph Mode",
+                info="Auto detects iterative vs deep graph flows",
             )
 
-            hf_provider_dropdown = gr.Textbox(
-                value="",  # Empty string - will be converted to None in research_agent
-                label="⚡ Inference Provider",
-                visible=False,  # Hidden from UI
+            use_graph_checkbox = gr.Checkbox(
+                value=settings.use_graph_execution,
+                label="Enable Graph Execution",
+                info="Run the graph orchestrator with event streaming",
             )
 
         # Chat interface with model/provider selection
@@ -593,7 +628,7 @@ def create_demo() -> gr.Blocks:
             ),
             examples=[
                 # When additional_inputs are provided, examples must be lists of lists
-                # Each inner list: [message, mode, hf_model, hf_provider]
+                # Each inner list: [message, mode, hf_model, hf_provider, graph_mode, use_graph]
                 # Using actual model IDs and provider names from inference_models.py
                 # Note: Provider is optional - if empty, HF will auto-select
                 # These examples will NOT run at startup - users must click them after logging in
@@ -602,18 +637,24 @@ def create_demo() -> gr.Blocks:
                     "simple",
                     "Qwen/Qwen3-Next-80B-A3B-Thinking",
                     "",
+                    "auto",
+                    True,
                 ],
                 [
                     "Is metformin effective for treating cancer?",
                     "simple",
                     "Qwen/Qwen3-235B-A22B-Instruct-2507",
                     "",
+                    "iterative",
+                    True,
                 ],
                 [
                     "What medications show promise for Long COVID treatment?",
                     "simple",
                     "zai-org/GLM-4.5-Air",
                     "nebius",
+                    "deep",
+                    True,
                 ],
             ],
             cache_examples=False,  # CRITICAL: Disable example caching to prevent examples from running at startup
@@ -623,6 +664,8 @@ def create_demo() -> gr.Blocks:
                 mode_radio,
                 hf_model_dropdown,
                 hf_provider_dropdown,
+                graph_mode_radio,
+                use_graph_checkbox,
                 # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters
                 # when user is logged in - they should NOT be added to additional_inputs
             ],
