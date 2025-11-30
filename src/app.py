@@ -540,9 +540,9 @@ def create_demo() -> gr.Blocks:
                 "**Sign in with Hugging Face** to access AI models and research tools.\n\n"
                 "This application requires authentication to use the inference API."
             )
-            login_button = gr.LoginButton("Sign in with Hugging Face")
+            gr.LoginButton("Sign in with Hugging Face")
             gr.Markdown("---")
-            gr.Markdown("### ℹ️ About")
+            gr.Markdown("### ℹ️ About")  # noqa: RUF001
             gr.Markdown(
                 "AI-Powered Drug Repurposing Agent that searches:\n"
                 "- PubMed\n"

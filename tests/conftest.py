@@ -1,5 +1,6 @@
 """Shared pytest fixtures for all tests."""
 
+import os
 from unittest.mock import AsyncMock
 
 import pytest
@@ -53,17 +54,6 @@ def sample_evidence():
             relevance=0.72,
         ),
     ]
-
-
-# Global timeout for integration tests to prevent hanging
-@pytest.fixture(scope="session", autouse=True)
-def integration_test_timeout():
-    """Set default timeout for integration tests."""
-    # This fixture runs automatically for all tests
-    # Individual tests can override with asyncio.wait_for
-    pass
-
-
 
 
 # Global timeout for integration tests to prevent hanging
