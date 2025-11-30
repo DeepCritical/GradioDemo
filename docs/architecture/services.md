@@ -141,8 +141,11 @@ if settings.has_openai_key:
 
 
 
+<<<<<<< Updated upstream
 
 
 
 
 
+=======
+>>>>>>> Stashed changes

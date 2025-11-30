@@ -150,8 +150,3 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 
 
 
-
-
-
-
-
