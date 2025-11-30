@@ -1,11 +1,8 @@
 """Serper web search tool using Serper API for Google searches."""
 
-from typing import Any
-
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from src.tools.base import SearchTool
 from src.tools.query_utils import preprocess_query
 from src.tools.rate_limiter import get_serper_limiter
 from src.tools.vendored.serper_client import SerperClient
@@ -116,8 +113,3 @@ class SerperWebSearchTool:
         except Exception as e:
             logger.error("Unexpected error in Serper search", error=str(e), query=final_query)
             raise SearchError(f"Serper search failed: {e}") from e
-
-
-
-
-

@@ -1,11 +1,8 @@
 """SearchXNG web search tool using SearchXNG API for Google searches."""
 
-from typing import Any
-
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from src.tools.base import SearchTool
 from src.tools.query_utils import preprocess_query
 from src.tools.rate_limiter import get_searchxng_limiter
 from src.tools.vendored.searchxng_client import SearchXNGClient
@@ -116,8 +113,3 @@ class SearchXNGWebSearchTool:
         except Exception as e:
             logger.error("Unexpected error in SearchXNG search", error=str(e), query=final_query)
             raise SearchError(f"SearchXNG search failed: {e}") from e
-
-
-
-
-

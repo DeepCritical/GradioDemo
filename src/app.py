@@ -925,7 +925,6 @@ def create_demo() -> gr.Blocks:
         gr.ChatInterface(
             fn=research_agent,
             multimodal=True,  # Enable multimodal input (text + images + audio)
-            file_types=["image", "audio", "video"],  # Explicitly enable image, audio, and video file types
             title="🔬 The DETERMINATOR",
             description=(
                 "*Generalist Deep Research Agent — stops at nothing until finding precise answers to complex questions*\n\n"

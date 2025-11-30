@@ -4,7 +4,6 @@ Vendored and adapted from folder/tools/web_search.py.
 """
 
 import os
-from typing import List, Optional
 
 import aiohttp
 import structlog
@@ -18,7 +17,7 @@ logger = structlog.get_logger()
 class SearchXNGClient:
     """A client for the SearchXNG API to perform Google searches."""
 
-    def __init__(self, host: Optional[str] = None) -> None:
+    def __init__(self, host: str | None = None) -> None:
         """Initialize SearchXNG client.
 
         Args:
@@ -41,7 +40,7 @@ class SearchXNGClient:
 
     async def search(
         self, query: str, filter_for_relevance: bool = False, max_results: int = 5
-    ) -> List[WebpageSnippet]:
+    ) -> list[WebpageSnippet]:
         """Perform a search using SearchXNG API.
 
         Args:
@@ -95,8 +94,3 @@ class SearchXNGClient:
         except Exception as e:
             logger.error("Unexpected error in SearchXNG search", error=str(e), query=query)
             raise SearchError(f"SearchXNG search failed: {e}") from e
-
-
-
-
-

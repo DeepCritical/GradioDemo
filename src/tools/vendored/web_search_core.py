@@ -6,7 +6,6 @@ and HTML text extraction used by web search tools.
 
 import asyncio
 import ssl
-from typing import List, Optional
 
 import aiohttp
 import structlog
@@ -39,12 +38,10 @@ class WebpageSnippet(BaseModel):
 
     url: str = Field(description="The URL of the webpage")
     title: str = Field(description="The title of the webpage")
-    description: Optional[str] = Field(
-        default=None, description="A short description of the webpage"
-    )
+    description: str | None = Field(default=None, description="A short description of the webpage")
 
 
-async def scrape_urls(items: List[WebpageSnippet]) -> List[ScrapeResult]:
+async def scrape_urls(items: list[WebpageSnippet]) -> list[ScrapeResult]:
     """Fetch text content from provided URLs.
 
     Args:
@@ -65,7 +62,7 @@ async def scrape_urls(items: List[WebpageSnippet]) -> List[ScrapeResult]:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Filter out errors and return successful results
-        successful_results: List[ScrapeResult] = []
+        successful_results: list[ScrapeResult] = []
         for result in results:
             if isinstance(result, ScrapeResult):
                 successful_results.append(result)
@@ -127,7 +124,7 @@ async def fetch_and_process_url(
             url=item.url,
             title=item.title,
             description=item.description or "",
-            text=f"Error fetching content: {str(e)}",
+            text=f"Error fetching content: {e!s}",
         )
 
 
@@ -202,8 +199,3 @@ def is_valid_url(url: str) -> bool:
     if any(ext in url for ext in restricted_extensions):
         return False
     return True
-
-
-
-
-
