@@ -533,12 +533,24 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
-    with gr.Blocks(title="🧬 DeepCritical") as demo:
-        # Add login button - place directly in Blocks context (before ChatInterface)
-        # Reference: https://huggingface.co/spaces/multimodalart/nano-banana
-        # LoginButton automatically handles OAuth flow when placed in Blocks context
-        # Must be placed directly without containers to ensure proper rendering
-        login_button = gr.LoginButton()
+    with gr.Blocks(title="🧬 DeepCritical", fill_height=True) as demo:
+        # Add sidebar with login button and information
+        # Reference: Working implementation pattern from Gradio docs
+        with gr.Sidebar():
+            gr.Markdown("# 🔐 Authentication")
+            gr.Markdown(
+                "**Sign in with Hugging Face** to access AI models and research tools.\n\n"
+                "This application requires authentication to use the inference API."
+            )
+            login_button = gr.LoginButton("Sign in with Hugging Face")
+            gr.Markdown("---")
+            gr.Markdown("### ℹ️ About")
+            gr.Markdown(
+                "AI-Powered Drug Repurposing Agent that searches:\n"
+                "- PubMed\n"
+                "- ClinicalTrials.gov\n"
+                "- Europe PMC"
+            )
         
         # Create settings components (hidden - used only for additional_inputs)
         # Model/provider selection removed to avoid dropdown value mismatch errors
