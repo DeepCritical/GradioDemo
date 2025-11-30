@@ -180,3 +180,4 @@ return {
 
 The infrastructure to handle file outputs in Gradio is in place, but the agents themselves do not yet write files. They would need to be enhanced or wrapped to add file writing capability.
 
+

@@ -21,6 +21,7 @@ from src.prompts.judge import (
     format_user_prompt,
 )
 from src.utils.config import settings
+from src.utils.exceptions import ConfigurationError
 from src.utils.models import AssessmentDetails, Evidence, JudgeAssessment
 
 logger = structlog.get_logger()
