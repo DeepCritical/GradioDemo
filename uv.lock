@@ -1166,6 +1166,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "agent-framework-core" },
+    { name = "aiohttp" },
     { name = "anthropic" },
     { name = "beautifulsoup4" },
     { name = "chromadb" },
@@ -1182,6 +1183,7 @@ dependencies = [
     { name = "llama-index-llms-huggingface-api" },
     { name = "llama-index-llms-openai" },
     { name = "llama-index-vector-stores-chroma" },
+    { name = "lxml" },
     { name = "modal" },
     { name = "numpy" },
     { name = "openai" },
@@ -1249,6 +1251,7 @@ dev = [
 requires-dist = [
     { name = "agent-framework-core", specifier = ">=1.0.0b251120,<2.0.0" },
     { name = "agent-framework-core", marker = "extra == 'magentic'", specifier = ">=1.0.0b251120,<2.0.0" },
+    { name = "aiohttp", specifier = ">=3.13.2" },
     { name = "anthropic", specifier = ">=0.18.0" },
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "chromadb", specifier = ">=0.4.0" },
@@ -1271,6 +1274,7 @@ requires-dist = [
     { name = "llama-index-llms-openai", marker = "extra == 'modal'", specifier = ">=0.6.9" },
     { name = "llama-index-vector-stores-chroma", specifier = ">=0.5.3" },
     { name = "llama-index-vector-stores-chroma", marker = "extra == 'modal'" },
+    { name = "lxml", specifier = ">=6.0.2" },
     { name = "mkdocs", marker = "extra == 'dev'", specifier = ">=1.6.0" },
     { name = "mkdocs-codeinclude-plugin", marker = "extra == 'dev'", specifier = ">=0.2.0" },
     { name = "mkdocs-material", marker = "extra == 'dev'", specifier = ">=9.0.0" },

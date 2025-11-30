@@ -15,7 +15,9 @@ anthropic>=0.18.0
 
 # HTTP & Parsing
 httpx>=0.27
+aiohttp>=3.13.2  # Required for website crawling
 beautifulsoup4>=4.12
+lxml>=6.0.2  # Required for BeautifulSoup lxml parser (faster than html.parser)
 xmltodict>=0.13
 
 # HuggingFace Hub

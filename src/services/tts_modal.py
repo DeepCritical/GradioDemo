@@ -33,7 +33,32 @@ def _get_modal_app() -> Any:
         try:
             import modal
 
-            _modal_app = modal.App.lookup("deepcritical-tts", create_if_missing=True)
+            # Validate Modal credentials before attempting lookup
+            if not settings.modal_available:
+                raise ConfigurationError(
+                    "Modal credentials not configured. Set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET environment variables."
+                )
+
+            # Validate token ID format (Modal token IDs are typically UUIDs or specific formats)
+            token_id = settings.modal_token_id
+            if token_id:
+                # Basic validation: token ID should not be empty and should be a reasonable length
+                if len(token_id.strip()) < 10:
+                    raise ConfigurationError(
+                        f"Modal token ID appears malformed (too short: {len(token_id)} chars). "
+                        "Token ID should be a valid Modal token identifier."
+                    )
+
+            try:
+                _modal_app = modal.App.lookup("deepcritical-tts", create_if_missing=True)
+            except Exception as e:
+                error_msg = str(e).lower()
+                if "token" in error_msg or "malformed" in error_msg or "invalid" in error_msg:
+                    raise ConfigurationError(
+                        f"Modal token validation failed: {e}. "
+                        "Please check that MODAL_TOKEN_ID and MODAL_TOKEN_SECRET are correctly set."
+                    ) from e
+                raise
         except ImportError as e:
             raise ConfigurationError(
                 "Modal SDK not installed. Run: uv sync or pip install modal>=0.63.0"
@@ -68,8 +93,6 @@ def _setup_modal_function() -> None:
         return  # Already set up
 
     try:
-        import modal
-
         app = _get_modal_app()
         tts_image = _get_tts_image()
 
@@ -100,8 +123,8 @@ def _setup_modal_function() -> None:
 
             # Import Kokoro inside function (lazy load)
             try:
-                from kokoro import KModel, KPipeline
                 import torch
+                from kokoro import KModel, KPipeline
 
                 # Initialize model (cached on GPU)
                 model = KModel().to("cuda").eval()
@@ -126,11 +149,13 @@ def _setup_modal_function() -> None:
 
         # Store function reference for remote calls
         _tts_function = kokoro_tts_function
-        
+
         # Verify function is properly attached to app
         if not hasattr(app, kokoro_tts_function.__name__):
-            logger.warning("modal_function_not_attached", function_name=kokoro_tts_function.__name__)
-        
+            logger.warning(
+                "modal_function_not_attached", function_name=kokoro_tts_function.__name__
+            )
+
         logger.info(
             "modal_tts_function_setup_complete",
             gpu=gpu_type,
@@ -196,7 +221,9 @@ class ModalTTSExecutor:
             # Call the GPU function remotely
             result = _tts_function.remote(text, voice, speed)
 
-            logger.info("tts_synthesis_complete", sample_rate=result[0], audio_shape=result[1].shape)
+            logger.info(
+                "tts_synthesis_complete", sample_rate=result[0], audio_shape=result[1].shape
+            )
 
             return result
 
@@ -257,4 +284,3 @@ def get_tts_service() -> TTSService:
         ConfigurationError: If Modal credentials not configured
     """
     return TTSService()
-

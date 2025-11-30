@@ -506,7 +506,8 @@ class GraphOrchestrator:
         current_node_id = self._graph.entry_node
         iteration = 0
 
-        while current_node_id and current_node_id not in self._graph.exit_nodes:
+        # Execute nodes until we reach an exit node
+        while current_node_id:
             # Check budget
             if not context.budget_tracker.can_continue("graph_execution"):
                 self.logger.warning("Budget exceeded, exiting graph execution")
@@ -537,26 +538,27 @@ class GraphOrchestrator:
                 )
                 break
 
+            # Check if current node is an exit node - if so, we're done
+            if current_node_id in self._graph.exit_nodes:
+                break
+
             # Get next node(s)
             next_nodes = self._get_next_node(current_node_id, context)
 
             if not next_nodes:
-                # No more nodes, check if we're at exit
-                if current_node_id in self._graph.exit_nodes:
-                    break
-                # Otherwise, we've reached a dead end
+                # No more nodes, we've reached a dead end
                 self.logger.warning("Reached dead end in graph", node_id=current_node_id)
                 break
 
             current_node_id = next_nodes[0]  # For now, take first next node (handle parallel later)
 
-        # Final event
+        # Final event - get result from the last executed node (which should be an exit node)
         final_result = context.get_node_result(current_node_id) if current_node_id else None
-        
+
         # Check if final result contains file information
         event_data: dict[str, Any] = {"mode": self.mode, "iterations": iteration}
         message: str = "Research completed"
-        
+
         if isinstance(final_result, str):
             message = final_result
         elif isinstance(final_result, dict):
@@ -574,7 +576,7 @@ class GraphOrchestrator:
                 elif isinstance(files, str):
                     event_data["files"] = [files]
                     message = final_result.get("message", "Report generated. Download available.")
-        
+
         yield AgentEvent(
             type="complete",
             message=message,
@@ -628,7 +630,7 @@ class GraphOrchestrator:
         Returns:
             Agent execution result
         """
-        # Special handling for synthesizer node
+        # Special handling for synthesizer node (deep research)
         if node.node_id == "synthesizer":
             # Call LongWriterAgent.write_report() directly instead of using agent.run()
             from src.agent_factory.agents import create_long_writer_agent
@@ -691,6 +693,62 @@ class GraphOrchestrator:
                 }
             return final_report
 
+        # Special handling for writer node (iterative research)
+        if node.node_id == "writer":
+            # Call WriterAgent.write_report() directly instead of using agent.run()
+            # Collect all findings from workflow state
+            from src.agent_factory.agents import create_writer_agent
+
+            # Get all evidence from workflow state and convert to findings string
+            evidence = context.state.evidence
+            if evidence:
+                # Convert evidence to findings format (similar to conversation.get_all_findings())
+                findings_parts: list[str] = []
+                for ev in evidence:
+                    finding = f"**{ev.title}**\n{ev.content}"
+                    if ev.url:
+                        finding += f"\nSource: {ev.url}"
+                    findings_parts.append(finding)
+                all_findings = "\n\n".join(findings_parts)
+            else:
+                all_findings = "No findings available yet."
+
+            # Get WriterAgent instance and call write_report directly
+            writer_agent = create_writer_agent(oauth_token=self.oauth_token)
+            final_report = await writer_agent.write_report(
+                query=query,
+                findings=all_findings,
+                output_length="",
+                output_instructions="",
+            )
+
+            # Estimate tokens (rough estimate)
+            estimated_tokens = len(final_report) // 4  # Rough token estimate
+            context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
+
+            # Save report to file if enabled
+            file_path: str | None = None
+            try:
+                file_service = self._get_file_service()
+                if file_service:
+                    file_path = file_service.save_report(
+                        report_content=final_report,
+                        query=query,
+                    )
+                    self.logger.info("Report saved to file", file_path=file_path)
+            except Exception as e:
+                # Don't fail the entire operation if file saving fails
+                self.logger.warning("Failed to save report to file", error=str(e))
+                file_path = None
+
+            # Return dict with file path if available, otherwise return string (backward compatible)
+            if file_path:
+                return {
+                    "message": final_report,
+                    "file": file_path,
+                }
+            return final_report
+
         # Standard agent execution
         # Prepare input based on node type
         if node.node_id == "planner":
@@ -718,14 +776,14 @@ class GraphOrchestrator:
                 )
                 # Return a minimal fallback ReportPlan
                 from src.utils.models import ReportPlan, ReportPlanSection
-                
+
                 # Extract query from input_data if possible
                 fallback_query = query
                 if isinstance(input_data, str):
                     # Try to extract query from input string
                     if "QUERY:" in input_data:
                         fallback_query = input_data.split("QUERY:")[-1].strip()
-                
+
                 return ReportPlan(
                     background_context="",
                     report_outline=[
@@ -740,7 +798,44 @@ class GraphOrchestrator:
             raise
 
         # Transform output if needed
-        output = result.output
+        # Defensively extract output - handle various result formats
+        output = result.output if hasattr(result, "output") else result
+
+        # Handle case where output might be a tuple (from pydantic-ai validation errors)
+        if isinstance(output, tuple):
+            # If tuple contains a dict-like structure, try to reconstruct the object
+            if len(output) == 2 and isinstance(output[0], str) and output[0] == "research_complete":
+                # This is likely a validation error format: ('research_complete', False)
+                # Try to get the actual output from result
+                self.logger.warning(
+                    "Agent result output is a tuple, attempting to extract actual output",
+                    node_id=node.node_id,
+                    tuple_value=output,
+                )
+                # Try to get output from result attributes
+                if hasattr(result, "data"):
+                    output = result.data
+                elif hasattr(result, "response"):
+                    output = result.response
+                else:
+                    # Last resort: try to reconstruct from tuple
+                    # This shouldn't happen, but handle gracefully
+                    from src.utils.models import KnowledgeGapOutput
+
+                    if node.node_id == "knowledge_gap":
+                        output = KnowledgeGapOutput(
+                            research_complete=output[1] if len(output) > 1 else False,
+                            outstanding_gaps=[],
+                        )
+                    else:
+                        # For other nodes, log error and use fallback
+                        self.logger.error(
+                            "Cannot reconstruct output from tuple",
+                            node_id=node.node_id,
+                            tuple_value=output,
+                        )
+                        raise ValueError(f"Cannot extract output from tuple: {output}")
+
         if node.output_transformer:
             output = node.output_transformer(output)
 
