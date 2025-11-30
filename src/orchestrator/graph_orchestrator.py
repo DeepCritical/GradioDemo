@@ -32,6 +32,7 @@ from src.legacy_orchestrator import JudgeHandlerProtocol, SearchHandlerProtocol
 from src.middleware.budget_tracker import BudgetTracker
 from src.middleware.state_machine import WorkflowState, init_workflow_state
 from src.orchestrator.research_flow import DeepResearchFlow, IterativeResearchFlow
+from src.services.report_file_service import ReportFileService, get_report_file_service
 from src.utils.models import AgentEvent
 
 if TYPE_CHECKING:
@@ -147,6 +148,9 @@ class GraphOrchestrator:
         self.oauth_token = oauth_token
         self.logger = logger
 
+        # Initialize file service (lazy if not provided)
+        self._file_service: ReportFileService | None = None
+
         # Initialize flows (for backward compatibility)
         self._iterative_flow: IterativeResearchFlow | None = None
         self._deep_flow: DeepResearchFlow | None = None
@@ -154,6 +158,21 @@ class GraphOrchestrator:
         # Graph execution components (lazy initialization)
         self._graph: ResearchGraph | None = None
         self._budget_tracker: BudgetTracker | None = None
+
+    def _get_file_service(self) -> ReportFileService | None:
+        """
+        Get file service instance (lazy initialization).
+
+        Returns:
+            ReportFileService instance or None if disabled
+        """
+        if self._file_service is None:
+            try:
+                self._file_service = get_report_file_service()
+            except Exception as e:
+                self.logger.warning("Failed to initialize file service", error=str(e))
+                return None
+        return self._file_service
 
     async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
         """
@@ -649,6 +668,27 @@ class GraphOrchestrator:
             estimated_tokens = len(final_report) // 4  # Rough token estimate
             context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
 
+            # Save report to file if enabled
+            file_path: str | None = None
+            try:
+                file_service = self._get_file_service()
+                if file_service:
+                    file_path = file_service.save_report(
+                        report_content=final_report,
+                        query=query,
+                    )
+                    self.logger.info("Report saved to file", file_path=file_path)
+            except Exception as e:
+                # Don't fail the entire operation if file saving fails
+                self.logger.warning("Failed to save report to file", error=str(e))
+                file_path = None
+
+            # Return dict with file path if available, otherwise return string (backward compatible)
+            if file_path:
+                return {
+                    "message": final_report,
+                    "file": file_path,
+                }
             return final_report
 
         # Standard agent execution

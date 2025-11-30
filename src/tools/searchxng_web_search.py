@@ -118,3 +118,5 @@ class SearchXNGWebSearchTool:
             raise SearchError(f"SearchXNG search failed: {e}") from e
 
 
+
+

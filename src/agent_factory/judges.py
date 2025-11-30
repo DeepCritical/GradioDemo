@@ -33,34 +33,61 @@ def get_model(oauth_token: str | None = None) -> Any:
     Explicitly passes API keys from settings to avoid requiring
     users to export environment variables manually.
 
-    Priority: If OAuth token is available, prefer HuggingFace (even if provider is set to OpenAI).
+    Priority order:
+    1. HuggingFace (if OAuth token or API key available - preferred for free tier)
+    2. OpenAI (if API key available)
+    3. Anthropic (if API key available)
+    
+    If OAuth token is available, prefer HuggingFace (even if provider is set to OpenAI).
     This ensures users logged in via HuggingFace Spaces get the free tier.
 
     Args:
         oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
+
+    Returns:
+        Configured Pydantic AI model
+
+    Raises:
+        ConfigurationError: If no LLM provider is available
     """
     # Priority: oauth_token > settings.hf_token > settings.huggingface_api_key
     effective_hf_token = oauth_token or settings.hf_token or settings.huggingface_api_key
 
-    # HuggingFaceProvider requires a token - cannot use None
-    if not effective_hf_token:
-        raise ConfigurationError(
-            "HuggingFace token required. Please either:\n"
-            "1. Log in via HuggingFace OAuth (recommended for Spaces)\n"
-            "2. Set HF_TOKEN environment variable\n"
-            "3. Set huggingface_api_key in settings"
+    # Try HuggingFace first (preferred for free tier)
+    if effective_hf_token:
+        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
+        hf_provider = HuggingFaceProvider(api_key=effective_hf_token)
+        logger.info(
+            "using_huggingface_with_token",
+            has_oauth=bool(oauth_token),
+            has_settings_token=bool(settings.hf_token or settings.huggingface_api_key),
+            model=model_name,
         )
+        return HuggingFaceModel(model_name, provider=hf_provider)
 
-    # Always use HuggingFace with available token
-    model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-    hf_provider = HuggingFaceProvider(api_key=effective_hf_token)
-    logger.info(
-        "using_huggingface_with_token",
-        has_oauth=bool(oauth_token),
-        has_settings_token=bool(settings.hf_token or settings.huggingface_api_key),
-        model=model_name,
+    # Fallback to OpenAI if available
+    if settings.has_openai_key:
+        assert settings.openai_api_key is not None  # Type narrowing
+        model_name = settings.openai_model
+        openai_provider = OpenAIProvider(api_key=settings.openai_api_key)
+        logger.info("using_openai", model=model_name)
+        return OpenAIModel(model_name, provider=openai_provider)
+
+    # Fallback to Anthropic if available
+    if settings.has_anthropic_key:
+        assert settings.anthropic_api_key is not None  # Type narrowing
+        model_name = settings.anthropic_model
+        anthropic_provider = AnthropicProvider(api_key=settings.anthropic_api_key)
+        logger.info("using_anthropic", model=model_name)
+        return AnthropicModel(model_name, provider=anthropic_provider)
+
+    # No provider available
+    raise ConfigurationError(
+        "No LLM provider available. Please configure one of:\n"
+        "1. HuggingFace: Log in via OAuth (recommended for Spaces) or set HF_TOKEN\n"
+        "2. OpenAI: Set OPENAI_API_KEY environment variable\n"
+        "3. Anthropic: Set ANTHROPIC_API_KEY environment variable"
     )
-    return HuggingFaceModel(model_name, provider=hf_provider)
 
 
 class JudgeHandler:
