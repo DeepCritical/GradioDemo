@@ -36,6 +36,7 @@ class MultimodalService:
         files: list[FileData] | None = None,
         audio_input: tuple[int, Any] | None = None,
         hf_token: str | None = None,
+        prepend_multimodal: bool = True,
     ) -> str:
         """Process multimodal input (text + images + audio) and return combined text.
 
@@ -44,26 +45,24 @@ class MultimodalService:
             files: List of uploaded files (images, audio, etc.)
             audio_input: Audio input tuple (sample_rate, audio_array)
             hf_token: HuggingFace token for authenticated Gradio Spaces
+            prepend_multimodal: If True, prepend audio/image text to original text; otherwise append
 
         Returns:
             Combined text from all inputs
         """
+        multimodal_parts: list[str] = []
         text_parts: list[str] = []
 
-        # Add original text if present
-        if text and text.strip():
-            text_parts.append(text.strip())
-
-        # Process audio input
+        # Process audio input first
         if audio_input is not None and settings.enable_audio_input:
             try:
                 transcribed = await self.audio.process_audio_input(audio_input, hf_token=hf_token)
                 if transcribed:
-                    text_parts.append(f"[Audio transcription: {transcribed}]")
+                    multimodal_parts.append(transcribed)
             except Exception as e:
                 logger.warning("audio_processing_failed", error=str(e))
 
-        # Process uploaded files
+        # Process uploaded files (images and audio files)
         if files:
             for file_data in files:
                 file_path = file_data.path if isinstance(file_data, FileData) else str(file_data)
@@ -73,7 +72,7 @@ class MultimodalService:
                     try:
                         extracted_text = await self.ocr.extract_text(file_path, hf_token=hf_token)
                         if extracted_text:
-                            text_parts.append(f"[Image OCR: {extracted_text}]")
+                            multimodal_parts.append(extracted_text)
                     except Exception as e:
                         logger.warning("image_ocr_failed", file_path=file_path, error=str(e))
 
@@ -86,8 +85,20 @@ class MultimodalService:
                     except Exception as e:
                         logger.warning("audio_file_processing_failed", file_path=file_path, error=str(e))
 
+        # Add original text if present
+        if text and text.strip():
+            text_parts.append(text.strip())
+
+        # Combine parts based on prepend_multimodal flag
+        if prepend_multimodal:
+            # Prepend: multimodal content first, then original text
+            combined_parts = multimodal_parts + text_parts
+        else:
+            # Append: original text first, then multimodal content
+            combined_parts = text_parts + multimodal_parts
+
         # Combine all text parts
-        combined_text = "\n\n".join(text_parts) if text_parts else ""
+        combined_text = "\n\n".join(combined_parts) if combined_parts else ""
 
         logger.info(
             "multimodal_input_processed",

@@ -501,16 +501,24 @@ async def research_agent(
     audio_input_data: tuple[int, np.ndarray] | None = None
 
     if isinstance(message, dict):
-        # MultimodalPostprocess format: {"text": str, "files": list[FileData]}
+        # MultimodalPostprocess format: {"text": str, "files": list[FileData], "audio": tuple | None}
         processed_text = message.get("text", "") or ""
         files = message.get("files", [])
+        # Check for audio input in message (Gradio may include it as a separate field)
+        audio_input_data = message.get("audio") or None
 
-        # Process multimodal input (images, audio files)
-        if files and settings.enable_image_input:
+        # Process multimodal input (images, audio files, audio input)
+        # Always process if we have files or audio input, not just when enable_image_input is True
+        if files or (audio_input_data is not None and settings.enable_audio_input):
             try:
                 multimodal_service = get_multimodal_service()
+                # Prepend audio/image text to original text (prepend_multimodal=True)
                 processed_text = await multimodal_service.process_multimodal_input(
-                    processed_text, files=files, hf_token=token_value
+                    processed_text,
+                    files=files,
+                    audio_input=audio_input_data,
+                    hf_token=token_value,
+                    prepend_multimodal=True,  # Prepend audio/image text to text input
                 )
             except Exception as e:
                 logger.warning("multimodal_processing_failed", error=str(e))
@@ -636,8 +644,8 @@ def create_demo() -> gr.Blocks:
             )
         
         # Create settings components
-        # Mode selector is visible in Settings accordion
-        # Model/provider selection hidden to avoid dropdown value mismatch errors
+        # Note: ChatInterface doesn't support additional_inputs_accordion parameter in Gradio 6.0
+        # Components are created outside accordion context to ensure they're accessible for additional_inputs
         mode_radio = gr.Radio(
             choices=["simple", "advanced", "iterative", "deep", "auto"],
             value="simple",
@@ -666,56 +674,59 @@ def create_demo() -> gr.Blocks:
             info="Enable graph-based workflow execution",
         )
 
-        # TTS Configuration (in Settings accordion)
-        with gr.Accordion("🎤 Audio Settings", open=False, visible=settings.enable_audio_output):
-            tts_voice_dropdown = gr.Dropdown(
-                choices=[
-                    "af_heart",
-                    "af_bella",
-                    "af_nicole",
-                    "af_aoede",
-                    "af_kore",
-                    "af_sarah",
-                    "af_nova",
-                    "af_sky",
-                    "af_alloy",
-                    "af_jessica",
-                    "af_river",
-                    "am_michael",
-                    "am_fenrir",
-                    "am_puck",
-                    "am_echo",
-                    "am_eric",
-                    "am_liam",
-                    "am_onyx",
-                    "am_santa",
-                    "am_adam",
-                ],
-                value=settings.tts_voice,
-                label="Voice",
-                info="Select TTS voice (American English voices: af_*, am_*)",
-            )
-            tts_speed_slider = gr.Slider(
-                minimum=0.5,
-                maximum=2.0,
-                value=settings.tts_speed,
-                step=0.1,
-                label="Speech Speed",
-                info="Adjust TTS speech speed (0.5x to 2.0x)",
-            )
-            tts_gpu_dropdown = gr.Dropdown(
-                choices=["T4", "A10", "A100", "L4", "L40S"],
-                value=settings.tts_gpu or "T4",
-                label="GPU Type",
-                info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
-                visible=settings.modal_available,
-                interactive=False,  # GPU type set at function definition time, requires restart
-            )
-            enable_audio_output_checkbox = gr.Checkbox(
-                value=settings.enable_audio_output,
-                label="Enable Audio Output",
-                info="Generate audio responses using TTS",
-            )
+        # TTS Configuration components
+        # Note: These are created outside accordion to ensure accessibility for additional_inputs
+        # The ChatInterface will display them, but grouping in accordion is not supported via additional_inputs_accordion
+        tts_voice_dropdown = gr.Dropdown(
+            choices=[
+                "af_heart",
+                "af_bella",
+                "af_nicole",
+                "af_aoede",
+                "af_kore",
+                "af_sarah",
+                "af_nova",
+                "af_sky",
+                "af_alloy",
+                "af_jessica",
+                "af_river",
+                "am_michael",
+                "am_fenrir",
+                "am_puck",
+                "am_echo",
+                "am_eric",
+                "am_liam",
+                "am_onyx",
+                "am_santa",
+                "am_adam",
+            ],
+            value=settings.tts_voice,
+            label="TTS Voice",
+            info="Select TTS voice (American English voices: af_*, am_*)",
+            visible=settings.enable_audio_output,
+        )
+        tts_speed_slider = gr.Slider(
+            minimum=0.5,
+            maximum=2.0,
+            value=settings.tts_speed,
+            step=0.1,
+            label="TTS Speech Speed",
+            info="Adjust TTS speech speed (0.5x to 2.0x)",
+            visible=settings.enable_audio_output,
+        )
+        tts_gpu_dropdown = gr.Dropdown(
+            choices=["T4", "A10", "A100", "L4", "L40S"],
+            value=settings.tts_gpu or "T4",
+            label="TTS GPU Type",
+            info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
+            visible=settings.modal_available and settings.enable_audio_output,
+            interactive=False,  # GPU type set at function definition time, requires restart
+        )
+        enable_audio_output_checkbox = gr.Checkbox(
+            value=settings.enable_audio_output,
+            label="Enable Audio Output",
+            info="Generate audio responses using TTS",
+        )
 
         # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
         # These will be empty by default and use defaults in configure_orchestrator
@@ -787,7 +798,8 @@ def create_demo() -> gr.Blocks:
             ],
             cache_examples=False,  # CRITICAL: Disable example caching to prevent examples from running at startup
             # Examples will only run when user explicitly clicks them (after login)
-            additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=True, visible=True),
+            # Note: additional_inputs_accordion is not a valid parameter in Gradio 6.0 ChatInterface
+            # Components will be displayed in the order provided
             additional_inputs=[
                 mode_radio,
                 hf_model_dropdown,
