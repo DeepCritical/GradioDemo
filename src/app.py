@@ -813,6 +813,50 @@ def create_demo() -> gr.Blocks:
                     label="Use Graph Execution",
                     info="Enable graph-based workflow execution",
                 )
+                
+                # Model and Provider selection
+                gr.Markdown("### 🤖 Model & Provider")
+                
+                # Popular models list
+                popular_models = [
+                    "",  # Empty = use default
+                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    "zai-org/GLM-4.5-Air",
+                    "meta-llama/Llama-3.1-8B-Instruct",
+                    "meta-llama/Llama-3.1-70B-Instruct",
+                    "mistralai/Mistral-7B-Instruct-v0.2",
+                    "google/gemma-2-9b-it",
+                ]
+                
+                hf_model_dropdown = gr.Dropdown(
+                    choices=popular_models,
+                    value="",  # Empty string - will be converted to None in research_agent
+                    label="Reasoning Model",
+                    info="Select a HuggingFace model (leave empty for default)",
+                    allow_custom_value=True,  # Allow users to type custom model IDs
+                )
+
+                # Provider list from README
+                providers = [
+                    "",  # Empty string = auto-select
+                    "nebius",
+                    "together",
+                    "scaleway",
+                    "hyperbolic",
+                    "novita",
+                    "nscale",
+                    "sambanova",
+                    "ovh",
+                    "fireworks",
+                ]
+                
+                hf_provider_dropdown = gr.Dropdown(
+                    choices=providers,
+                    value="",  # Empty string - will be converted to None in research_agent
+                    label="Inference Provider",
+                    info="Select inference provider (leave empty for auto-select)",
+                )
             
             # Multimodal Input Configuration Accordion
             with gr.Accordion("📷 Multimodal Input", open=False):
@@ -887,21 +931,6 @@ def create_demo() -> gr.Blocks:
                     label="🔊 Audio Response",
                     visible=settings.enable_audio_output,
                 )
-
-        # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
-        # These will be empty by default and use defaults in configure_orchestrator
-        with gr.Row(visible=False):
-            hf_model_dropdown = gr.Textbox(
-                value="",  # Empty string - will be converted to None in research_agent
-                label="🤖 Reasoning Model",
-                visible=False,  # Hidden from UI
-            )
-
-            hf_provider_dropdown = gr.Textbox(
-                value="",  # Empty string - will be converted to None in research_agent
-                label="⚡ Inference Provider",
-                visible=False,  # Hidden from UI
-            )
         
         # Update TTS component visibility based on enable_audio_output_checkbox
         # This must be after audio_output is defined

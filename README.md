@@ -80,9 +80,11 @@ Please join us @ https://hf.co/spaces/DataQuests/DeepCritical where we will keep
 - fully configurable models and huggingface providers with login
 - easily extensible and hackable
 - uses Gradio a lot (clients, mcp , third party huggingface tools)
-- Modal for text-to-speech
-- Braxel for statistical analysis
+- Modal for text-to-speech (remote gpu for "local model")
+- Braxel for statistical analysis (code execution sandbox)
 - Open Source Models from around the 🌐World
+- Using Google Gemma , Qwen , Zai , Llama , Mistral Reasoning Models
+- Nebius , Together , Scaleway , Hyperbolic, Novita , nscale ,  Sambanova , ovh , fireworks, all supported and configurable.
 - 💖 made with love
 
 
@@ -102,8 +104,8 @@ Please join us @ https://hf.co/spaces/DataQuests/DeepCritical where we will keep
 > 
 > This project was produced with passion by a group of volunteers please check out or documentation and readmes and please do keep reading below for our story
 >
-> - 📚 **Documentation**: See our [technical documentation](deepcritical.github.io/GradioDemo/) for detailed information
-> - 📖 **Complete README**: Check out the [full README](.github/README.md) for setup, configuration, and contribution guidelines
+> - 📚 **Documentation**: See our [technical documentation](https://deepcritical.github.io/GradioDemo/) for detailed information
+> - 📖 **Complete README**: Check out the Github [full README](.github/README.md) for setup, configuration, and contribution guidelines
 > - 🏆 **Hackathon Submission**: Keep reading below for more information about our MCP Hackathon submission
 
 
