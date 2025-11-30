@@ -380,3 +380,4 @@ result["content"] = f"{content}\n\n{file_links}"
 - ✅ Settings are well-organized and intuitive
 - ✅ No regressions in existing functionality
 
+

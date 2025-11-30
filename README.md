@@ -85,7 +85,6 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
   -
   -
   -
-  -
 
 ## Important information
 
@@ -119,9 +118,7 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
 
 ### Team
 - **ZJ**
-    - 🤗 [HuggingFace](https://huggingface.co/Tonic)
     - 💼 [LinkedIn](https://www.linkedin.com/in/josephpollack/)
-    - 𝕏 [X](https://x.com/josephpollack)
 - **Mario Aderman**
     - 🤗 [HuggingFace](https://huggingface.co/SeasonalFall84)
     - 💼 [LinkedIn](https://www.linkedin.com/in/mario-aderman/)
