@@ -191,10 +191,67 @@ class ReportFileService:
             # TODO: Implement HTML conversion
             logger.warning("HTML format not yet implemented, saving markdown only")
         elif self.file_format == "md_pdf":
-            # TODO: Implement PDF conversion
-            logger.warning("PDF format not yet implemented, saving markdown only")
+            # Generate PDF from markdown
+            try:
+                pdf_path = self._save_pdf(report_content, query=query)
+                saved_files["pdf"] = pdf_path
+                logger.info("PDF report generated", pdf_path=pdf_path)
+            except Exception as e:
+                logger.warning(
+                    "PDF generation failed, markdown saved",
+                    error=str(e),
+                    md_path=md_path,
+                )
+                # Continue without PDF - markdown is already saved
 
         return saved_files
+
+    def _save_pdf(
+        self,
+        report_content: str,
+        query: str | None = None,
+    ) -> str:
+        """
+        Save report as PDF.
+
+        Args:
+            report_content: The report content (markdown string)
+            query: Optional query string for filename generation
+
+        Returns:
+            Path to saved PDF file
+
+        Raises:
+            ConfigurationError: If PDF generation fails
+        """
+        try:
+            from src.utils.md_to_pdf import md_to_pdf
+        except ImportError as e:
+            raise ConfigurationError(
+                "PDF generation requires md2pdf. Install with: pip install md2pdf"
+            ) from e
+
+        # Generate PDF filename
+        pdf_filename = self._generate_filename(query=query, extension=".pdf")
+        pdf_filename = self._sanitize_filename(pdf_filename)
+        pdf_path = self.output_directory / pdf_filename
+
+        try:
+            # Convert markdown to PDF
+            md_to_pdf(report_content, str(pdf_path))
+
+            logger.info(
+                "PDF report saved",
+                path=str(pdf_path),
+                size=pdf_path.stat().st_size if pdf_path.exists() else 0,
+                query=query[:50] if query else None,
+            )
+
+            return str(pdf_path)
+
+        except Exception as e:
+            logger.error("Failed to generate PDF", error=str(e), path=str(pdf_path))
+            raise ConfigurationError(f"Failed to generate PDF: {e}") from e
 
     def _sanitize_filename(self, filename: str) -> str:
         """

@@ -743,27 +743,40 @@ class GraphOrchestrator:
             estimated_tokens = len(final_report) // 4  # Rough token estimate
             context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
 
-            # Save report to file if enabled
+            # Save report to file if enabled (may generate multiple formats)
             file_path: str | None = None
+            pdf_path: str | None = None
             try:
                 file_service = self._get_file_service()
                 if file_service:
-                    file_path = file_service.save_report(
+                    # Use save_report_multiple_formats to get both MD and PDF if enabled
+                    saved_files = file_service.save_report_multiple_formats(
                         report_content=final_report,
                         query=query,
                     )
-                    self.logger.info("Report saved to file", file_path=file_path)
+                    file_path = saved_files.get("md")
+                    pdf_path = saved_files.get("pdf")
+                    self.logger.info(
+                        "Report saved to file",
+                        md_path=file_path,
+                        pdf_path=pdf_path,
+                    )
             except Exception as e:
                 # Don't fail the entire operation if file saving fails
                 self.logger.warning("Failed to save report to file", error=str(e))
                 file_path = None
+                pdf_path = None
 
-            # Return dict with file path if available, otherwise return string (backward compatible)
+            # Return dict with file paths if available, otherwise return string (backward compatible)
             if file_path:
-                return {
+                result: dict[str, Any] = {
                     "message": final_report,
                     "file": file_path,
                 }
+                # Add PDF path if generated
+                if pdf_path:
+                    result["files"] = [file_path, pdf_path]
+                return result
             return final_report
 
         # Special handling for writer node (iterative research)
@@ -799,27 +812,40 @@ class GraphOrchestrator:
             estimated_tokens = len(final_report) // 4  # Rough token estimate
             context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
 
-            # Save report to file if enabled
+            # Save report to file if enabled (may generate multiple formats)
             file_path: str | None = None
+            pdf_path: str | None = None
             try:
                 file_service = self._get_file_service()
                 if file_service:
-                    file_path = file_service.save_report(
+                    # Use save_report_multiple_formats to get both MD and PDF if enabled
+                    saved_files = file_service.save_report_multiple_formats(
                         report_content=final_report,
                         query=query,
                     )
-                    self.logger.info("Report saved to file", file_path=file_path)
+                    file_path = saved_files.get("md")
+                    pdf_path = saved_files.get("pdf")
+                    self.logger.info(
+                        "Report saved to file",
+                        md_path=file_path,
+                        pdf_path=pdf_path,
+                    )
             except Exception as e:
                 # Don't fail the entire operation if file saving fails
                 self.logger.warning("Failed to save report to file", error=str(e))
                 file_path = None
+                pdf_path = None
 
-            # Return dict with file path if available, otherwise return string (backward compatible)
+            # Return dict with file paths if available, otherwise return string (backward compatible)
             if file_path:
-                return {
+                result: dict[str, Any] = {
                     "message": final_report,
                     "file": file_path,
                 }
+                # Add PDF path if generated
+                if pdf_path:
+                    result["files"] = [file_path, pdf_path]
+                return result
             return final_report
 
         # Standard agent execution
