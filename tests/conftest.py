@@ -1,5 +1,6 @@
 """Shared pytest fixtures for all tests."""
 
+import os
 from unittest.mock import AsyncMock
 
 import pytest

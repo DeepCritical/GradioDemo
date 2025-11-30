@@ -18,7 +18,7 @@ dependencies = [
     "xmltodict>=0.13", # PubMed XML -> dict
     "huggingface-hub>=0.20.0", # Hugging Face Inference API
     # UI
-    "gradio[mcp]>=6.0.0", # Chat interface with MCP server support (6.0 required for css in launch())
+    "gradio[mcp,oauth]>=6.0.0", # Chat interface with MCP server support (6.0 required for css in launch())
     # Utils
     "python-dotenv>=1.0", # .env loading
     "tenacity>=8.2", # Retry logic
@@ -31,6 +31,7 @@ dependencies = [
     "llama-index-llms-huggingface-api>=0.6.1",
     "llama-index-vector-stores-chroma>=0.5.3",
     "llama-index>=0.14.8",
+    "tavily-python>=0.7.13",
 ]
 
 [project.optional-dependencies]

@@ -370,7 +370,7 @@ class Orchestrator:
             [
                 f"{i + 1}. [{e.citation.title}]({e.citation.url}) "
                 f"({e.citation.source.upper()}, {e.citation.date})"
-                for i, e in enumerate(evidence[:10])  # Limit to 10 citations
+                for i, e in enumerate(sorted(evidence, key=lambda e: e.relevance, reverse=True)[:10])  # Limit to 10 citations
             ]
         )
 
@@ -418,7 +418,8 @@ class Orchestrator:
         citations = "\n".join(
             [
                 f"{i + 1}. [{e.citation.title}]({e.citation.url}) ({e.citation.source.upper()})"
-                for i, e in enumerate(evidence[:10])
+                #for i, e in enumerate(evidence[:10])
+                for i, e in enumerate(sorted(evidence, key=lambda e: e.relevance, reverse=True)[:10])
             ]
         )
 

@@ -5,6 +5,9 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import gradio as gr
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Try to import HuggingFace support (may not be available in all pydantic-ai versions)
 # According to https://ai.pydantic.dev/models/huggingface/, HuggingFace support requires
@@ -24,12 +27,21 @@ except ImportError:
     AsyncInferenceClient = None  # type: ignore[assignment, misc]
     _HUGGINGFACE_AVAILABLE = False
 
+try:
+    from pydantic_ai.models.openai import OpenAIChatModel
+
+    _OPENAI_AVAILABLE = True
+except ImportError:
+    OpenAIModel = None  # type: ignore[assignment, misc]
+    _OPENAI_AVAILABLE = False
+
 from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
 from src.orchestrator_factory import create_orchestrator
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
+from src.tools.web_search import WebSearchTool
 from src.utils.config import settings
 from src.utils.models import AgentEvent, OrchestratorConfig
 
@@ -62,7 +74,7 @@ def configure_orchestrator(
 
     # Create search tools
     search_handler = SearchHandler(
-        tools=[PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
+        tools=[PubMedTool(), ClinicalTrialsTool(), EuropePMCTool(), WebSearchTool()],
         timeout=config.search_timeout,
     )
 
@@ -75,12 +87,16 @@ def configure_orchestrator(
         judge_handler = MockJudgeHandler()
         backend_info = "Mock (Testing)"
 
-    # 2. API Key (OAuth or Env) - HuggingFace only (OAuth provides HF token)
+    # 2. OpenAI (if available and configured)
+    elif settings.openai_api_key and _OPENAI_AVAILABLE:
+        model = OpenAIChatModel(settings.openai_model)  # type: ignore[misc]
+        judge_handler = JudgeHandler(model=model)
+        backend_info = f"API (OpenAI {settings.openai_model})"
+
+    # 3. HuggingFace with API Key (OAuth or Env)
     # Priority: oauth_token > env vars
     # On HuggingFace Spaces, OAuth token is available via request.oauth_token
-    effective_api_key = oauth_token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
-
-    if effective_api_key:
+    elif (effective_api_key := oauth_token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")):
         # We have an API key (OAuth or env) - use pydantic-ai with JudgeHandler
         # This uses HuggingFace's own inference API, not third-party providers
         model: Any | None = None
@@ -108,7 +124,7 @@ def configure_orchestrator(
 
         judge_handler = JudgeHandler(model=model)
 
-    # 3. Free Tier (HuggingFace Inference) - NO API KEY AVAILABLE
+    # 4. Free Tier (HuggingFace Inference) - NO API KEY AVAILABLE
     else:
         # No API key available - use HFInferenceJudgeHandler with public models
         # Don't use third-party providers (novita, groq, etc.) as they require their own API keys
@@ -542,14 +558,15 @@ def create_demo() -> gr.Blocks:
                 "**Sign in with Hugging Face** to access AI models and research tools.\n\n"
                 "This application requires authentication to use the inference API."
             )
-            login_button = gr.LoginButton("Sign in with Hugging Face")
+            gr.LoginButton("Sign in with Hugging Face")
             gr.Markdown("---")
             gr.Markdown("### ℹ️ About")
             gr.Markdown(
                 "AI-Powered Drug Repurposing Agent that searches:\n"
                 "- PubMed\n"
                 "- ClinicalTrials.gov\n"
-                "- Europe PMC"
+                "- Europe PMC\n"
+                "- The Web"
             )
         
         # Create settings components (hidden - used only for additional_inputs)
@@ -585,7 +602,7 @@ def create_demo() -> gr.Blocks:
             title="🧬 DeepCritical",
             description=(
                 "*AI-Powered Drug Repurposing Agent — searches PubMed, "
-                "ClinicalTrials.gov & Europe PMC*\n\n"
+                "ClinicalTrials.gov, Europe PMC & the Web*\n\n"
                 "---\n"
                 "*Research tool only — not for medical advice.*  \n"
                 "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
@@ -642,6 +659,9 @@ def main() -> None:
         ssr_mode=False,  # Fix for intermittent loading/hydration issues in HF Spaces
     )
 
+
+# For auto-reload
+demo = create_demo()
 
 if __name__ == "__main__":
     main()

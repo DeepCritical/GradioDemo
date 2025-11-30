@@ -1,53 +1,64 @@
-"""Web search tool using DuckDuckGo."""
+"""Web search tool using Tavily API."""
 
 import asyncio
 
 import structlog
-from duckduckgo_search import DDGS
+from tavily import TavilyClient
 
-from src.utils.models import Citation, Evidence, SearchResult
+from src.utils.config import settings
+from src.utils.models import Citation, Evidence
 
 logger = structlog.get_logger()
 
 
 class WebSearchTool:
-    """Tool for searching the web using DuckDuckGo."""
+    """Tool for searching the web using Tavily."""
 
     def __init__(self) -> None:
-        self._ddgs = DDGS()
+        self.api_key = settings.tavily_api_key
+        if not self.api_key:
+            logger.warning("No Tavily API key found - web search will fail")
 
-    async def search(self, query: str, max_results: int = 10) -> SearchResult:
+    @property
+    def name(self) -> str:
+        """Return the tool name."""
+        return "web"
+
+    async def search(self, query: str, max_results: int = 10) -> list[Evidence]:
         """Execute a web search."""
         try:
+            # DuckDuckGo implementation (commented out)
+            # loop = asyncio.get_running_loop()
+            # def _do_search() -> list[dict[str, str]]:
+            #     return list(self._ddgs.text(query, region='us-en', safesearch="moderate", max_results=max_results))
+            # raw_results = await loop.run_in_executor(None, _do_search)
+            
+            client = TavilyClient(api_key=self.api_key)
+            
             loop = asyncio.get_running_loop()
-
-            def _do_search() -> list[dict[str, str]]:
-                # text() returns an iterator, need to list() it or iterate
-                return list(self._ddgs.text(query, max_results=max_results))
-
-            raw_results = await loop.run_in_executor(None, _do_search)
+            
+            def _do_search() -> dict:
+                return client.search(query=query, max_results=max_results)
+            
+            response = await loop.run_in_executor(None, _do_search)
 
             evidence = []
-            for r in raw_results:
+            for r in response.get("results", []):
                 ev = Evidence(
-                    content=r.get("body", ""),
+                    content=r.get("content", ""),
                     citation=Citation(
                         title=r.get("title", "No Title"),
-                        url=r.get("href", ""),
+                        url=r.get("url", ""),
                         source="web",
                         date="Unknown",
                         authors=[],
                     ),
-                    relevance=0.0,
+                    relevance=r.get("score", 0.0),
                 )
                 evidence.append(ev)
 
-            return SearchResult(
-                query=query, evidence=evidence, sources_searched=["web"], total_found=len(evidence)
-            )
+            return evidence
 
         except Exception as e:
             logger.error("Web search failed", error=str(e))
-            return SearchResult(
-                query=query, evidence=[], sources_searched=["web"], total_found=0, errors=[str(e)]
-            )
+            return []
