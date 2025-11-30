@@ -158,6 +158,7 @@ def configure_orchestrator(
         judge_handler=judge_handler,
         config=config,
         mode=effective_mode,  # type: ignore
+        oauth_token=oauth_token,
     )
 
     return orchestrator, backend_info
@@ -570,7 +571,13 @@ async def research_agent(
 
     if oauth_token is not None:
         # OAuthToken has a .token attribute containing the access token
-        token_value = oauth_token.token if hasattr(oauth_token, "token") else None
+        if hasattr(oauth_token, "token"):
+            token_value = oauth_token.token
+        elif isinstance(oauth_token, str):
+            # Handle case where oauth_token is already a string (shouldn't happen but defensive)
+            token_value = oauth_token
+        else:
+            token_value = None
 
     if oauth_profile is not None:
         # OAuthProfile has .username, .name, .profile_image attributes

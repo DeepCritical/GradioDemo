@@ -25,6 +25,7 @@ from src.middleware.budget_tracker import BudgetTracker
 from src.middleware.state_machine import get_workflow_state, init_workflow_state
 from src.middleware.workflow_manager import WorkflowManager
 from src.services.llamaindex_rag import LlamaIndexRAGService, get_rag_service
+from src.services.report_file_service import ReportFileService, get_report_file_service
 from src.tools.tool_executor import execute_tool_tasks
 from src.utils.exceptions import ConfigurationError
 from src.utils.models import (
@@ -111,6 +112,24 @@ class IterativeResearchFlow:
 
         # Graph orchestrator (lazy initialization)
         self._graph_orchestrator: Any = None
+
+        # File service (lazy initialization)
+        self._file_service: ReportFileService | None = None
+
+    def _get_file_service(self) -> ReportFileService | None:
+        """
+        Get file service instance (lazy initialization).
+
+        Returns:
+            ReportFileService instance or None if disabled
+        """
+        if self._file_service is None:
+            try:
+                self._file_service = get_report_file_service()
+            except Exception as e:
+                self.logger.warning("Failed to initialize file service", error=str(e))
+                return None
+        return self._file_service
 
     async def run(
         self,
@@ -659,6 +678,19 @@ FINDINGS:
             tokens=estimated_tokens,
         )
 
+        # Save report to file if enabled
+        try:
+            file_service = self._get_file_service()
+            if file_service:
+                file_path = file_service.save_report(
+                    report_content=report,
+                    query=query,
+                )
+                self.logger.info("Report saved to file", file_path=file_path)
+        except Exception as e:
+            # Don't fail the entire operation if file saving fails
+            self.logger.warning("Failed to save report to file", error=str(e))
+
         # Note: Citation validation for markdown reports would require Evidence objects
         # Currently, findings are strings, not Evidence objects. For full validation,
         # consider using ResearchReport format or passing Evidence objects separately.
@@ -724,6 +756,24 @@ class DeepResearchFlow:
 
         # Graph orchestrator (lazy initialization)
         self._graph_orchestrator: Any = None
+
+        # File service (lazy initialization)
+        self._file_service: ReportFileService | None = None
+
+    def _get_file_service(self) -> ReportFileService | None:
+        """
+        Get file service instance (lazy initialization).
+
+        Returns:
+            ReportFileService instance or None if disabled
+        """
+        if self._file_service is None:
+            try:
+                self._file_service = get_report_file_service()
+            except Exception as e:
+                self.logger.warning("Failed to initialize file service", error=str(e))
+                return None
+        return self._file_service
 
     async def run(self, query: str) -> str:
         """
@@ -999,6 +1049,19 @@ class DeepResearchFlow:
                 tokens=estimated_tokens,
                 agent="long_writer" if self.use_long_writer else "proofreader",
             )
+
+        # Save report to file if enabled
+        try:
+            file_service = self._get_file_service()
+            if file_service:
+                file_path = file_service.save_report(
+                    report_content=final_report,
+                    query=query,
+                )
+                self.logger.info("Report saved to file", file_path=file_path)
+        except Exception as e:
+            # Don't fail the entire operation if file saving fails
+            self.logger.warning("Failed to save report to file", error=str(e))
 
         self.logger.info("Final report created", length=len(final_report))
 

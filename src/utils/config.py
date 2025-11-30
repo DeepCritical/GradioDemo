@@ -164,6 +164,24 @@ class Settings(BaseSettings):
         description="Modal GPU type for TTS (T4, A10, A100, L4, L40S). None uses default T4.",
     )
 
+    # Report File Output Configuration
+    save_reports_to_file: bool = Field(
+        default=True,
+        description="Save generated reports to files (enables file downloads in Gradio)",
+    )
+    report_output_directory: str | None = Field(
+        default=None,
+        description="Directory to save report files. If None, uses system temp directory.",
+    )
+    report_file_format: Literal["md", "md_html", "md_pdf"] = Field(
+        default="md",
+        description="File format(s) to save reports in. 'md' saves only markdown, others save multiple formats.",
+    )
+    report_filename_template: str = Field(
+        default="report_{timestamp}_{query_hash}.md",
+        description="Template for report filenames. Supports {timestamp}, {query_hash}, {date} placeholders.",
+    )
+
     @property
     def modal_available(self) -> bool:
         """Check if Modal credentials are configured."""
