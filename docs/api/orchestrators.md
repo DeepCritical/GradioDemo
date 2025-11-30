@@ -178,7 +178,7 @@ Runs Magentic orchestration.
 ## See Also
 
 - [Architecture - Orchestrators](../architecture/orchestrators.md) - Architecture overview
-- [Graph Orchestration](../architecture/graph-orchestration.md) - Graph execution details
+- [Graph Orchestration](../architecture/graph_orchestration.md) - Graph execution details
 
 
 

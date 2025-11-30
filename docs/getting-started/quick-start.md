@@ -138,7 +138,7 @@ What are the active clinical trials investigating Alzheimer's disease treatments
 - Learn about [MCP Integration](mcp-integration.md) to use The DETERMINATOR from Claude Desktop
 - Explore [Examples](examples.md) for more use cases
 - Read the [Configuration Guide](../configuration/index.md) for advanced settings
-- Check out the [Architecture Documentation](../architecture/graph-orchestration.md) to understand how it works
+- Check out the [Architecture Documentation](../architecture/graph_orchestration.md) to understand how it works
 
 
 

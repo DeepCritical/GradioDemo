@@ -198,7 +198,7 @@ You can configure multiple DeepCritical instances:
 
 - Learn about [Configuration](../configuration/index.md) for advanced settings
 - Explore [Examples](examples.md) for use cases
-- Read the [Architecture Documentation](../architecture/graph-orchestration.md)
+- Read the [Architecture Documentation](../architecture/graph_orchestration.md)
 
 
 

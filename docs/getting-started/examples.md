@@ -191,7 +191,7 @@ USE_GRAPH_EXECUTION=true
 ## Next Steps
 
 - Read the [Configuration Guide](../configuration/index.md) for all options
-- Explore the [Architecture Documentation](../architecture/graph-orchestration.md)
+- Explore the [Architecture Documentation](../architecture/graph_orchestration.md)
 - Check out the [API Reference](../api/agents.md) for programmatic usage
 
 

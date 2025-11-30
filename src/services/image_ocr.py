@@ -30,7 +30,9 @@ class ImageOCRService:
         Raises:
             ConfigurationError: If API URL not configured
         """
-        self.api_url = api_url or settings.ocr_api_url
+        # Defensively access ocr_api_url - may not exist in older config versions
+        default_url = getattr(settings, "ocr_api_url", None) or "https://prithivmlmods-multimodal-ocr3.hf.space"
+        self.api_url = api_url or default_url
         if not self.api_url:
             raise ConfigurationError("OCR API URL not configured")
         self.hf_token = hf_token

@@ -91,7 +91,6 @@ nav:
     - configuration/CONFIGURATION.md
   - Architecture:
     - "Graph Orchestration": architecture/graph_orchestration.md
-    - "Workflows": architecture/workflows.md
     - "Workflow Diagrams": architecture/workflow-diagrams.md
     - "Agents": architecture/agents.md
     - "Orchestrators": architecture/orchestrators.md

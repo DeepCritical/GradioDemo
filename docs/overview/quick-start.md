@@ -77,6 +77,6 @@ Connect DeepCritical to Claude Desktop:
 
 - Read the [Installation Guide](../getting-started/installation.md) for detailed setup
 - Learn about [Configuration](../configuration/index.md)
-- Explore the [Architecture](../architecture/graph-orchestration.md)
+- Explore the [Architecture](../architecture/graph_orchestration.md)
 - Check out [Examples](../getting-started/examples.md)
 
