@@ -77,3 +77,4 @@ chroma_db/
 
 
 # Trigger rebuild Wed Nov 26 17:51:41 EST 2025
+.env
