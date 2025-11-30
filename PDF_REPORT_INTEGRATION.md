@@ -130,3 +130,4 @@ PDF generation is automatically triggered when:
 - PDF compression options
 - Batch PDF generation
 
+

@@ -63,6 +63,23 @@ sentence-transformers>=2.2.0
 numpy<2.0  # chromadb compatibility: uses np.float_ removed in NumPy 2.0
 neo4j>=6.0.3
 
+### DOCUMENT STUFF
+
+cssselect2==0.8.0                                                                                                                                              
+determinator==0.1.0 (from file:///C:/Users/MeMyself/dchfgrdemo/DeepCritical-HFSpace)                                                                           
+docopt==0.6.2                                                                                                                                                  
+fonttools==4.61.0
+markdown2==2.5.4
+md2pdf==1.0.1
+pydyf==0.11.0
+pyphen==0.17.2
+tinycss2==1.5.1
+tinyhtml5==2.0.0
+weasyprint==66.0
+webencodings==0.5.1
+zopfli==0.4.0
+
+
 # Pydantic AI with HuggingFace support
 pydantic-ai-slim[huggingface]>=0.0.18
 

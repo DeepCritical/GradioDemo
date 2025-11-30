@@ -168,3 +168,4 @@ def generate_report_from_evidence(
 
     return "".join(report_parts)
 
+
