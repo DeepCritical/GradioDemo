@@ -555,10 +555,16 @@ def create_demo() -> gr.Blocks:
         # Settings will use defaults from configure_orchestrator
         with gr.Row(visible=False):
             mode_radio = gr.Radio(
-                choices=["simple", "advanced"],
+                choices=["simple", "advanced", "iterative", "deep", "auto"],
                 value="simple",
                 label="Orchestrator Mode",
-                info="Simple: Linear | Advanced: Multi-Agent (HuggingFace Inference)",
+                info=(
+                    "Simple: Linear search-judge loop | "
+                    "Advanced: Multi-agent (OpenAI) | "
+                    "Iterative: Knowledge-gap driven | "
+                    "Deep: Parallel sections | "
+                    "Auto: Smart routing"
+                ),
             )
 
             # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
@@ -602,14 +608,14 @@ def create_demo() -> gr.Blocks:
                     "",
                 ],
                 [
-                    "Is metformin effective for treating cancer?",
-                    "simple",
+                    "Is metformin effective for treating cancer? Investigate mechanism of action.",
+                    "iterative",
                     "Qwen/Qwen3-235B-A22B-Instruct-2507",
                     "",
                 ],
                 [
-                    "What medications show promise for Long COVID treatment?",
-                    "simple",
+                    "Create a comprehensive report on Long COVID treatments including clinical trials, mechanisms, and safety.",
+                    "deep",
                     "zai-org/GLM-4.5-Air",
                     "nebius",
                 ],
