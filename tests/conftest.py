@@ -90,3 +90,9 @@ def default_to_huggingface(monkeypatch):
     # Set a dummy HF_TOKEN if not set (prevents errors, but tests should mock actual API calls)
     if "HF_TOKEN" not in os.environ:
         monkeypatch.setenv("HF_TOKEN", "dummy_token_for_testing")
+    
+    # Set dummy API keys for other providers to prevent initialization errors in CI
+    if "OPENAI_API_KEY" not in os.environ:
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-dummy_key_for_testing")
+    if "ANTHROPIC_API_KEY" not in os.environ:
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-dummy_key_for_testing")
