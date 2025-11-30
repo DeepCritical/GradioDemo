@@ -78,6 +78,8 @@ weasyprint==66.0
 webencodings==0.5.1
 zopfli==0.4.0
 
+# Optional: Modal for code execution
+modal>=0.63.0
 
 # Pydantic AI with HuggingFace support
 pydantic-ai-slim[huggingface]>=0.0.18
