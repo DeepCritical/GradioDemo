@@ -93,6 +93,33 @@ def reset_pubmed_limiter() -> None:
     _pubmed_limiter = None
 
 
+def get_serper_limiter(api_key: str | None = None) -> RateLimiter:
+    """
+    Get the shared Serper API rate limiter.
+
+    Rate: 10 requests/second (Serper API limit)
+
+    Args:
+        api_key: Serper API key (optional, for consistency with other limiters)
+
+    Returns:
+        Shared RateLimiter instance
+    """
+    return RateLimiterFactory.get("serper", "10/second")
+
+
+def get_searchxng_limiter() -> RateLimiter:
+    """
+    Get the shared SearchXNG API rate limiter.
+
+    Rate: 5 requests/second (conservative limit)
+
+    Returns:
+        Shared RateLimiter instance
+    """
+    return RateLimiterFactory.get("searchxng", "5/second")
+
+
 # Factory for other APIs
 class RateLimiterFactory:
     """Factory for creating/getting rate limiters for different APIs."""

@@ -28,28 +28,28 @@ async def search_web(query: str, max_results: int = 10) -> str:
     logger.info("Web search starting", query=query, max_results=max_results)
     state = get_magentic_state()
 
-    results = await _web_search.search(query, max_results)
-    if not results.evidence:
+    evidence = await _web_search.search(query, max_results)
+    if not evidence:
         logger.info("Web search returned no results", query=query)
         return f"No web results found for: {query}"
 
     # Update state
     # We add *all* found results to state
-    new_count = state.add_evidence(results.evidence)
+    new_count = state.add_evidence(evidence)
     logger.info(
         "Web search complete",
         query=query,
-        results_found=len(results.evidence),
+        results_found=len(evidence),
         new_evidence=new_count,
     )
 
     # Use embedding service for deduplication/indexing if available
     if state.embedding_service:
         # This method also adds to vector DB as a side effect for unique items
-        await state.embedding_service.deduplicate(results.evidence)
+        await state.embedding_service.deduplicate(evidence)
 
-    output = [f"Found {len(results.evidence)} web results ({new_count} new stored):\n"]
-    for i, r in enumerate(results.evidence[:max_results], 1):
+    output = [f"Found {len(evidence)} web results ({new_count} new stored):\n"]
+    for i, r in enumerate(evidence[:max_results], 1):
         output.append(f"{i}. **{r.citation.title}**")
         output.append(f"   Source: {r.citation.url}")
         output.append(f"   {r.content[:300]}...\n")

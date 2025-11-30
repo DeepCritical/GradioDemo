@@ -35,9 +35,6 @@ pydantic-graph>=1.22.0
 # Web search
 duckduckgo-search>=5.0
 
-# Multi-agent orchestration (Advanced mode)
-agent-framework-core>=1.0.0b251120,<2.0.0
-
 # LlamaIndex RAG
 llama-index-llms-huggingface>=0.6.1
 llama-index-llms-huggingface-api>=0.6.1
@@ -51,28 +48,23 @@ pillow>=10.0.0  # For image processing
 
 # TTS dependencies (for Modal GPU TTS)
 torch>=2.0.0  # Required by Kokoro TTS
-transformers>=4.30.0  # Required by Kokoro TTS
+transformers>=4.57.2  # Required by Kokoro TTS
 modal>=0.63.0  # Required for TTS GPU execution
 # Note: Kokoro is installed in Modal image from: git+https://github.com/hexgrad/kokoro.git
 
-# Multi-agent orchestration (Advanced mode) - from optional magentic
-agent-framework-core>=1.0.0b251120,<2.0.0
-llama-index-llms-openai>=0.6.9
-llama-index-embeddings-openai>=0.5.1
-
 # Embeddings & Vector Store
 tokenizers>=0.22.0,<=0.23.0
-transformers>=4.57.2
-chromadb>=0.4.0
 rpds-py>=0.29.0  # Python implementation of rpds (required by chromadb on Windows)
+chromadb>=0.4.0
 sentence-transformers>=2.2.0
-numpy<2.0
+numpy<2.0  # chromadb compatibility: uses np.float_ removed in NumPy 2.0
 
-# Optional: Modal for code execution
-modal>=0.63.0
-
-# LlamaIndex RAG - from optional modal
-llama-index-llms-openai
-llama-index-embeddings-openai
-
+# Pydantic AI with HuggingFace support
 pydantic-ai-slim[huggingface]>=0.0.18
+
+# Multi-agent orchestration (Advanced mode)
+agent-framework-core>=1.0.0b251120,<2.0.0
+
+# LlamaIndex RAG - OpenAI
+llama-index-llms-openai>=0.6.9
+llama-index-embeddings-openai>=0.5.1

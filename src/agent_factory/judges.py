@@ -38,54 +38,27 @@ def get_model(oauth_token: str | None = None) -> Any:
     Args:
         oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
     """
-    # Priority: oauth_token > env vars
+    # Priority: oauth_token > settings.hf_token > settings.huggingface_api_key
     effective_hf_token = oauth_token or settings.hf_token or settings.huggingface_api_key
 
-    # If OAuth token is available, prefer HuggingFace (free tier on Spaces)
-    if effective_hf_token:
-        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-        hf_provider = HuggingFaceProvider(api_key=effective_hf_token)
-        logger.info(
-            "using_huggingface_with_token",
-            has_oauth=bool(oauth_token),
-            model=model_name,
+    # HuggingFaceProvider requires a token - cannot use None
+    if not effective_hf_token:
+        raise ConfigurationError(
+            "HuggingFace token required. Please either:\n"
+            "1. Log in via HuggingFace OAuth (recommended for Spaces)\n"
+            "2. Set HF_TOKEN environment variable\n"
+            "3. Set huggingface_api_key in settings"
         )
-        return HuggingFaceModel(model_name, provider=hf_provider)
 
-    llm_provider = settings.llm_provider
-
-    if llm_provider == "anthropic":
-        if not settings.anthropic_api_key:
-            logger.warning("Anthropic provider selected but no API key available, defaulting to HuggingFace")
-            # Fallback to HuggingFace without token (public models)
-            model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-            hf_provider = HuggingFaceProvider(api_key=None)
-            return HuggingFaceModel(model_name, provider=hf_provider)
-        provider = AnthropicProvider(api_key=settings.anthropic_api_key)
-        return AnthropicModel(settings.anthropic_model, provider=provider)
-
-    if llm_provider == "huggingface":
-        # No token available, use public models
-        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-        hf_provider = HuggingFaceProvider(api_key=None)
-        return HuggingFaceModel(model_name, provider=hf_provider)
-
-    if llm_provider == "openai":
-        if not settings.openai_api_key:
-            logger.warning("OpenAI provider selected but no API key available, defaulting to HuggingFace")
-            # Fallback to HuggingFace without token (public models)
-            model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-            hf_provider = HuggingFaceProvider(api_key=None)
-            return HuggingFaceModel(model_name, provider=hf_provider)
-        openai_provider = OpenAIProvider(api_key=settings.openai_api_key)
-        return OpenAIModel(settings.openai_model, provider=openai_provider)
-
-    # Default to HuggingFace if provider is unknown or not specified
-    if llm_provider not in ("huggingface", "openai", "anthropic"):
-        logger.warning("Unknown LLM provider, defaulting to HuggingFace", provider=llm_provider)
-
+    # Always use HuggingFace with available token
     model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-    hf_provider = HuggingFaceProvider(api_key=None)  # Public models
+    hf_provider = HuggingFaceProvider(api_key=effective_hf_token)
+    logger.info(
+        "using_huggingface_with_token",
+        has_oauth=bool(oauth_token),
+        has_settings_token=bool(settings.hf_token or settings.huggingface_api_key),
+        model=model_name,
+    )
     return HuggingFaceModel(model_name, provider=hf_provider)
 
 
