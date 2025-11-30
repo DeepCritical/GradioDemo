@@ -140,6 +140,30 @@ class Settings(BaseSettings):
         description="Automatically ingest evidence into RAG",
     )
 
+    # Audio/TTS Configuration
+    enable_audio_input: bool = Field(
+        default=True,
+        description="Enable audio input (speech-to-text) in multimodal interface",
+    )
+    enable_audio_output: bool = Field(
+        default=True,
+        description="Enable audio output (text-to-speech) for responses",
+    )
+    tts_voice: str = Field(
+        default="af_heart",
+        description="TTS voice ID for Kokoro TTS (e.g., af_heart, am_michael)",
+    )
+    tts_speed: float = Field(
+        default=1.0,
+        ge=0.5,
+        le=2.0,
+        description="TTS speech speed multiplier (0.5x to 2.0x)",
+    )
+    tts_gpu: str | None = Field(
+        default=None,
+        description="Modal GPU type for TTS (T4, A10, A100, L4, L40S). None uses default T4.",
+    )
+
     @property
     def modal_available(self) -> bool:
         """Check if Modal credentials are configured."""

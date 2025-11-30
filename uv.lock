@@ -1108,30 +1108,39 @@ name = "deepcritical"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "agent-framework-core" },
     { name = "anthropic" },
     { name = "beautifulsoup4" },
+    { name = "chromadb" },
     { name = "duckduckgo-search" },
-    { name = "gradio", extra = ["mcp"] },
+    { name = "gradio", extra = ["mcp", "oauth"] },
     { name = "gradio-client" },
     { name = "httpx" },
     { name = "huggingface-hub" },
     { name = "limits" },
     { name = "llama-index" },
+    { name = "llama-index-embeddings-openai" },
     { name = "llama-index-llms-huggingface" },
     { name = "llama-index-llms-huggingface-api" },
+    { name = "llama-index-llms-openai" },
     { name = "llama-index-vector-stores-chroma" },
     { name = "modal" },
+    { name = "numpy" },
     { name = "openai" },
     { name = "pillow" },
     { name = "pydantic" },
     { name = "pydantic-ai" },
+    { name = "pydantic-ai-slim", extra = ["huggingface"] },
     { name = "pydantic-graph" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "requests" },
+    { name = "rpds-py" },
+    { name = "sentence-transformers" },
     { name = "soundfile" },
     { name = "structlog" },
     { name = "tenacity" },
+    { name = "tokenizers" },
     { name = "torch" },
     { name = "transformers" },
     { name = "xmltodict" },
@@ -1169,7 +1178,6 @@ modal = [
     { name = "llama-index-embeddings-openai" },
     { name = "llama-index-llms-openai" },
     { name = "llama-index-vector-stores-chroma" },
-    { name = "modal" },
     { name = "numpy" },
 ]
 
@@ -1181,23 +1189,27 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-framework-core", specifier = ">=1.0.0b251120,<2.0.0" },
     { name = "agent-framework-core", marker = "extra == 'magentic'", specifier = ">=1.0.0b251120,<2.0.0" },
     { name = "anthropic", specifier = ">=0.18.0" },
     { name = "beautifulsoup4", specifier = ">=4.12" },
+    { name = "chromadb", specifier = ">=0.4.0" },
     { name = "chromadb", marker = "extra == 'embeddings'", specifier = ">=0.4.0" },
     { name = "chromadb", marker = "extra == 'modal'", specifier = ">=0.4.0" },
     { name = "duckduckgo-search", specifier = ">=5.0" },
-    { name = "gradio", extras = ["mcp"], specifier = ">=6.0.0" },
+    { name = "gradio", extras = ["mcp", "oauth"], specifier = ">=6.0.0" },
     { name = "gradio-client", specifier = ">=1.0.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "huggingface-hub", specifier = ">=0.20.0" },
     { name = "limits", specifier = ">=3.0" },
     { name = "llama-index", specifier = ">=0.14.8" },
     { name = "llama-index", marker = "extra == 'modal'", specifier = ">=0.11.0" },
-    { name = "llama-index-embeddings-openai", marker = "extra == 'modal'" },
+    { name = "llama-index-embeddings-openai", specifier = ">=0.5.1" },
+    { name = "llama-index-embeddings-openai", marker = "extra == 'modal'", specifier = ">=0.5.1" },
     { name = "llama-index-llms-huggingface", specifier = ">=0.6.1" },
     { name = "llama-index-llms-huggingface-api", specifier = ">=0.6.1" },
-    { name = "llama-index-llms-openai", marker = "extra == 'modal'" },
+    { name = "llama-index-llms-openai", specifier = ">=0.6.9" },
+    { name = "llama-index-llms-openai", marker = "extra == 'modal'", specifier = ">=0.6.9" },
     { name = "llama-index-vector-stores-chroma", specifier = ">=0.5.3" },
     { name = "llama-index-vector-stores-chroma", marker = "extra == 'modal'" },
     { name = "mkdocs", marker = "extra == 'dev'", specifier = ">=1.6.0" },
@@ -1206,8 +1218,8 @@ requires-dist = [
     { name = "mkdocs-mermaid2-plugin", marker = "extra == 'dev'", specifier = ">=1.1.0" },
     { name = "mkdocs-minify-plugin", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "modal", specifier = ">=0.63.0" },
-    { name = "modal", marker = "extra == 'modal'", specifier = ">=0.63.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
+    { name = "numpy", specifier = "<2.0" },
     { name = "numpy", marker = "extra == 'embeddings'", specifier = "<2.0" },
     { name = "numpy", marker = "extra == 'modal'", specifier = "<2.0" },
     { name = "openai", specifier = ">=1.0.0" },
@@ -1215,6 +1227,7 @@ requires-dist = [
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.7" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pydantic-ai", specifier = ">=0.0.16" },
+    { name = "pydantic-ai-slim", extras = ["huggingface"], specifier = ">=0.0.18" },
     { name = "pydantic-graph", specifier = ">=1.22.0" },
     { name = "pydantic-settings", specifier = ">=2.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
@@ -1225,13 +1238,16 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "rpds-py", specifier = ">=0.29.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
+    { name = "sentence-transformers", specifier = ">=2.2.0" },
     { name = "sentence-transformers", marker = "extra == 'embeddings'", specifier = ">=2.2.0" },
     { name = "soundfile", specifier = ">=0.12.0" },
     { name = "structlog", specifier = ">=24.1" },
     { name = "tenacity", specifier = ">=8.2" },
+    { name = "tokenizers", specifier = ">=0.22.0,<=0.23.0" },
     { name = "torch", specifier = ">=2.0.0" },
-    { name = "transformers", specifier = ">=4.30.0" },
+    { name = "transformers", specifier = ">=4.57.2" },
     { name = "typer", marker = "extra == 'dev'", specifier = ">=0.9.0" },
     { name = "xmltodict", specifier = ">=0.13" },
 ]
@@ -1748,6 +1764,10 @@ mcp = [
     { name = "mcp" },
     { name = "pydantic" },
 ]
+oauth = [
+    { name = "authlib" },
+    { name = "itsdangerous" },
+]
 
 [[package]]
 name = "gradio-client"
@@ -2158,6 +2178,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/de/bd/b461d3424a24c80490313fd77feeb666ca4f6a28c7e72713e3d9095719b4/invoke-2.2.1.tar.gz", hash = "sha256:515bf49b4a48932b79b024590348da22f39c4942dff991ad1fb8b8baea1be707", size = 304762, upload-time = "2025-10-11T00:36:35.172Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/4b/b99e37f88336009971405cbb7630610322ed6fbfa31e1d7ab3fbf3049a2d/invoke-2.2.1-py3-none-any.whl", hash = "sha256:2413bc441b376e5cd3f55bb5d364f973ad8bdd7bf87e53c79de3c11bf3feecc8", size = 160287, upload-time = "2025-10-11T00:36:33.703Z" },
+]
+
+[[package]]
+name = "itsdangerous"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/cb/8ac0172223afbccb63986cc25049b154ecfb5e85932587206f42317be31d/itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173", size = 54410, upload-time = "2024-04-16T21:28:15.614Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/96/92447566d16df59b2a776c0fb82dbc4d9e07cd95062562af01e408583fc4/itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef", size = 16234, upload-time = "2024-04-16T21:28:14.499Z" },
 ]
 
 [[package]]
