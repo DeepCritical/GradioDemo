@@ -43,7 +43,7 @@ tags:
 [![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
 [![Documentation](https://img.shields.io/badge/Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](deepcritical.github.io/GradioDemo/)
 [![Demo](https://img.shields.io/badge/Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
-[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white&label=Watch%20Demo&labelColor=FF0000&color=FF0000)](https://www.youtube.com/watch?v=PLACEHOLDER)
+[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white&label=Watch%20Demo&labelColor=FF0000&color=FF0000)](https://www.youtube.com/watch?v=https://youtu.be/Mb0M83BqgOw)
 [![codecov](https://codecov.io/gh/DeepCritical/GradioDemo/graph/badge.svg?token=B1f05RCGpz)](https://codecov.io/gh/DeepCritical/GradioDemo)
 [![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 
 
@@ -87,6 +87,16 @@ Please join us @ https://hf.co/spaces/DataQuests/DeepCritical where we will keep
 - Nebius , Together , Scaleway , Hyperbolic, Novita , nscale ,  Sambanova , ovh , fireworks, all supported and configurable.
 - 💖 made with love
 
+
+## What Can It Do ? 
+
+- long running tasks (potentially millions of tokens over hours and hours)
+- data processing and rendering
+- statistical analyses 
+- literature reviews 
+- websearch
+- synthetize complex information
+- find hard to find information
 
 ## Deep Critical In the Media 
 
@@ -184,8 +194,9 @@ Please join us @ https://hf.co/spaces/DataQuests/DeepCritical where we will keep
 
 ## Links
 
-[![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
-[![Documentation](https://img.shields.io/badge/📚%20Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](deepcritical.github.io/GradioDemo/)
-[![Demo](https://img.shields.io/badge/🚀%20Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
+[![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
+[![Documentation](https://img.shields.io/badge/Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](deepcritical.github.io/GradioDemo/)
+[![Demo](https://img.shields.io/badge/Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
+[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white&label=Watch%20Demo&labelColor=FF0000&color=FF0000)](https://www.youtube.com/watch?v=https://youtu.be/Mb0M83BqgOw)
 [![codecov](https://codecov.io/gh/DeepCritical/GradioDemo/graph/badge.svg?token=B1f05RCGpz)](https://codecov.io/gh/DeepCritical/GradioDemo)
 [![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 

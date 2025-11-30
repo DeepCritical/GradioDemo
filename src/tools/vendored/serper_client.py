@@ -92,3 +92,4 @@ class SerperClient:
             raise SearchError(f"Serper search failed: {e}") from e
 
 
+
