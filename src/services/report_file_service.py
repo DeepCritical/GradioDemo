@@ -59,7 +59,11 @@ class ReportFileService:
                     enabled=self.enabled,
                 )
             except Exception as e:
-                logger.error("Failed to create report output directory", error=str(e), path=str(self.output_directory))
+                logger.error(
+                    "Failed to create report output directory",
+                    error=str(e),
+                    path=str(self.output_directory),
+                )
                 raise ConfigurationError(f"Failed to create report output directory: {e}") from e
 
     def _generate_filename(self, query: str | None = None, extension: str = ".md") -> str:
@@ -238,10 +242,14 @@ class ReportFileService:
                         file_path.unlink()
                         deleted_count += 1
                     except Exception as e:
-                        logger.warning("Failed to delete old file", path=str(file_path), error=str(e))
+                        logger.warning(
+                            "Failed to delete old file", path=str(file_path), error=str(e)
+                        )
 
             if deleted_count > 0:
-                logger.info("Cleaned up old report files", deleted=deleted_count, max_age_days=max_age_days)
+                logger.info(
+                    "Cleaned up old report files", deleted=deleted_count, max_age_days=max_age_days
+                )
 
         except Exception as e:
             logger.error("Failed to cleanup old files", error=str(e))
@@ -264,7 +272,3 @@ def get_report_file_service() -> ReportFileService:
         return ReportFileService()
 
     return _get_service()
-
-
-
-

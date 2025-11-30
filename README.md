@@ -79,9 +79,12 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
 ## Deep Critical In the Medial 
 
 - Social Medial Posts about Deep Critical :
-  - [![X](https://x.com/marioaderman/status/1995247432444133471)]
-  - [![LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7400984658496081920/)]
-  -
+  - 𝕏 [![X](https://x.com/marioaderman/status/1995247432444133471)]
+  - 💼 [![LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7400984658496081920/)]
+  - 𝕏 [![X](https://x.com/viratzzs/status/1995258812165664942)]
+x profile: https://x.com/viratzzs/
+linkedin: https://www.linkedin.com/in/viratchauhan/
+hf: https://huggingface.co/ViratChauhan
   -
   -
   -
@@ -123,10 +126,14 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
     - 🤗 [HuggingFace](https://huggingface.co/SeasonalFall84)
     - 💼 [LinkedIn](https://www.linkedin.com/in/mario-aderman/)
     - 𝕏 [X](https://x.com/marioaderman)
-- **Joseph Pollack
+- **Joseph Pollack**
     - 🤗 [HuggingFace](https://huggingface.co/Tonic)
     - 💼 [LinkedIn](https://www.linkedin.com/in/josephpollack/)
     - 𝕏 [X](https://x.com/josephpollack)
+- **Virat Chauran**
+    - 𝕏 [X](https://x.com/viratzzs/)
+    - 💼 [LinkedIn](https://www.linkedin.com/in/viratchauhan/)
+    - 🤗 [HuggingFace](https://huggingface.co/ViratChauhan)
 
 
 ## Acknowledgements
