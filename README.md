@@ -1,5 +1,5 @@
 ---
-title: Critical Deep Resarch
+title: The DETERMINATOR
 emoji: 🐉
 colorFrom: red
 colorTo: yellow
@@ -45,9 +45,16 @@ tags:
 
 ## About
 
-The DETERMINATOR is a deep research agent system designed to assist with complex research questions requiring thorough investigation. Originally developed by the Deep Critical Gradio Hackathon Team, The DETERMINATOR specializes in medical research inquiry, functioning as a medical peer junior researcher that helps gather, evaluate, and synthesize evidence from multiple sources.
+The DETERMINATOR is a powerful generalist deep research agent system that stops at nothing until finding precise answers to complex questions. It uses iterative search-and-judge loops to comprehensively investigate any research question from any domain.
 
-**Important**: The DETERMINATOR is a research tool and cannot answer medical questions or provide medical advice. It assists researchers by finding and organizing evidence from biomedical literature and clinical trial databases.
+**Key Features**:
+- **Generalist**: Handles queries from any domain (medical, technical, business, scientific, etc.)
+- **Automatic Medical Detection**: Automatically determines if medical knowledge sources (PubMed, ClinicalTrials.gov) are needed
+- **Multi-Source Search**: Web search, PubMed, ClinicalTrials.gov, Europe PMC, RAG
+- **Stops at Nothing**: Only stops at configured limits (budget, time, iterations), otherwise continues until finding precise answers
+- **Evidence Synthesis**: Comprehensive reports with proper citations
+
+**Important**: The DETERMINATOR is a research tool that synthesizes evidence. It cannot provide medical advice or answer medical questions directly.
 
 For this hackathon we're proposing a simple yet powerful Deep Research Agent that iteratively looks for the answer until it finds it using general purpose websearch and special purpose retrievers for technical retrievers. 
 

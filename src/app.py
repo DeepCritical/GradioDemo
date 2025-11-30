@@ -752,12 +752,16 @@ def create_demo() -> gr.Blocks:
             gr.Markdown("---")
             gr.Markdown("### ℹ️ About")  # noqa: RUF001
             gr.Markdown(
-                "**The DETERMINATOR** - Deep Research Agent for Medical Inquiry\n\n"
-                "Searches:\n"
-                "- PubMed\n"
-                "- ClinicalTrials.gov\n"
-                "- Europe PMC\n\n"
-                "⚠️ **Research tool only** - Cannot answer medical questions or provide medical advice."
+                "**The DETERMINATOR** - Generalist Deep Research Agent\n\n"
+                "A powerful research agent that stops at nothing until finding precise answers to complex questions.\n\n"
+                "**Available Sources**:\n"
+                "- Web Search (general knowledge)\n"
+                "- PubMed (biomedical literature)\n"
+                "- ClinicalTrials.gov (clinical trials)\n"
+                "- Europe PMC (preprints & papers)\n"
+                "- RAG (semantic search)\n\n"
+                "**Automatic Detection**: Automatically determines if medical knowledge sources are needed for your query.\n\n"
+                "⚠️ **Research tool only** - Synthesizes evidence but cannot provide medical advice."
             )
             gr.Markdown("---")
             
@@ -891,10 +895,16 @@ def create_demo() -> gr.Blocks:
             multimodal=True,  # Enable multimodal input (text + images + audio)
             title="🔬 The DETERMINATOR",
             description=(
-                "*Deep Research Agent for Medical Inquiry — searches PubMed, "
-                "ClinicalTrials.gov & Europe PMC*\n\n"
+                "*Generalist Deep Research Agent — stops at nothing until finding precise answers to complex questions*\n\n"
                 "---\n"
-                "*Functions as a medical peer junior researcher. Research tool only — cannot answer medical questions or provide medical advice.*  \n"
+                "**The DETERMINATOR** uses iterative search-and-judge loops to comprehensively investigate any research question. "
+                "It automatically determines if medical knowledge sources (PubMed, ClinicalTrials.gov) are needed and adapts its search strategy accordingly.\n\n"
+                "**Key Features**:\n"
+                "- 🔍 Multi-source search (Web, PubMed, ClinicalTrials.gov, Europe PMC, RAG)\n"
+                "- 🧠 Automatic medical knowledge detection\n"
+                "- 🔄 Iterative refinement until precise answers are found\n"
+                "- ⏹️ Stops only at configured limits (budget, time, iterations)\n"
+                "- 📊 Evidence synthesis with citations\n\n"
                 "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
                 "**🎤 Multimodal Support**: Upload images (OCR), record audio (STT), or type text.\n\n"
                 "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."

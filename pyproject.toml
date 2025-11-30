@@ -1,7 +1,7 @@
 [project]
 name = "determinator"
 version = "0.1.0"
-description = "The DETERMINATOR - Deep Research Agent for Medical Inquiry"
+description = "The DETERMINATOR - the Deep Research Agent that Stops at Nothing"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -42,6 +42,8 @@ dependencies = [
     "llama-index-llms-openai>=0.6.9",
     "llama-index-embeddings-openai>=0.5.1",
     "ddgs>=9.9.2",
+    "aiohttp>=3.13.2",
+    "lxml>=6.0.2",
 ]
 
 [project.optional-dependencies]

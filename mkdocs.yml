@@ -1,5 +1,5 @@
 site_name: The DETERMINATOR
-site_description: Deep Research Agent for Medical Inquiry
+site_description: Generalist Deep Research Agent that Stops at Nothing
 site_author: The DETERMINATOR Team
 site_url: https://deepcritical.github.io/GradioDemo/
 
@@ -49,6 +49,8 @@ plugins:
       minify_css: true
 
 markdown_extensions:
+  - dev.docs_plugins:
+      base_path: "."
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite

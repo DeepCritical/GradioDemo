@@ -1,6 +1,6 @@
 # Architecture Overview
 
-The DETERMINATOR is a deep research agent system that uses iterative search-and-judge loops to comprehensively answer research questions. The system supports multiple orchestration patterns, graph-based execution, parallel research workflows, and long-running task management with real-time streaming.
+The DETERMINATOR is a powerful generalist deep research agent system that uses iterative search-and-judge loops to comprehensively investigate any research question. It stops at nothing until finding precise answers, only stopping at configured limits (budget, time, iterations). The system automatically determines if medical knowledge sources are needed and adapts its search strategy accordingly. It supports multiple orchestration patterns, graph-based execution, parallel research workflows, and long-running task management with real-time streaming.
 
 ## Core Architecture
 

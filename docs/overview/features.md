@@ -6,10 +6,12 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 
 ### Multi-Source Search
 
-- **PubMed**: Search peer-reviewed biomedical literature via NCBI E-utilities
-- **ClinicalTrials.gov**: Search interventional clinical trials
+- **General Web Search**: Search general knowledge sources for any domain
+- **PubMed**: Search peer-reviewed biomedical literature via NCBI E-utilities (automatically used when medical knowledge needed)
+- **ClinicalTrials.gov**: Search interventional clinical trials (automatically used when medical knowledge needed)
 - **Europe PMC**: Search preprints and peer-reviewed articles (includes bioRxiv/medRxiv)
 - **RAG**: Semantic search within collected evidence using LlamaIndex
+- **Automatic Source Selection**: Automatically determines which sources are needed based on query analysis
 
 ### MCP Integration
 
@@ -40,9 +42,10 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 
 - **Graph-Based Execution**: Flexible graph orchestration with conditional routing
 - **Parallel Research Loops**: Run multiple research tasks concurrently
-- **Iterative Research**: Single-loop research with search-judge-synthesize cycles
+- **Iterative Research**: Single-loop research with search-judge-synthesize cycles that continues until precise answers are found
 - **Deep Research**: Multi-section parallel research with planning and synthesis
 - **Magentic Orchestration**: Multi-agent coordination using Microsoft Agent Framework
+- **Stops at Nothing**: Only stops at configured limits (budget, time, iterations), otherwise continues until finding precise answers
 
 ### Real-Time Streaming
 

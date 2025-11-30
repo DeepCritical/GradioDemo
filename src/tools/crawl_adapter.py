@@ -1,6 +1,6 @@
 """Website crawl tool adapter for Pydantic AI agents.
 
-Adapts the folder/tools/crawl_website.py implementation to work with Pydantic AI.
+Uses the vendored crawl_website implementation from src/tools/vendored/crawl_website.py.
 """
 
 import structlog
@@ -22,8 +22,8 @@ async def crawl_website(starting_url: str) -> str:
         Formatted string with crawled content including titles, descriptions, and URLs
     """
     try:
-        # Lazy import to avoid requiring folder/ dependencies at import time
-        from folder.tools.crawl_website import crawl_website as crawl_tool
+        # Import vendored crawl tool
+        from src.tools.vendored.crawl_website import crawl_website as crawl_tool
 
         # Call the tool function
         # The tool returns List[ScrapeResult] or str
@@ -56,13 +56,3 @@ async def crawl_website(starting_url: str) -> str:
     except Exception as e:
         logger.error("Crawl failed", error=str(e), url=starting_url)
         return f"Error crawling website: {e!s}"
-
-
-
-
-
-
-
-
-
-
