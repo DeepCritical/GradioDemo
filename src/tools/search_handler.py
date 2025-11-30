@@ -9,6 +9,7 @@ from src.tools.base import SearchTool
 from src.tools.rag_tool import create_rag_tool
 from src.utils.exceptions import ConfigurationError, SearchError
 from src.utils.models import Evidence, SearchResult, SourceName
+from src.services.neo4j_service import get_neo4j_service
 
 if TYPE_CHECKING:
     from src.services.llamaindex_rag import LlamaIndexRAGService
@@ -140,6 +141,32 @@ class SearchHandler:
                         )
                 except Exception as e:
                     logger.warning("Failed to ingest evidence into RAG", error=str(e))
+
+        # 🔥 INGEST INTO NEO4J KNOWLEDGE GRAPH 🔥
+        if all_evidence:
+            try:
+                neo4j_service = get_neo4j_service()
+                if neo4j_service:
+                    # Extract disease from query
+                    disease = query
+                    if "for" in query.lower():
+                        disease = query.split("for")[-1].strip().rstrip("?")
+                    
+                    # Convert Evidence objects to dicts for Neo4j
+                    papers = []
+                    for ev in all_evidence:
+                        papers.append({
+                            'id': ev.citation.url or '',
+                            'title': ev.citation.title or '',
+                            'abstract': ev.content,
+                            'url': ev.citation.url or '',
+                            'source': ev.citation.source,
+                        })
+                    
+                    stats = neo4j_service.ingest_search_results(disease, papers)
+                    logger.info("💾 Saved to Neo4j", stats=stats)
+            except Exception as e:
+                logger.warning("Neo4j ingestion failed", error=str(e))
 
         return search_result
 

@@ -30,6 +30,7 @@ from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
+from src.tools.neo4j_search import Neo4jSearchTool
 from src.utils.config import settings
 from src.utils.models import AgentEvent, OrchestratorConfig
 
@@ -62,7 +63,7 @@ def configure_orchestrator(
 
     # Create search tools
     search_handler = SearchHandler(
-        tools=[PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
+        tools=[Neo4jSearchTool(), PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
         timeout=config.search_timeout,
     )
 
