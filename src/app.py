@@ -623,10 +623,10 @@ def main() -> None:
     """Run the Gradio app with MCP server enabled."""
     demo = create_demo()
     demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,
-        mcp_server=True,
+        # server_name="0.0.0.0",
+        # server_port=7860,
+        # share=False,
+        mcp_server=False,
         ssr_mode=False,  # Fix for intermittent loading/hydration issues in HF Spaces
     )
 
