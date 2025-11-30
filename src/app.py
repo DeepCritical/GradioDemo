@@ -534,27 +534,168 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
+    brand_css = """
+    :root {
+        --brand-orange: #f28c28;
+        --brand-red: #c53d2b;
+        --brand-sand: #f7f3ed;
+        --brand-ink: #1f2329;
+    }
+
+    .gradio-container {
+        background: var(--brand-sand);
+        color: var(--brand-ink);
+    }
+
+    #hero-banner {
+        border: 1px solid #eadfd3;
+        background: linear-gradient(120deg, #ffffff, #fbf6ef 35%, #fff9f1 70%);
+        border-radius: 16px;
+        padding: 22px 24px;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.08);
+    }
+
+    #hero-nav {
+        background: #fff;
+        border: 1px solid #eadfd3;
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    #hero-nav h4 {
+        color: var(--brand-orange);
+        margin-bottom: 10px;
+    }
+
+    #hero-nav li {
+        margin-bottom: 4px;
+        color: #3a3f45;
+    }
+
+    #hero-text h1, #hero-text h2, #hero-text h3, #hero-text h4 {
+        color: #0f1216;
+        margin-bottom: 8px;
+    }
+
+    #hero-text p {
+        color: #383f47;
+        font-size: 16px;
+    }
+
+    #hero-login {
+        background: #fff;
+        border: 1px solid #eadfd3;
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+    }
+
+    #hero-login h4 {
+        color: #0f1216;
+        margin-bottom: 10px;
+    }
+
+    #hf-login button {
+        width: 100%;
+        background: linear-gradient(135deg, var(--brand-orange), var(--brand-red));
+        color: white;
+        font-weight: 700;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 10px 20px rgba(197, 61, 43, 0.25);
+        transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    #hf-login button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 26px rgba(242, 140, 40, 0.35);
+    }
+
+    #hf-login .sso-status {
+        color: #3a3f45;
+    }
+
+    #login-note {
+        color: #4d565f;
+        font-size: 14px;
+    }
+
+    #chat-panel .wrap {
+        background: #fff;
+        border: 1px solid #eadfd3;
+        border-radius: 14px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+    }
+
+    #chat-panel .message {
+        background: #fff8f1;
+        border: 1px solid rgba(242, 140, 40, 0.15);
+    }
+
+    #chat-panel .accordion {
+        background: #fff;
+    }
+
+    #chat-panel .prose :where(h1, h2, h3, h4, h5, h6) {
+        color: #0f1216;
+    }
+
+    #chat-panel .prose :where(p, li) {
+        color: #3a3f45;
+    }
+    """
+
     with gr.Blocks(title="🧬 DeepCritical", fill_height=True) as demo:
-        # Add sidebar with login button and information
-        # Reference: Working implementation pattern from Gradio docs
-        with gr.Sidebar():
-            gr.Markdown("# 🔐 Authentication")
-            gr.Markdown(
-                "**Sign in with Hugging Face** to access AI models and research tools.\n\n"
-                "This application requires authentication to use the inference API."
-            )
-            login_button = gr.LoginButton("Sign in with Hugging Face")
-            gr.Markdown("---")
-            gr.Markdown("### ℹ️ About")
-            gr.Markdown(
-                "AI-Powered Drug Repurposing Agent that searches:\n"
-                "- PubMed\n"
-                "- ClinicalTrials.gov\n"
-                "- Europe PMC"
-            )
-        
+        gr.HTML(f"<style>{brand_css}</style>")
+        is_space = bool(os.getenv("SPACE_ID"))
+
+        with gr.Row(elem_id="hero-banner"):
+            with gr.Column(scale=2, elem_id="hero-nav"):
+                gr.Markdown(
+                    """#### Available Tools:
+
+- search_pubmed: Search peer-reviewed biomedical literature.
+- search_clinical_trials: Search ClinicalTrials.gov.
+- search_biorxiv: Search bioRxiv/medRxiv preprints.
+- search_all: Search all sources simultaneously.
+- analyze_hypothesis: Secure statistical analysis using Modal sandboxes.
+""",
+                )
+            with gr.Column(scale=3, elem_id="hero-text"):
+                gr.Markdown(
+                    """## 🧬 DeepCritical Research Agent
+**Evidence-focused drug repurposing with MCP integration.**
+
+Multi-Source Search: PubMed, ClinicalTrials.gov, bioRxiv/medRxiv
+MCP Integration: Use our tools from Claude Desktop or any MCP client
+Modal Sandbox: Secure execution of AI-generated statistical code
+LlamaIndex RAG: Semantic search and evidence synthesis
+""",
+                )
+            with gr.Column(scale=2, elem_id="hero-login"):
+                gr.Markdown("#### Sign in to unlock premium reasoning models")
+                if is_space:
+                    gr.LoginButton(
+                        elem_id="hf-login",
+                        value="Sign in with Hugging Face",
+                    )
+                    login_note = (
+                        "Connect your Hugging Face account to access faster providers, gated models, and richer summaries."
+                    )
+                else:
+                    gr.Button(
+                        value="Sign in with Hugging Face",
+                        elem_id="hf-login",
+                        interactive=False,
+                    )
+                    login_note = (
+                        "Sign-in is available on the deployed Hugging Face Space. Local previews use public model access."
+                    )
+                gr.Markdown(login_note, elem_id="login-note")
+
         # Create settings components (hidden - used only for additional_inputs)
-        # Model/provider selection removed to avoid dropdown value mismatch errors
         # Settings will use defaults from configure_orchestrator
         with gr.Row(visible=False):
             mode_radio = gr.Radio(
@@ -581,53 +722,54 @@ def create_demo() -> gr.Blocks:
         # Chat interface with model/provider selection
         # Examples are provided but will NOT run at startup (cache_examples=False)
         # Users must log in first before using examples or submitting queries
-        gr.ChatInterface(
-            fn=research_agent,
-            title="🧬 DeepCritical",
-            description=(
-                "*AI-Powered Drug Repurposing Agent — searches PubMed, "
-                "ClinicalTrials.gov & Europe PMC*\n\n"
-                "---\n"
-                "*Research tool only — not for medical advice.*  \n"
-                "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
-                "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
-            ),
-            examples=[
-                # When additional_inputs are provided, examples must be lists of lists
-                # Each inner list: [message, mode, hf_model, hf_provider]
-                # Using actual model IDs and provider names from inference_models.py
-                # Note: Provider is optional - if empty, HF will auto-select
-                # These examples will NOT run at startup - users must click them after logging in
-                [
-                    "What drugs could be repurposed for Alzheimer's disease?",
-                    "simple",
-                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
-                    "",
+        with gr.Column(elem_id="chat-panel"):
+            gr.ChatInterface(
+                fn=research_agent,
+                title="🧬 DeepCritical",
+                description=(
+                    "*AI-Powered Drug Repurposing Agent — searches PubMed, "
+                    "ClinicalTrials.gov & Europe PMC*\n\n"
+                    "---\n"
+                    "*Research tool only — not for medical advice.*  \n"
+                    "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
+                    "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
+                ),
+                examples=[
+                    # When additional_inputs are provided, examples must be lists of lists
+                    # Each inner list: [message, mode, hf_model, hf_provider]
+                    # Using actual model IDs and provider names from inference_models.py
+                    # Note: Provider is optional - if empty, HF will auto-select
+                    # These examples will NOT run at startup - users must click them after logging in
+                    [
+                        "What drugs could be repurposed for Alzheimer's disease?",
+                        "simple",
+                        "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                        "",
+                    ],
+                    [
+                        "Is metformin effective for treating cancer?",
+                        "simple",
+                        "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                        "",
+                    ],
+                    [
+                        "What medications show promise for Long COVID treatment?",
+                        "simple",
+                        "zai-org/GLM-4.5-Air",
+                        "nebius",
+                    ],
                 ],
-                [
-                    "Is metformin effective for treating cancer?",
-                    "simple",
-                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
-                    "",
+                cache_examples=False,  # CRITICAL: Disable example caching to prevent examples from running at startup
+                # Examples will only run when user explicitly clicks them (after login)
+                additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=True, visible=True),
+                additional_inputs=[
+                    mode_radio,
+                    hf_model_dropdown,
+                    hf_provider_dropdown,
+                    # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters
+                    # when user is logged in - they should NOT be added to additional_inputs
                 ],
-                [
-                    "What medications show promise for Long COVID treatment?",
-                    "simple",
-                    "zai-org/GLM-4.5-Air",
-                    "nebius",
-                ],
-            ],
-            cache_examples=False,  # CRITICAL: Disable example caching to prevent examples from running at startup
-            # Examples will only run when user explicitly clicks them (after login)
-            additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=True, visible=True),
-            additional_inputs=[
-                mode_radio,
-                hf_model_dropdown,
-                hf_provider_dropdown,
-                # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters
-                # when user is logged in - they should NOT be added to additional_inputs
-            ],
-        )
+            )
 
     return demo  # type: ignore[no-any-return]
 
