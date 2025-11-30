@@ -284,11 +284,26 @@ def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
             
             if valid_files:
                 # Format files for Gradio: include as markdown download links
-                file_links = "\n\n".join([
-                    f"📎 [Download: {_get_file_name(f)}]({f})" 
-                    for f in valid_files
-                ])
-                result["content"] = f"{content}\n\n{file_links}"
+                # Gradio ChatInterface automatically renders file links as downloadable files
+                import os
+                file_links = []
+                for f in valid_files:
+                    file_name = _get_file_name(f)
+                    try:
+                        file_size = os.path.getsize(f)
+                        # Format file size (bytes to KB/MB)
+                        if file_size < 1024:
+                            size_str = f"{file_size} B"
+                        elif file_size < 1024 * 1024:
+                            size_str = f"{file_size / 1024:.1f} KB"
+                        else:
+                            size_str = f"{file_size / (1024 * 1024):.1f} MB"
+                        file_links.append(f"📎 [Download: {file_name} ({size_str})]({f})")
+                    except OSError:
+                        # If we can't get file size, just show the name
+                        file_links.append(f"📎 [Download: {file_name}]({f})")
+                
+                result["content"] = f"{content}\n\n" + "\n\n".join(file_links)
                 
                 # Also store in metadata for potential future use
                 if "metadata" not in result:
@@ -540,6 +555,8 @@ async def research_agent(
     hf_provider: str | None = None,
     graph_mode: str = "auto",
     use_graph: bool = True,
+    enable_image_input: bool = True,
+    enable_audio_input: bool = True,
     tts_voice: str = "af_heart",
     tts_speed: float = 1.0,
     oauth_token: gr.OAuthToken | None = None,
@@ -622,15 +639,17 @@ async def research_agent(
         audio_input_data = message.get("audio") or None
 
         # Process multimodal input (images, audio files, audio input)
-        # Always process if we have files or audio input, not just when enable_image_input is True
-        if files or (audio_input_data is not None and settings.enable_audio_input):
+        # Process if we have files (and image input enabled) or audio input (and audio input enabled)
+        # Use UI settings from function parameters
+        if (files and enable_image_input) or (audio_input_data is not None and enable_audio_input):
             try:
                 multimodal_service = get_multimodal_service()
                 # Prepend audio/image text to original text (prepend_multimodal=True)
+                # Filter files and audio based on UI settings
                 processed_text = await multimodal_service.process_multimodal_input(
                     processed_text,
-                    files=files,
-                    audio_input=audio_input_data,
+                    files=files if enable_image_input else [],
+                    audio_input=audio_input_data if enable_audio_input else None,
                     hf_token=token_value,
                     prepend_multimodal=True,  # Prepend audio/image text to text input
                 )
@@ -795,6 +814,20 @@ def create_demo() -> gr.Blocks:
                     info="Enable graph-based workflow execution",
                 )
             
+            # Multimodal Input Configuration Accordion
+            with gr.Accordion("📷 Multimodal Input", open=False):
+                enable_image_input_checkbox = gr.Checkbox(
+                    value=settings.enable_image_input,
+                    label="Enable Image Input (OCR)",
+                    info="Extract text from uploaded images using OCR",
+                )
+                
+                enable_audio_input_checkbox = gr.Checkbox(
+                    value=settings.enable_audio_input,
+                    label="Enable Audio Input (STT)",
+                    info="Transcribe audio recordings using speech-to-text",
+                )
+            
             # Audio/TTS Configuration Accordion
             with gr.Accordion("🔊 Audio Output", open=False):
                 enable_audio_output_checkbox = gr.Checkbox(
@@ -848,6 +881,12 @@ def create_demo() -> gr.Blocks:
                     visible=settings.modal_available,
                     interactive=False,  # GPU type set at function definition time, requires restart
                 )
+                
+                # Audio output component (for TTS response) - moved to sidebar
+                audio_output = gr.Audio(
+                    label="🔊 Audio Response",
+                    visible=settings.enable_audio_output,
+                )
 
         # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
         # These will be empty by default and use defaults in configure_orchestrator
@@ -863,12 +902,6 @@ def create_demo() -> gr.Blocks:
                 label="⚡ Inference Provider",
                 visible=False,  # Hidden from UI
             )
-
-        # Audio output component (for TTS response)
-        audio_output = gr.Audio(
-            label="🔊 Audio Response",
-            visible=settings.enable_audio_output,
-        )
         
         # Update TTS component visibility based on enable_audio_output_checkbox
         # This must be after audio_output is defined
@@ -905,7 +938,11 @@ def create_demo() -> gr.Blocks:
                 "- ⏹️ Stops only at configured limits (budget, time, iterations)\n"
                 "- 📊 Evidence synthesis with citations\n\n"
                 "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
-                "**🎤 Multimodal Support**: Upload images (OCR), record audio (STT), or type text.\n\n"
+                "**📷🎤 Multimodal Input Support**:\n"
+                "- **Images**: Upload images to extract text using OCR\n"
+                "- **Audio**: Record audio or upload audio files for speech-to-text transcription\n"
+                "- **Text**: Type your research questions directly\n"
+                "Configure multimodal inputs in the sidebar settings.\n\n"
                 "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
             ),
             examples=[
@@ -949,6 +986,8 @@ def create_demo() -> gr.Blocks:
                 hf_provider_dropdown,
                 graph_mode_radio,
                 use_graph_checkbox,
+                enable_image_input_checkbox,
+                enable_audio_input_checkbox,
                 tts_voice_dropdown,
                 tts_speed_slider,
                 # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters

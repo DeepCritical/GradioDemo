@@ -823,18 +823,34 @@ class GraphOrchestrator:
                     from src.utils.models import KnowledgeGapOutput
 
                     if node.node_id == "knowledge_gap":
+                        # Reconstruct KnowledgeGapOutput from validation error tuple
                         output = KnowledgeGapOutput(
                             research_complete=output[1] if len(output) > 1 else False,
                             outstanding_gaps=[],
                         )
+                        self.logger.info(
+                            "Reconstructed KnowledgeGapOutput from validation error tuple",
+                            node_id=node.node_id,
+                            research_complete=output.research_complete,
+                        )
                     else:
-                        # For other nodes, log error and use fallback
-                        self.logger.error(
-                            "Cannot reconstruct output from tuple",
+                        # For other nodes, try to extract meaningful output or use fallback
+                        self.logger.warning(
+                            "Agent node output is tuple format, attempting extraction",
                             node_id=node.node_id,
                             tuple_value=output,
                         )
-                        raise ValueError(f"Cannot extract output from tuple: {output}")
+                        # Try to extract first meaningful element
+                        if len(output) > 0:
+                            # If first element is a string or dict, might be the actual output
+                            if isinstance(output[0], (str, dict)):
+                                output = output[0]
+                            else:
+                                # Last resort: use first element
+                                output = output[0]
+                        else:
+                            # Empty tuple - use None and let downstream handle it
+                            output = None
 
         if node.output_transformer:
             output = node.output_transformer(output)
@@ -1010,7 +1026,7 @@ class GraphOrchestrator:
             else:
                 prev_result = context.get_node_result(context.current_node)
 
-        # Handle case where result might be a tuple (from pydantic-graph)
+        # Handle case where result might be a tuple (from pydantic-ai validation errors)
         # Extract the actual result object if it's a tuple
         if isinstance(prev_result, tuple) and len(prev_result) > 0:
             # Check if first element is a KnowledgeGapOutput-like object
@@ -1018,14 +1034,46 @@ class GraphOrchestrator:
                 prev_result = prev_result[0]
             elif len(prev_result) > 1 and hasattr(prev_result[1], "research_complete"):
                 prev_result = prev_result[1]
-            else:
-                # If tuple doesn't contain the object, log warning and use first element
+            elif len(prev_result) == 2 and isinstance(prev_result[0], str) and prev_result[0] == "research_complete":
+                # Handle validation error format: ('research_complete', False)
+                # Reconstruct KnowledgeGapOutput from tuple
+                from src.utils.models import KnowledgeGapOutput
                 self.logger.warning(
-                    "Decision node received tuple result, extracting first element",
+                    "Decision node received validation error tuple, reconstructing KnowledgeGapOutput",
+                    node_id=node.node_id,
+                    tuple_value=prev_result,
+                )
+                prev_result = KnowledgeGapOutput(
+                    research_complete=prev_result[1] if len(prev_result) > 1 else False,
+                    outstanding_gaps=[],
+                )
+            else:
+                # If tuple doesn't contain the object, try to reconstruct or use fallback
+                self.logger.warning(
+                    "Decision node received unexpected tuple format, attempting reconstruction",
                     node_id=node.node_id,
                     tuple_length=len(prev_result),
+                    tuple_types=[type(x).__name__ for x in prev_result],
                 )
-                prev_result = prev_result[0]
+                # Try to reconstruct KnowledgeGapOutput if this is from knowledge_gap node
+                if prev_node_id == "knowledge_gap":
+                    from src.utils.models import KnowledgeGapOutput
+                    # Try to extract research_complete from tuple
+                    research_complete = False
+                    for item in prev_result:
+                        if isinstance(item, bool):
+                            research_complete = item
+                            break
+                        elif isinstance(item, dict) and "research_complete" in item:
+                            research_complete = item["research_complete"]
+                            break
+                    prev_result = KnowledgeGapOutput(
+                        research_complete=research_complete,
+                        outstanding_gaps=[],
+                    )
+                else:
+                    # For other nodes, use first element as fallback
+                    prev_result = prev_result[0]
 
         # Make decision
         try:

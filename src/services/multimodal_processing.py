@@ -63,7 +63,7 @@ class MultimodalService:
                 logger.warning("audio_processing_failed", error=str(e))
 
         # Process uploaded files (images and audio files)
-        if files:
+        if files and settings.enable_image_input:
             for file_data in files:
                 file_path = file_data.path if isinstance(file_data, FileData) else str(file_data)
 

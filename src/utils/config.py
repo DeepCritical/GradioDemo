@@ -149,6 +149,10 @@ class Settings(BaseSettings):
         default=True,
         description="Enable audio output (text-to-speech) for responses",
     )
+    enable_image_input: bool = Field(
+        default=True,
+        description="Enable image input (OCR) in multimodal interface",
+    )
     tts_voice: str = Field(
         default="af_heart",
         description="TTS voice ID for Kokoro TTS (e.g., af_heart, am_michael)",
@@ -176,6 +180,12 @@ class Settings(BaseSettings):
     stt_target_lang: str = Field(
         default="English",
         description="Target language for STT (full name like 'English', 'Spanish', etc.)",
+    )
+
+    # Image OCR Configuration
+    ocr_api_url: str | None = Field(
+        default="https://prithivmlmods-multimodal-ocr3.hf.space",
+        description="Gradio Space URL for OCR service (default: prithivMLmods/Multimodal-OCR3)",
     )
 
     # Report File Output Configuration
