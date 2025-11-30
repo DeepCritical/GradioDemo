@@ -28,6 +28,7 @@ from src.agent_factory.graph_builder import (
     create_deep_graph,
     create_iterative_graph,
 )
+from src.legacy_orchestrator import JudgeHandlerProtocol, SearchHandlerProtocol
 from src.middleware.budget_tracker import BudgetTracker
 from src.middleware.state_machine import WorkflowState, init_workflow_state
 from src.orchestrator.research_flow import DeepResearchFlow, IterativeResearchFlow
@@ -121,6 +122,8 @@ class GraphOrchestrator:
         max_iterations: int = 5,
         max_time_minutes: int = 10,
         use_graph: bool = True,
+        search_handler: SearchHandlerProtocol | None = None,
+        judge_handler: JudgeHandlerProtocol | None = None,
     ) -> None:
         """
         Initialize graph orchestrator.
@@ -130,11 +133,15 @@ class GraphOrchestrator:
             max_iterations: Maximum iterations per loop
             max_time_minutes: Maximum time per loop
             use_graph: Whether to use graph execution (True) or agent chains (False)
+            search_handler: Optional search handler for tool execution
+            judge_handler: Optional judge handler for evidence assessment
         """
         self.mode = mode
         self.max_iterations = max_iterations
         self.max_time_minutes = max_time_minutes
         self.use_graph = use_graph
+        self.search_handler = search_handler
+        self.judge_handler = judge_handler
         self.logger = logger
 
         # Initialize flows (for backward compatibility)
@@ -248,6 +255,7 @@ class GraphOrchestrator:
                 self._iterative_flow = IterativeResearchFlow(
                     max_iterations=self.max_iterations,
                     max_time_minutes=self.max_time_minutes,
+                    judge_handler=self.judge_handler,
                 )
 
             try:
@@ -278,6 +286,8 @@ class GraphOrchestrator:
             )
 
             if self._deep_flow is None:
+                # DeepResearchFlow creates its own judge_handler internally
+                # The judge_handler is passed to IterativeResearchFlow in parallel loops
                 self._deep_flow = DeepResearchFlow(
                     max_iterations=self.max_iterations,
                     max_time_minutes=self.max_time_minutes,
@@ -640,6 +650,34 @@ class GraphOrchestrator:
             tokens = result.usage.total_tokens if hasattr(result.usage, "total_tokens") else 0
             context.budget_tracker.add_tokens("graph_execution", tokens)
 
+        # Special handling for knowledge_gap node: optionally call judge_handler
+        if node.node_id == "knowledge_gap" and self.judge_handler:
+            # Get evidence from workflow state
+            evidence = context.state.evidence
+            if evidence:
+                try:
+                    from src.utils.models import JudgeAssessment
+
+                    # Call judge handler to assess evidence
+                    judge_assessment: JudgeAssessment = await self.judge_handler.assess(
+                        question=query, evidence=evidence
+                    )
+                    # Store assessment in context for decision node to use
+                    context.set_node_result("judge_assessment", judge_assessment)
+                    self.logger.info(
+                        "Judge assessment completed",
+                        sufficient=judge_assessment.sufficient,
+                        confidence=judge_assessment.confidence,
+                        recommendation=judge_assessment.recommendation,
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        "Judge handler assessment failed",
+                        error=str(e),
+                        node_id=node.node_id,
+                    )
+                    # Continue without judge assessment
+
         return output
 
     async def _execute_state_node(
@@ -650,6 +688,7 @@ class GraphOrchestrator:
         Special handling for deep research state nodes:
         - "store_plan": Stores ReportPlan in context for parallel loops
         - "collect_drafts": Stores section drafts in context for synthesizer
+        - "execute_tools": Executes search using search_handler
 
         Args:
             node: The state node
@@ -659,6 +698,58 @@ class GraphOrchestrator:
         Returns:
             State update result
         """
+        # Special handling for execute_tools node
+        if node.node_id == "execute_tools":
+            # Get AgentSelectionPlan from tool_selector node result
+            tool_selector_result = context.get_node_result("tool_selector")
+            from src.utils.models import AgentSelectionPlan, SearchResult
+
+            # Extract query from context or use original query
+            search_query = query
+            if tool_selector_result and isinstance(tool_selector_result, AgentSelectionPlan):
+                # Use the gap or query from the selection plan
+                if tool_selector_result.tasks:
+                    # Use the first task's query if available
+                    first_task = tool_selector_result.tasks[0]
+                    if hasattr(first_task, "query") and first_task.query:
+                        search_query = first_task.query
+                    elif hasattr(first_task, "tool_input") and isinstance(
+                        first_task.tool_input, str
+                    ):
+                        search_query = first_task.tool_input
+
+            # Execute search using search_handler
+            if self.search_handler:
+                try:
+                    search_result: SearchResult = await self.search_handler.execute(
+                        query=search_query, max_results_per_tool=10
+                    )
+                    # Add evidence to workflow state (add_evidence expects a list)
+                    context.state.add_evidence(search_result.evidence)
+                    # Store evidence list in context for next nodes
+                    context.set_node_result(node.node_id, search_result.evidence)
+                    self.logger.info(
+                        "Tools executed via search_handler",
+                        query=search_query[:100],
+                        evidence_count=len(search_result.evidence),
+                    )
+                    return search_result.evidence
+                except Exception as e:
+                    self.logger.error(
+                        "Search handler execution failed",
+                        error=str(e),
+                        query=search_query[:100],
+                    )
+                    # Return empty list on error to allow graph to continue
+                    return []
+            else:
+                # Fallback: log warning and return empty list
+                self.logger.warning(
+                    "Search handler not available for execute_tools node",
+                    node_id=node.node_id,
+                )
+                return []
+
         # Get previous result for state update
         # For "store_plan", get from planner node
         # For "collect_drafts", get from parallel_loops node
@@ -797,8 +888,10 @@ class GraphOrchestrator:
             sections=len(report_plan.report_outline),
         )
 
-        # Create judge handler for iterative flows
-        judge_handler = create_judge_handler()
+        # Use judge handler from GraphOrchestrator if available, otherwise create new one
+        judge_handler = self.judge_handler
+        if judge_handler is None:
+            judge_handler = create_judge_handler()
 
         # Create and execute iterative research flows for each section
         async def run_section_research(section_index: int) -> str:
@@ -812,7 +905,7 @@ class GraphOrchestrator:
                     max_time_minutes=self.max_time_minutes,
                     verbose=False,  # Less verbose in parallel execution
                     use_graph=False,  # Use agent chains for section research
-                    judge_handler=judge_handler,
+                    judge_handler=self.judge_handler or judge_handler,
                 )
 
                 # Run research for this section
@@ -953,6 +1046,8 @@ def create_graph_orchestrator(
     max_iterations: int = 5,
     max_time_minutes: int = 10,
     use_graph: bool = True,
+    search_handler: SearchHandlerProtocol | None = None,
+    judge_handler: JudgeHandlerProtocol | None = None,
 ) -> GraphOrchestrator:
     """
     Factory function to create a graph orchestrator.
@@ -962,6 +1057,8 @@ def create_graph_orchestrator(
         max_iterations: Maximum iterations per loop
         max_time_minutes: Maximum time per loop
         use_graph: Whether to use graph execution (True) or agent chains (False)
+        search_handler: Optional search handler for tool execution
+        judge_handler: Optional judge handler for evidence assessment
 
     Returns:
         Configured GraphOrchestrator instance
@@ -971,4 +1068,6 @@ def create_graph_orchestrator(
         max_iterations=max_iterations,
         max_time_minutes=max_time_minutes,
         use_graph=use_graph,
+        search_handler=search_handler,
+        judge_handler=judge_handler,
     )

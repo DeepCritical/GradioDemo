@@ -50,12 +50,15 @@ def get_magentic_client() -> "OpenAIChatClient":
     )
 
 
-def get_huggingface_chat_client() -> "HuggingFaceChatClient":
+def get_huggingface_chat_client(oauth_token: str | None = None) -> "HuggingFaceChatClient":
     """
     Get HuggingFace chat client for agent-framework.
 
     HuggingFace InferenceClient natively supports function calling,
     making it compatible with agent-framework's ChatAgent.
+
+    Args:
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured HuggingFaceChatClient
@@ -66,7 +69,8 @@ def get_huggingface_chat_client() -> "HuggingFaceChatClient":
     from src.utils.huggingface_chat_client import HuggingFaceChatClient
 
     model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-    api_key = settings.hf_token or settings.huggingface_api_key
+    # Priority: oauth_token > env vars
+    api_key = oauth_token or settings.hf_token or settings.huggingface_api_key
 
     return HuggingFaceChatClient(
         model_name=model_name,
@@ -75,7 +79,7 @@ def get_huggingface_chat_client() -> "HuggingFaceChatClient":
     )
 
 
-def get_chat_client_for_agent() -> Any:
+def get_chat_client_for_agent(oauth_token: str | None = None) -> Any:
     """
     Get appropriate chat client for agent-framework based on configuration.
 
@@ -83,15 +87,21 @@ def get_chat_client_for_agent() -> Any:
     - HuggingFace InferenceClient (if HF_TOKEN available, preferred for free tier)
     - OpenAI ChatClient (if OPENAI_API_KEY available, fallback)
 
+    Args:
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
+
     Returns:
         ChatClient compatible with agent-framework (HuggingFaceChatClient or OpenAIChatClient)
 
     Raises:
         ConfigurationError: If no suitable client can be created
     """
+    # Check if we have OAuth token or env vars
+    has_hf_key = bool(oauth_token or settings.has_huggingface_key)
+    
     # Prefer HuggingFace if available (free tier)
-    if settings.has_huggingface_key:
-        return get_huggingface_chat_client()
+    if has_hf_key:
+        return get_huggingface_chat_client(oauth_token=oauth_token)
 
     # Fallback to OpenAI if available
     if settings.has_openai_key:
@@ -99,7 +109,7 @@ def get_chat_client_for_agent() -> Any:
 
     # If neither available, try HuggingFace without key (public models)
     try:
-        return get_huggingface_chat_client()
+        return get_huggingface_chat_client(oauth_token=oauth_token)
     except Exception:
         pass
 
@@ -108,13 +118,16 @@ def get_chat_client_for_agent() -> Any:
     )
 
 
-def get_pydantic_ai_model() -> Any:
+def get_pydantic_ai_model(oauth_token: str | None = None) -> Any:
     """
     Get the appropriate model for pydantic-ai based on configuration.
 
     Uses the configured LLM_PROVIDER to select between HuggingFace, OpenAI, and Anthropic.
     Defaults to HuggingFace if provider is not specified or unknown.
     This is used by simple mode components (JudgeHandler, etc.)
+
+    Args:
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured pydantic-ai model
@@ -126,9 +139,12 @@ def get_pydantic_ai_model() -> Any:
     from pydantic_ai.providers.huggingface import HuggingFaceProvider
     from pydantic_ai.providers.openai import OpenAIProvider
 
+    # Priority: oauth_token > env vars
+    effective_hf_token = oauth_token or settings.hf_token or settings.huggingface_api_key
+
     if settings.llm_provider == "huggingface":
         model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-        hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
+        hf_provider = HuggingFaceProvider(api_key=effective_hf_token)
         return HuggingFaceModel(model_name, provider=hf_provider)
 
     if settings.llm_provider == "openai":
@@ -145,7 +161,7 @@ def get_pydantic_ai_model() -> Any:
 
     # Default to HuggingFace if provider is unknown or not specified
     model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-    hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
+    hf_provider = HuggingFaceProvider(api_key=effective_hf_token)
     return HuggingFaceModel(model_name, provider=hf_provider)
 
 
