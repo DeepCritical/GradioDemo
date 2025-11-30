@@ -1,4 +1,5 @@
 folder/
+site/
 .cursor/
 .ruff_cache/
 # Python
@@ -74,7 +75,5 @@ htmlcov/
 chroma_db/
 *.sqlite3
 
-# Development directory (personal notes and planning)
-dev/
 
 # Trigger rebuild Wed Nov 26 17:51:41 EST 2025

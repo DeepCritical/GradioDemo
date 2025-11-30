@@ -30,7 +30,7 @@ from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, Mock
 from src.orchestrator_factory import create_orchestrator
 from src.services.audio_processing import get_audio_service
 from src.services.multimodal_processing import get_multimodal_service
-# import structlog
+import structlog
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
@@ -38,7 +38,7 @@ from src.tools.search_handler import SearchHandler
 from src.utils.config import settings
 from src.utils.models import AgentEvent, OrchestratorConfig
 
-# logger = structlog.get_logger()
+logger = structlog.get_logger()
 
 
 def configure_orchestrator(
