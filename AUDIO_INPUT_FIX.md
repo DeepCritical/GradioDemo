@@ -88,3 +88,4 @@ If audio input still doesn't appear:
 - If it's still not visible, it might be in a dropdown menu (click the "+" or "..." button)
 - The `file_types` parameter ensures audio files are accepted for upload
 
+
