@@ -92,3 +92,4 @@ class SerperClient:
             logger.error("Unexpected error in Serper search", error=str(e), query=query)
             raise SearchError(f"Serper search failed: {e}") from e
 
+

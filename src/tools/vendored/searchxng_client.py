@@ -96,3 +96,4 @@ class SearchXNGClient:
             logger.error("Unexpected error in SearchXNG search", error=str(e), query=query)
             raise SearchError(f"SearchXNG search failed: {e}") from e
 
+
