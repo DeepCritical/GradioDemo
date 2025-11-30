@@ -16,7 +16,7 @@ license: mit
 tags:
   - mcp-in-action-track-enterprise
   - mcp-hackathon
-  - drug-repurposing
+  - deep-research
   - biomedical-ai
   - pydantic-ai
   - llamaindex
@@ -41,11 +41,13 @@ tags:
 
 </div>
 
-# DeepCritical
+# The DETERMINATOR
 
 ## About
 
-The [Deep Critical Gradio Hackathon Team](### Team) met online in the Alzheimer's Critical Literature Review Group in the Hugging Science initiative. We're building the agent framework we want to use for ai assisted research to [turn the vast amounts of clinical data into cures](https://github.com/DeepCritical/GradioDemo).
+The DETERMINATOR is a deep research agent system designed to assist with complex research questions requiring thorough investigation. Originally developed by the Deep Critical Gradio Hackathon Team, The DETERMINATOR specializes in medical research inquiry, functioning as a medical peer junior researcher that helps gather, evaluate, and synthesize evidence from multiple sources.
+
+**Important**: The DETERMINATOR is a research tool and cannot answer medical questions or provide medical advice. It assists researchers by finding and organizing evidence from biomedical literature and clinical trial databases.
 
 For this hackathon we're proposing a simple yet powerful Deep Research Agent that iteratively looks for the answer until it finds it using general purpose websearch and special purpose retrievers for technical retrievers. 
 
@@ -73,7 +75,7 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
 - [] Apply Deep Research Systems To Generate Short Form Video (up to 5 minutes)
 - [] Visualize Pydantic Graphs as Loading Screens in the UI
 - [] Improve Data Science with more Complex Graph Agents
-- [] Create Deep Critical Drug Reporposing / Discovery Demo
+- [] Create The DETERMINATOR Deep Research Demo
 - [] Create Deep Critical Literal Review
 - [] Create Deep Critical Hypothesis Generator
 - [] Create PyPi Package 

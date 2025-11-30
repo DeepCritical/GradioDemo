@@ -3,7 +3,11 @@
 import asyncio
 
 import structlog
-from duckduckgo_search import DDGS
+try:
+    from ddgs import DDGS  # New package name
+except ImportError:
+    # Fallback to old package name for backward compatibility
+    from duckduckgo_search import DDGS  # type: ignore[no-redef]
 
 from src.tools.query_utils import preprocess_query
 from src.utils.exceptions import SearchError

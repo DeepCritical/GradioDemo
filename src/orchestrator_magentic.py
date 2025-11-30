@@ -122,7 +122,7 @@ class MagenticOrchestrator:
 
         workflow = self._build_workflow()
 
-        task = f"""Research drug repurposing opportunities for: {query}
+        task = f"""Research opportunities for: {query}
 
 Workflow:
 1. SearchAgent: Find evidence from PubMed, ClinicalTrials.gov, and Europe PMC

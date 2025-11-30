@@ -705,8 +705,39 @@ class GraphOrchestrator:
         if node.input_transformer:
             input_data = node.input_transformer(input_data)
 
-        # Execute agent
-        result = await node.agent.run(input_data)
+        # Execute agent with error handling
+        try:
+            result = await node.agent.run(input_data)
+        except Exception as e:
+            # Handle validation errors and API errors for planner node
+            if node.node_id == "planner":
+                self.logger.error(
+                    "Planner agent execution failed, using fallback plan",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+                # Return a minimal fallback ReportPlan
+                from src.utils.models import ReportPlan, ReportPlanSection
+                
+                # Extract query from input_data if possible
+                fallback_query = query
+                if isinstance(input_data, str):
+                    # Try to extract query from input string
+                    if "QUERY:" in input_data:
+                        fallback_query = input_data.split("QUERY:")[-1].strip()
+                
+                return ReportPlan(
+                    background_context="",
+                    report_outline=[
+                        ReportPlanSection(
+                            title="Research Findings",
+                            key_question=fallback_query,
+                        )
+                    ],
+                    report_title=f"Research Report: {fallback_query[:50]}",
+                )
+            # For other nodes, re-raise the exception
+            raise
 
         # Transform output if needed
         output = result.output
@@ -855,10 +886,64 @@ class GraphOrchestrator:
             Next node ID
         """
         # Get previous result for decision
-        prev_result = context.get_node_result(context.current_node)
+        # The decision node needs the result from the node that connects to it
+        # Find the previous node by searching edges
+        prev_node_id: str | None = None
+        if self._graph:
+            # Find which node connects to this decision node
+            for from_node, edge_list in self._graph.edges.items():
+                for edge in edge_list:
+                    if edge.to_node == node.node_id:
+                        prev_node_id = from_node
+                        break
+                if prev_node_id:
+                    break
+
+        # Fallback: For continue_decision, it always comes from knowledge_gap
+        if not prev_node_id and node.node_id == "continue_decision":
+            prev_node_id = "knowledge_gap"
+
+        # Get result from previous node (or current node if no previous found)
+        if prev_node_id:
+            prev_result = context.get_node_result(prev_node_id)
+        else:
+            # Fallback: try to get from visited nodes (last visited before current)
+            visited_list = list(context.visited_nodes)
+            if len(visited_list) > 0:
+                prev_node_id = visited_list[-1]
+                prev_result = context.get_node_result(prev_node_id)
+            else:
+                prev_result = context.get_node_result(context.current_node)
+
+        # Handle case where result might be a tuple (from pydantic-graph)
+        # Extract the actual result object if it's a tuple
+        if isinstance(prev_result, tuple) and len(prev_result) > 0:
+            # Check if first element is a KnowledgeGapOutput-like object
+            if hasattr(prev_result[0], "research_complete"):
+                prev_result = prev_result[0]
+            elif len(prev_result) > 1 and hasattr(prev_result[1], "research_complete"):
+                prev_result = prev_result[1]
+            else:
+                # If tuple doesn't contain the object, log warning and use first element
+                self.logger.warning(
+                    "Decision node received tuple result, extracting first element",
+                    node_id=node.node_id,
+                    tuple_length=len(prev_result),
+                )
+                prev_result = prev_result[0]
 
         # Make decision
-        next_node_id = node.decision_function(prev_result)
+        try:
+            next_node_id = node.decision_function(prev_result)
+        except Exception as e:
+            self.logger.error(
+                "Decision function failed",
+                node_id=node.node_id,
+                error=str(e),
+                prev_result_type=type(prev_result).__name__,
+            )
+            # Default to first option on error
+            next_node_id = node.options[0]
 
         # Validate decision
         if next_node_id not in node.options:

@@ -1,8 +1,8 @@
-# DeepCritical Examples
+# The DETERMINATOR Examples
 
 **NO MOCKS. NO FAKE DATA. REAL SCIENCE.**
 
-These demos run the REAL drug repurposing research pipeline with actual API calls.
+These demos run the REAL deep research pipeline with actual API calls.
 
 ---
 
@@ -181,4 +181,4 @@ Mocks belong in `tests/unit/`, not in demos. When you run these examples, you se
 - Real scientific hypotheses
 - Real research reports
 
-This is what DeepCritical actually does. No fake data. No canned responses.
+This is what The DETERMINATOR actually does. No fake data. No canned responses.

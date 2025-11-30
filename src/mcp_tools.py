@@ -1,4 +1,4 @@
-"""MCP tool wrappers for DeepCritical search tools.
+"""MCP tool wrappers for The DETERMINATOR search tools.
 
 These functions expose our search tools via MCP protocol.
 Each function follows the MCP tool contract:
@@ -24,7 +24,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
     Returns titles, authors, abstracts, and citation information.
 
     Args:
-        query: Search query (e.g., "metformin alzheimer", "drug repurposing cancer")
+        query: Search query (e.g., "metformin alzheimer", "cancer treatment mechanisms")
         max_results: Maximum results to return (1-50, default 10)
 
     Returns:
@@ -113,7 +113,7 @@ async def search_all_sources(query: str, max_per_source: int = 5) -> str:
     """Search all biomedical sources simultaneously.
 
     Performs parallel search across PubMed, ClinicalTrials.gov, and Europe PMC.
-    This is the most comprehensive search option for drug repurposing research.
+    This is the most comprehensive search option for deep medical research inquiry.
 
     Args:
         query: Search query (e.g., "metformin alzheimer", "aspirin cancer prevention")
@@ -161,10 +161,10 @@ async def analyze_hypothesis(
     condition: str,
     evidence_summary: str,
 ) -> str:
-    """Perform statistical analysis of drug repurposing hypothesis using Modal.
+    """Perform statistical analysis of research hypothesis using Modal.
 
     Executes AI-generated Python code in a secure Modal sandbox to analyze
-    the statistical evidence for a drug repurposing hypothesis.
+    the statistical evidence for a research hypothesis.
 
     Args:
         drug: The drug being evaluated (e.g., "metformin")

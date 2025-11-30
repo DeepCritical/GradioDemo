@@ -33,8 +33,9 @@ limits>=3.0  # Rate limiting
 pydantic-graph>=1.22.0
 
 # Web search
-duckduckgo-search>=5.0
-
+ddgs>=9.9.2  # duckduckgo-search has been renamed to ddgs
+fake-useragent==2.2.0
+socksio==1.0.0
 # LlamaIndex RAG
 llama-index-llms-huggingface>=0.6.1
 llama-index-llms-huggingface-api>=0.6.1

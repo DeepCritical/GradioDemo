@@ -80,7 +80,7 @@ async def search_clinical_trials(query: str, max_results: int = 10) -> str:
     """Search ClinicalTrials.gov for clinical studies.
 
     Use this tool to find ongoing and completed clinical trials
-    for drug repurposing candidates.
+    for research investigation.
 
     Args:
         query: Search terms (e.g., "metformin cancer phase 3")

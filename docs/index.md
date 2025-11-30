@@ -1,8 +1,10 @@
-# DeepCritical
+# The DETERMINATOR
 
-**AI-Native Drug Repurposing Research Agent**
+**Deep Research Agent for Medical Inquiry**
 
-DeepCritical is a deep research agent system that uses iterative search-and-judge loops to comprehensively answer research questions. The system supports multiple orchestration patterns, graph-based execution, parallel research workflows, and long-running task management with real-time streaming.
+The DETERMINATOR is a deep research agent system that uses iterative search-and-judge loops to comprehensively investigate research questions. The system supports multiple orchestration patterns, graph-based execution, parallel research workflows, and long-running task management with real-time streaming.
+
+**Important**: The DETERMINATOR functions as a medical peer junior researcher that assists with research by gathering and synthesizing evidence. It cannot answer medical questions or provide medical advice.
 
 ## Features
 
@@ -34,7 +36,7 @@ For detailed installation and setup instructions, see the [Getting Started Guide
 
 ## Architecture
 
-DeepCritical uses a Vertical Slice Architecture:
+The DETERMINATOR uses a Vertical Slice Architecture:
 
 1. **Search Slice**: Retrieving evidence from PubMed, ClinicalTrials.gov, and Europe PMC
 2. **Judge Slice**: Evaluating evidence quality using LLMs

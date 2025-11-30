@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Demo: Search for drug repurposing evidence.
+Demo: Search for biomedical research evidence.
 
 This script demonstrates multi-source search functionality:
 - PubMed search (biomedical literature)
@@ -30,7 +30,7 @@ from src.tools.search_handler import SearchHandler
 async def main(query: str) -> None:
     """Run search demo with the given query."""
     print(f"\n{'=' * 60}")
-    print("DeepCritical Search Demo")
+    print("The DETERMINATOR Search Demo")
     print(f"Query: {query}")
     print(f"{'=' * 60}\n")
 
@@ -61,7 +61,7 @@ async def main(query: str) -> None:
 
 if __name__ == "__main__":
     # Default query or use command line arg
-    default_query = "metformin Alzheimer's disease drug repurposing"
+    default_query = "metformin Alzheimer's disease treatment mechanisms"
     query = sys.argv[1] if len(sys.argv) > 1 else default_query
 
     asyncio.run(main(query))
