@@ -533,10 +533,33 @@ class GraphOrchestrator:
 
         # Final event
         final_result = context.get_node_result(current_node_id) if current_node_id else None
+        
+        # Check if final result contains file information
+        event_data: dict[str, Any] = {"mode": self.mode, "iterations": iteration}
+        message: str = "Research completed"
+        
+        if isinstance(final_result, str):
+            message = final_result
+        elif isinstance(final_result, dict):
+            # If result is a dict, check for file paths
+            if "file" in final_result:
+                file_path = final_result["file"]
+                if isinstance(file_path, str):
+                    event_data["file"] = file_path
+                    message = final_result.get("message", "Report generated. Download available.")
+            elif "files" in final_result:
+                files = final_result["files"]
+                if isinstance(files, list):
+                    event_data["files"] = files
+                    message = final_result.get("message", "Report generated. Downloads available.")
+                elif isinstance(files, str):
+                    event_data["files"] = [files]
+                    message = final_result.get("message", "Report generated. Download available.")
+        
         yield AgentEvent(
             type="complete",
-            message=final_result if isinstance(final_result, str) else "Research completed",
-            data={"mode": self.mode, "iterations": iteration},
+            message=message,
+            data=event_data,
             iteration=iteration,
         )
 

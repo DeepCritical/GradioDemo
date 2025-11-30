@@ -30,12 +30,15 @@ from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, Mock
 from src.orchestrator_factory import create_orchestrator
 from src.services.audio_processing import get_audio_service
 from src.services.multimodal_processing import get_multimodal_service
+# import structlog
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
 from src.utils.config import settings
 from src.utils.models import AgentEvent, OrchestratorConfig
+
+# logger = structlog.get_logger()
 
 
 def configure_orchestrator(
@@ -70,8 +73,18 @@ def configure_orchestrator(
 
     # Create search tools with RAG enabled
     # Pass OAuth token to SearchHandler so it can be used by RAG service
+    tools = [PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()]
+
+    # Add web search tool if available
+    from src.tools.web_search_factory import create_web_search_tool
+
+    web_search_tool = create_web_search_tool()
+    if web_search_tool is not None:
+        tools.append(web_search_tool)
+        logger.info("Web search tool added to search handler", provider=web_search_tool.name)
+
     search_handler = SearchHandler(
-        tools=[PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
+        tools=tools,
         timeout=config.search_timeout,
         include_rag=True,
         auto_ingest_to_rag=True,
@@ -150,6 +163,49 @@ def configure_orchestrator(
     return orchestrator, backend_info
 
 
+def _is_file_path(text: str) -> bool:
+    """Check if text appears to be a file path.
+    
+    Args:
+        text: Text to check
+        
+    Returns:
+        True if text looks like a file path
+    """
+    import os
+    # Check for common file extensions
+    file_extensions = ['.md', '.pdf', '.txt', '.json', '.csv', '.xlsx', '.docx', '.html']
+    text_lower = text.lower().strip()
+    
+    # Check if it ends with a file extension
+    if any(text_lower.endswith(ext) for ext in file_extensions):
+        # Check if it's a valid path (absolute or relative)
+        if os.path.sep in text or '/' in text or '\\' in text:
+            return True
+        # Or if it's just a filename with extension
+        if '.' in text and len(text.split('.')) == 2:
+            return True
+    
+    # Check if it's an absolute path
+    if os.path.isabs(text):
+        return True
+    
+    return False
+
+
+def _get_file_name(file_path: str) -> str:
+    """Extract filename from file path.
+    
+    Args:
+        file_path: Full file path
+        
+    Returns:
+        Filename with extension
+    """
+    import os
+    return os.path.basename(file_path)
+
+
 def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
     """
     Convert AgentEvent to gr.ChatMessage with metadata for accordion display.
@@ -183,11 +239,61 @@ def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
 
     # For complete events, return main response without accordion
     if event.type == "complete":
+        # Check if event contains file information
+        content = event.message
+        files: list[str] | None = None
+        
+        # Check event.data for file paths
+        if event.data and isinstance(event.data, dict):
+            # Support both "files" (list) and "file" (single path) keys
+            if "files" in event.data:
+                files = event.data["files"]
+                if isinstance(files, str):
+                    files = [files]
+                elif not isinstance(files, list):
+                    files = None
+                else:
+                    # Filter to only valid file paths
+                    files = [f for f in files if isinstance(f, str) and _is_file_path(f)]
+            elif "file" in event.data:
+                file_path = event.data["file"]
+                if isinstance(file_path, str) and _is_file_path(file_path):
+                    files = [file_path]
+        
+        # Also check if message itself is a file path (less common, but possible)
+        if not files and isinstance(event.message, str) and _is_file_path(event.message):
+            files = [event.message]
+            # Keep message as text description
+            content = "Report generated. Download available below."
+        
         # Return as dict format for Gradio Chatbot compatibility
-        return {
+        result: dict[str, Any] = {
             "role": "assistant",
-            "content": event.message,
+            "content": content,
         }
+        
+        # Add files if present
+        # Gradio Chatbot supports file paths in content as markdown links
+        # The links will be clickable and downloadable
+        if files:
+            # Validate files exist before including them
+            import os
+            valid_files = [f for f in files if os.path.exists(f)]
+            
+            if valid_files:
+                # Format files for Gradio: include as markdown download links
+                file_links = "\n\n".join([
+                    f"📎 [Download: {_get_file_name(f)}]({f})" 
+                    for f in valid_files
+                ])
+                result["content"] = f"{content}\n\n{file_links}"
+                
+                # Also store in metadata for potential future use
+                if "metadata" not in result:
+                    result["metadata"] = {}
+                result["metadata"]["files"] = valid_files
+        
+        return result
 
     # Build metadata for accordion according to Gradio ChatMessage spec
     # Metadata keys: title (str), status ("pending"|"done"), log (str), duration (float)
