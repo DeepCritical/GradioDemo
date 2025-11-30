@@ -550,25 +550,25 @@ def create_demo() -> gr.Blocks:
                 "- Europe PMC"
             )
         
-        # Create settings components (hidden - used only for additional_inputs)
-        # Model/provider selection removed to avoid dropdown value mismatch errors
-        # Settings will use defaults from configure_orchestrator
-        with gr.Row(visible=False):
-            mode_radio = gr.Radio(
-                choices=["simple", "advanced", "iterative", "deep", "auto"],
-                value="simple",
-                label="Orchestrator Mode",
-                info=(
-                    "Simple: Linear search-judge loop | "
-                    "Advanced: Multi-agent (OpenAI) | "
-                    "Iterative: Knowledge-gap driven | "
-                    "Deep: Parallel sections | "
-                    "Auto: Smart routing"
-                ),
-            )
+        # Create settings components
+        # Mode selector is visible in Settings accordion
+        # Model/provider selection hidden to avoid dropdown value mismatch errors
+        mode_radio = gr.Radio(
+            choices=["simple", "advanced", "iterative", "deep", "auto"],
+            value="simple",
+            label="Orchestrator Mode",
+            info=(
+                "Simple: Linear search-judge loop | "
+                "Advanced: Multi-agent (OpenAI) | "
+                "Iterative: Knowledge-gap driven | "
+                "Deep: Parallel sections | "
+                "Auto: Smart routing"
+            ),
+        )
 
-            # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
-            # These will be empty by default and use defaults in configure_orchestrator
+        # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
+        # These will be empty by default and use defaults in configure_orchestrator
+        with gr.Row(visible=False):
             hf_model_dropdown = gr.Textbox(
                 value="",  # Empty string - will be converted to None in research_agent
                 label="🤖 Reasoning Model",
