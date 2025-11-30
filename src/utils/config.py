@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, description="OpenAI API key")
     anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
     llm_provider: Literal["openai", "anthropic", "huggingface"] = Field(
-        default="openai", description="Which LLM provider to use"
+        default="huggingface", description="Which LLM provider to use"
     )
     openai_model: str = Field(default="gpt-5.1", description="OpenAI model name")
     anthropic_model: str = Field(

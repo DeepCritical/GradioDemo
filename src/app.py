@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import gradio as gr
+import structlog
 
 # Try to import HuggingFace support (may not be available in all pydantic-ai versions)
 # According to https://ai.pydantic.dev/models/huggingface/, HuggingFace support requires
@@ -32,6 +33,27 @@ from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
 from src.utils.config import settings
 from src.utils.models import AgentEvent, OrchestratorConfig
+
+
+logger = structlog.get_logger()
+
+
+def oauth_dependencies_available() -> bool:
+    """Check whether Gradio OAuth dependencies are installed."""
+
+    try:
+        import gradio.oauth  # noqa: F401
+        import itsdangerous  # noqa: F401
+        import httpx_oauth  # noqa: F401
+    except ImportError as exc:
+        logger.warning(
+            "oauth_import_failed",
+            error=str(exc),
+            message="OAuth dependencies missing; disabling login button",
+        )
+        return False
+
+    return hasattr(gr, "LoginButton")
 
 
 def configure_orchestrator(
@@ -565,7 +587,12 @@ def create_demo() -> gr.Blocks:
                 "**Sign in with Hugging Face** to access AI models and research tools.\n\n"
                 "This application requires authentication to use the inference API."
             )
-            login_button = gr.LoginButton("Sign in with Hugging Face")
+            if oauth_dependencies_available():
+                login_button = gr.LoginButton("Sign in with Hugging Face")
+            else:
+                login_button = gr.Button(
+                    "OAuth unavailable (install gradio[oauth])", interactive=False
+                )
             gr.Markdown("---")
             gr.Markdown("### ℹ️ About")
             gr.Markdown(

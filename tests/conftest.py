@@ -65,28 +65,21 @@ def integration_test_timeout():
     pass
 
 
-
-
-# Global timeout for integration tests to prevent hanging
-@pytest.fixture(scope="session", autouse=True)
-def integration_test_timeout():
-    """Set default timeout for integration tests."""
-    # This fixture runs automatically for all tests
-    # Individual tests can override with asyncio.wait_for
-    pass
-
-
 @pytest.fixture(autouse=True)
 def default_to_huggingface(monkeypatch):
     """Ensure tests default to HuggingFace provider unless explicitly overridden.
-    
+
     This prevents tests from requiring OpenAI/Anthropic API keys.
     Tests can override by setting LLM_PROVIDER in their environment or mocking settings.
     """
     # Only set if not already set (allows tests to override)
     if "LLM_PROVIDER" not in os.environ:
         monkeypatch.setenv("LLM_PROVIDER", "huggingface")
-    
+
     # Set a dummy HF_TOKEN if not set (prevents errors, but tests should mock actual API calls)
     if "HF_TOKEN" not in os.environ:
         monkeypatch.setenv("HF_TOKEN", "dummy_token_for_testing")
+
+    # Provide a placeholder OpenAI API key so optional imports don't fail during initialization
+    if "OPENAI_API_KEY" not in os.environ:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
