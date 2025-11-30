@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, description="OpenAI API key")
     anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
     llm_provider: Literal["openai", "anthropic", "huggingface"] = Field(
-        default="openai", description="Which LLM provider to use"
+        default="huggingface", description="Which LLM provider to use"
     )
     openai_model: str = Field(default="gpt-5.1", description="OpenAI model name")
     anthropic_model: str = Field(
@@ -140,62 +140,6 @@ class Settings(BaseSettings):
         description="Automatically ingest evidence into RAG",
     )
 
-    # Audio Processing Configuration
-    tts_model: str = Field(
-        default="hexgrad/Kokoro-82M",
-        description="Kokoro TTS model ID for text-to-speech",
-    )
-    tts_voice: str = Field(
-        default="af_heart",
-        description="Kokoro voice ID (e.g., af_heart, af_bella, am_michael)",
-    )
-    tts_speed: float = Field(
-        default=1.0,
-        ge=0.5,
-        le=2.0,
-        description="TTS speech speed multiplier",
-    )
-    tts_gpu: str | None = Field(
-        default="T4",
-        description="Modal GPU type for TTS (T4, A10, A100, etc.)",
-    )
-    tts_timeout: int = Field(
-        default=60,
-        ge=10,
-        le=300,
-        description="TTS synthesis timeout in seconds",
-    )
-    stt_api_url: str = Field(
-        default="nvidia/canary-1b-v2",
-        description="Gradio Space URL for STT API (nvidia/canary-1b-v2)",
-    )
-    stt_source_lang: str = Field(
-        default="English",
-        description="Source language for STT transcription",
-    )
-    stt_target_lang: str = Field(
-        default="English",
-        description="Target language for STT transcription",
-    )
-    enable_audio_input: bool = Field(
-        default=True,
-        description="Enable audio input (microphone/file upload)",
-    )
-    enable_audio_output: bool = Field(
-        default=True,
-        description="Enable audio output (TTS response)",
-    )
-
-    # Image OCR Configuration
-    ocr_api_url: str = Field(
-        default="prithivMLmods/Multimodal-OCR3",
-        description="Gradio Space URL for image OCR API",
-    )
-    enable_image_input: bool = Field(
-        default=True,
-        description="Enable image input (file upload with OCR)",
-    )
-
     @property
     def modal_available(self) -> bool:
         """Check if Modal credentials are configured."""
@@ -258,16 +202,6 @@ class Settings(BaseSettings):
         if self.web_search_provider == "tavily":
             return bool(self.tavily_api_key)
         return False
-
-    @property
-    def audio_available(self) -> bool:
-        """Check if audio processing is available (Modal + STT API)."""
-        return self.modal_available and bool(self.stt_api_url)
-
-    @property
-    def image_ocr_available(self) -> bool:
-        """Check if image OCR is available (OCR API URL configured)."""
-        return bool(self.ocr_api_url)
 
 
 def get_settings() -> Settings:

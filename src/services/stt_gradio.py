@@ -54,10 +54,11 @@ class STTService:
         if self.client is None:
             loop = asyncio.get_running_loop()
             # Pass token to Client for authenticated Spaces
+            # Gradio Client uses 'token' parameter, not 'hf_token'
             if token:
                 self.client = await loop.run_in_executor(
                     None,
-                    lambda: Client(self.api_url, hf_token=token),
+                    lambda: Client(self.api_url, token=token),
                 )
             else:
                 self.client = await loop.run_in_executor(

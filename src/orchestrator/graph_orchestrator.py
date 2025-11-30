@@ -124,6 +124,7 @@ class GraphOrchestrator:
         use_graph: bool = True,
         search_handler: SearchHandlerProtocol | None = None,
         judge_handler: JudgeHandlerProtocol | None = None,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize graph orchestrator.
@@ -135,6 +136,7 @@ class GraphOrchestrator:
             use_graph: Whether to use graph execution (True) or agent chains (False)
             search_handler: Optional search handler for tool execution
             judge_handler: Optional judge handler for evidence assessment
+            oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
         """
         self.mode = mode
         self.max_iterations = max_iterations
@@ -142,6 +144,7 @@ class GraphOrchestrator:
         self.use_graph = use_graph
         self.search_handler = search_handler
         self.judge_handler = judge_handler
+        self.oauth_token = oauth_token
         self.logger = logger
 
         # Initialize flows (for backward compatibility)
@@ -256,6 +259,7 @@ class GraphOrchestrator:
                     max_iterations=self.max_iterations,
                     max_time_minutes=self.max_time_minutes,
                     judge_handler=self.judge_handler,
+                    oauth_token=self.oauth_token,
                 )
 
             try:
@@ -291,6 +295,7 @@ class GraphOrchestrator:
                 self._deep_flow = DeepResearchFlow(
                     max_iterations=self.max_iterations,
                     max_time_minutes=self.max_time_minutes,
+                    oauth_token=self.oauth_token,
                 )
 
             try:
@@ -322,11 +327,11 @@ class GraphOrchestrator:
             Constructed ResearchGraph
         """
         if mode == "iterative":
-            # Get agents
-            knowledge_gap_agent = create_knowledge_gap_agent()
-            tool_selector_agent = create_tool_selector_agent()
-            thinking_agent = create_thinking_agent()
-            writer_agent = create_writer_agent()
+            # Get agents - pass OAuth token for HuggingFace authentication
+            knowledge_gap_agent = create_knowledge_gap_agent(oauth_token=self.oauth_token)
+            tool_selector_agent = create_tool_selector_agent(oauth_token=self.oauth_token)
+            thinking_agent = create_thinking_agent(oauth_token=self.oauth_token)
+            writer_agent = create_writer_agent(oauth_token=self.oauth_token)
 
             # Create graph
             graph = create_iterative_graph(
@@ -336,13 +341,13 @@ class GraphOrchestrator:
                 writer_agent=writer_agent.agent,
             )
         else:  # deep
-            # Get agents
-            planner_agent = create_planner_agent()
-            knowledge_gap_agent = create_knowledge_gap_agent()
-            tool_selector_agent = create_tool_selector_agent()
-            thinking_agent = create_thinking_agent()
-            writer_agent = create_writer_agent()
-            long_writer_agent = create_long_writer_agent()
+            # Get agents - pass OAuth token for HuggingFace authentication
+            planner_agent = create_planner_agent(oauth_token=self.oauth_token)
+            knowledge_gap_agent = create_knowledge_gap_agent(oauth_token=self.oauth_token)
+            tool_selector_agent = create_tool_selector_agent(oauth_token=self.oauth_token)
+            thinking_agent = create_thinking_agent(oauth_token=self.oauth_token)
+            writer_agent = create_writer_agent(oauth_token=self.oauth_token)
+            long_writer_agent = create_long_writer_agent(oauth_token=self.oauth_token)
 
             # Create graph
             graph = create_deep_graph(
@@ -610,7 +615,7 @@ class GraphOrchestrator:
             )
 
             # Get LongWriterAgent instance and call write_report directly
-            long_writer_agent = create_long_writer_agent()
+            long_writer_agent = create_long_writer_agent(oauth_token=self.oauth_token)
             final_report = await long_writer_agent.write_report(
                 original_query=query,
                 report_title=report_plan.report_title,
@@ -906,6 +911,7 @@ class GraphOrchestrator:
                     verbose=False,  # Less verbose in parallel execution
                     use_graph=False,  # Use agent chains for section research
                     judge_handler=self.judge_handler or judge_handler,
+                    oauth_token=self.oauth_token,
                 )
 
                 # Run research for this section
@@ -1008,7 +1014,7 @@ class GraphOrchestrator:
         """
         try:
             # Use input parser agent for intelligent mode detection
-            input_parser = create_input_parser_agent()
+            input_parser = create_input_parser_agent(oauth_token=self.oauth_token)
             parsed_query = await input_parser.parse(query)
             self.logger.info(
                 "Research mode detected by input parser",
@@ -1048,6 +1054,7 @@ def create_graph_orchestrator(
     use_graph: bool = True,
     search_handler: SearchHandlerProtocol | None = None,
     judge_handler: JudgeHandlerProtocol | None = None,
+    oauth_token: str | None = None,
 ) -> GraphOrchestrator:
     """
     Factory function to create a graph orchestrator.
@@ -1059,6 +1066,7 @@ def create_graph_orchestrator(
         use_graph: Whether to use graph execution (True) or agent chains (False)
         search_handler: Optional search handler for tool execution
         judge_handler: Optional judge handler for evidence assessment
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured GraphOrchestrator instance
@@ -1070,4 +1078,5 @@ def create_graph_orchestrator(
         use_graph=use_graph,
         search_handler=search_handler,
         judge_handler=judge_handler,
+        oauth_token=oauth_token,
     )

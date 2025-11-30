@@ -144,12 +144,13 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             )
 
 
-def create_tool_selector_agent(model: Any | None = None) -> ToolSelectorAgent:
+def create_tool_selector_agent(model: Any | None = None, oauth_token: str | None = None) -> ToolSelectorAgent:
     """
     Factory function to create a tool selector agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured ToolSelectorAgent instance
@@ -159,7 +160,7 @@ def create_tool_selector_agent(model: Any | None = None) -> ToolSelectorAgent:
     """
     try:
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         return ToolSelectorAgent(model=model)
 

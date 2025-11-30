@@ -185,12 +185,13 @@ FINDINGS:
         )
 
 
-def create_writer_agent(model: Any | None = None) -> WriterAgent:
+def create_writer_agent(model: Any | None = None, oauth_token: str | None = None) -> WriterAgent:
     """
     Factory function to create a writer agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured WriterAgent instance
@@ -200,7 +201,7 @@ def create_writer_agent(model: Any | None = None) -> WriterAgent:
     """
     try:
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         return WriterAgent(model=model)
 

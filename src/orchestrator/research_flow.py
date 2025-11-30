@@ -60,6 +60,7 @@ class IterativeResearchFlow:
         verbose: bool = True,
         use_graph: bool = False,
         judge_handler: Any | None = None,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize iterative research flow.
@@ -69,19 +70,21 @@ class IterativeResearchFlow:
             max_time_minutes: Maximum time in minutes
             verbose: Whether to log progress
             use_graph: Whether to use graph-based execution (True) or agent chains (False)
+            oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
         """
         self.max_iterations = max_iterations
         self.max_time_minutes = max_time_minutes
         self.verbose = verbose
         self.use_graph = use_graph
+        self.oauth_token = oauth_token
         self.logger = logger
 
         # Initialize agents (only needed for agent chain execution)
         if not use_graph:
-            self.knowledge_gap_agent = create_knowledge_gap_agent()
-            self.tool_selector_agent = create_tool_selector_agent()
-            self.thinking_agent = create_thinking_agent()
-            self.writer_agent = create_writer_agent()
+            self.knowledge_gap_agent = create_knowledge_gap_agent(oauth_token=self.oauth_token)
+            self.tool_selector_agent = create_tool_selector_agent(oauth_token=self.oauth_token)
+            self.thinking_agent = create_thinking_agent(oauth_token=self.oauth_token)
+            self.writer_agent = create_writer_agent(oauth_token=self.oauth_token)
             # Initialize judge handler (use provided or create new)
             self.judge_handler = judge_handler or create_judge_handler()
 
@@ -678,6 +681,7 @@ class DeepResearchFlow:
         verbose: bool = True,
         use_long_writer: bool = True,
         use_graph: bool = False,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize deep research flow.
@@ -688,19 +692,21 @@ class DeepResearchFlow:
             verbose: Whether to log progress
             use_long_writer: Whether to use long writer (True) or proofreader (False)
             use_graph: Whether to use graph-based execution (True) or agent chains (False)
+            oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
         """
         self.max_iterations = max_iterations
         self.max_time_minutes = max_time_minutes
         self.verbose = verbose
         self.use_long_writer = use_long_writer
         self.use_graph = use_graph
+        self.oauth_token = oauth_token
         self.logger = logger
 
         # Initialize agents (only needed for agent chain execution)
         if not use_graph:
-            self.planner_agent = create_planner_agent()
-            self.long_writer_agent = create_long_writer_agent()
-            self.proofreader_agent = create_proofreader_agent()
+            self.planner_agent = create_planner_agent(oauth_token=self.oauth_token)
+            self.long_writer_agent = create_long_writer_agent(oauth_token=self.oauth_token)
+            self.proofreader_agent = create_proofreader_agent(oauth_token=self.oauth_token)
             # Initialize judge handler for section loop completion
             self.judge_handler = create_judge_handler()
             # Initialize budget tracker for token tracking

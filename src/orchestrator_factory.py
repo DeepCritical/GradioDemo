@@ -46,6 +46,7 @@ def create_orchestrator(
     judge_handler: JudgeHandlerProtocol | None = None,
     config: OrchestratorConfig | None = None,
     mode: Literal["simple", "magentic", "advanced", "iterative", "deep", "auto"] | None = None,
+    oauth_token: str | None = None,
 ) -> Any:
     """
     Create an orchestrator instance.
@@ -60,6 +61,7 @@ def create_orchestrator(
             - "iterative": Knowledge-gap-driven research (Free Tier)
             - "deep": Parallel section-based research (Free Tier)
             - "auto": Intelligent mode detection (Free Tier)
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Orchestrator instance
@@ -83,6 +85,7 @@ def create_orchestrator(
             use_graph=True,
             search_handler=search_handler,
             judge_handler=judge_handler,
+            oauth_token=oauth_token,
         )
 
     # Simple mode requires handlers
