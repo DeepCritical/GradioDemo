@@ -925,6 +925,7 @@ def create_demo() -> gr.Blocks:
         gr.ChatInterface(
             fn=research_agent,
             multimodal=True,  # Enable multimodal input (text + images + audio)
+            file_types=["image", "audio", "video"],  # Explicitly enable image, audio, and video file types
             title="🔬 The DETERMINATOR",
             description=(
                 "*Generalist Deep Research Agent — stops at nothing until finding precise answers to complex questions*\n\n"
@@ -939,9 +940,11 @@ def create_demo() -> gr.Blocks:
                 "- 📊 Evidence synthesis with citations\n\n"
                 "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
                 "**📷🎤 Multimodal Input Support**:\n"
-                "- **Images**: Upload images to extract text using OCR\n"
-                "- **Audio**: Record audio or upload audio files for speech-to-text transcription\n"
-                "- **Text**: Type your research questions directly\n"
+                "- **Images**: Click the 📷 image icon in the textbox to upload images (OCR)\n"
+                "- **Audio**: Click the 🎤 microphone icon in the textbox to record audio (STT)\n"
+                "- **Files**: Drag & drop or click to upload image/audio files\n"
+                "- **Text**: Type your research questions directly\n\n"
+                "💡 **Tip**: Look for the 📷 and 🎤 icons in the text input box below!\n\n"
                 "Configure multimodal inputs in the sidebar settings.\n\n"
                 "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
             ),

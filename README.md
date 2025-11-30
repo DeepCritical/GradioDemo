@@ -21,6 +21,14 @@ tags:
   - pydantic-ai
   - llamaindex
   - modal
+  - building-mcp-track-enterprise
+  - building-mcp-track-consumer
+  - mcp-in-action-track-enterprise
+  - mcp-in-action-track-consumer
+  - building-mcp-track-modal
+  - building-mcp-track-blaxel
+  - building-mcp-track-llama-index
+  - building-mcp-track-HUGGINGFACE 
 ---
 
 > [!IMPORTANT]
@@ -58,11 +66,21 @@ The DETERMINATOR is a powerful generalist deep research agent system that stops 
 
 For this hackathon we're proposing a simple yet powerful Deep Research Agent that iteratively looks for the answer until it finds it using general purpose websearch and special purpose retrievers for technical retrievers. 
 
+
+> [!IMPORTANT]
+> **IF YOU ARE A JUDGE**
+> 
+> This project was produced with passion by a group of volunteers please check out or documentation and readmes and please do keep reading below for our story
+>
+> - 📚 **Documentation**: See our [technical documentation](deepcritical.github.io/GradioDemo/) for detailed information
+> - 📖 **Complete README**: Check out the [full README](.github/README.md) for setup, configuration, and contribution guidelines
+> - 🏆 **Hackathon Submission**: Keep reading below for more information about our MCP Hackathon submission
+
 ## Deep Critical In the Medial 
 
 - Social Medial Posts about Deep Critical :
-  - 
-  -
+  - [![X](https://x.com/marioaderman/status/1995247432444133471)]
+  - [![LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7400984658496081920/)]
   -
   -
   -
@@ -100,24 +118,33 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
 - [x] **Specialized Research Teams of Agents**: 
 
 ### Team
+- **ZJ**
+    - 🤗 [HuggingFace](https://huggingface.co/Tonic)
+    - 💼 [LinkedIn](https://www.linkedin.com/in/josephpollack/)
+    - 𝕏 [X](https://x.com/josephpollack)
+- **Mario Aderman**
+    - 🤗 [HuggingFace](https://huggingface.co/SeasonalFall84)
+    - 💼 [LinkedIn](https://www.linkedin.com/in/mario-aderman/)
+    - 𝕏 [X](https://x.com/marioaderman)
+- **Joseph Pollack
+    - 🤗 [HuggingFace](https://huggingface.co/Tonic)
+    - 💼 [LinkedIn](https://www.linkedin.com/in/josephpollack/)
+    - 𝕏 [X](https://x.com/josephpollack)
 
-- ZJ
-- MarioAderman
-- Josephrp
 
 ## Acknowledgements
 
-- McSwaggins
-- Magentic
-- Huggingface
-- Gradio
-- DeepCritical
-- Sponsors
+- [DeepBoner](https://hf.co/spaces/mcp-1st-birthday/deepboner)
+- Magentic Paper
+- [Huggingface](https://hf.co)
+- [Gradio](https://gradio.app)
+- [DeepCritical](https://github.com/DeepCritical)
+- [Modal](https://modal.com)
 - Microsoft
 - Pydantic
 - Llama-index
 - Anthhropic/MCP
-- List of Tools Makers
+- All our Tool Providers
 
 
 ## Links
