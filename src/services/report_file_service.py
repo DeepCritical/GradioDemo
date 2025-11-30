@@ -272,3 +272,4 @@ def get_report_file_service() -> ReportFileService:
         return ReportFileService()
 
     return _get_service()
+

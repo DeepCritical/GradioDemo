@@ -949,31 +949,35 @@ def create_demo() -> gr.Blocks:
             ),
             examples=[
                 # When additional_inputs are provided, examples must be lists of lists
-                # Each inner list: [message, mode, hf_model, hf_provider]
+                # Each inner list: [message, mode, hf_model, hf_provider, graph_mode, multimodal_enabled]
                 # Using actual model IDs and provider names from inference_models.py
                 # Note: Provider is optional - if empty, HF will auto-select
                 # These examples will NOT run at startup - users must click them after logging in
+                # All examples require deep iterative search and information retrieval across multiple sources
                 [
-                    "What are the latest research findings on Alzheimer's disease treatments?",
-                    "simple",
-                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
-                    "",
-                    "auto",
-                    True,
-                ],
-                [
-                    "Is metformin effective for treating cancer? Investigate mechanism of action.",
-                    "iterative",
-                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
-                    "",
-                    "iterative",
-                    True,
-                ],
-                [
+                    # Medical research example (only one medical example)
                     "Create a comprehensive report on Long COVID treatments including clinical trials, mechanisms, and safety.",
                     "deep",
                     "zai-org/GLM-4.5-Air",
                     "nebius",
+                    "deep",
+                    True,
+                ],
+                [
+                    # Technical/Engineering example requiring deep research
+                    "Analyze the current state of quantum computing architectures: compare different qubit technologies, error correction methods, and scalability challenges across major platforms including IBM, Google, and IonQ.",
+                    "deep",
+                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                    "",
+                    "deep",
+                    True,
+                ],
+                [
+                    # Business/Scientific example requiring iterative search
+                    "Investigate the economic and environmental impact of renewable energy transition: analyze cost trends, grid integration challenges, policy frameworks, and market dynamics across solar, wind, and battery storage technologies, in china",
+                    "deep",
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    "",
                     "deep",
                     True,
                 ],
