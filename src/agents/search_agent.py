@@ -28,7 +28,7 @@ class SearchAgent(BaseAgent):  # type: ignore[misc]
     ) -> None:
         super().__init__(
             name="SearchAgent",
-            description="Searches PubMed for drug repurposing evidence",
+            description="Searches PubMed for biomedical research evidence",
         )
         self._handler = search_handler
         self._evidence_store = evidence_store

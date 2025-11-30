@@ -1,4 +1,4 @@
-"""Gradio UI for DeepCritical agent with MCP server support."""
+"""Gradio UI for The DETERMINATOR agent with MCP server support."""
 
 import os
 from collections.abc import AsyncGenerator
@@ -737,7 +737,7 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
-    with gr.Blocks(title="🧬 DeepCritical", fill_height=True) as demo:
+    with gr.Blocks(title="🔬 The DETERMINATOR", fill_height=True) as demo:
         # Add sidebar with login button and information
         # Reference: Working implementation pattern from Gradio docs
         with gr.Sidebar():
@@ -750,96 +750,99 @@ def create_demo() -> gr.Blocks:
             gr.Markdown("---")
             gr.Markdown("### ℹ️ About")  # noqa: RUF001
             gr.Markdown(
-                "AI-Powered Drug Repurposing Agent that searches:\n"
+                "**The DETERMINATOR** - Deep Research Agent for Medical Inquiry\n\n"
+                "Searches:\n"
                 "- PubMed\n"
                 "- ClinicalTrials.gov\n"
-                "- Europe PMC"
+                "- Europe PMC\n\n"
+                "⚠️ **Research tool only** - Cannot answer medical questions or provide medical advice."
             )
-        
-        # Create settings components
-        # Note: ChatInterface doesn't support additional_inputs_accordion parameter in Gradio 6.0
-        # Components are created outside accordion context to ensure they're accessible for additional_inputs
-        mode_radio = gr.Radio(
-            choices=["simple", "advanced", "iterative", "deep", "auto"],
-            value="simple",
-            label="Orchestrator Mode",
-            info=(
-                "Simple: Linear search-judge loop | "
-                "Advanced: Multi-agent (OpenAI) | "
-                "Iterative: Knowledge-gap driven | "
-                "Deep: Parallel sections | "
-                "Auto: Smart routing"
-            ),
-        )
-
-        # Graph mode selection
-        graph_mode_radio = gr.Radio(
-            choices=["iterative", "deep", "auto"],
-            value="auto",
-            label="Graph Research Mode",
-            info="Iterative: Single loop | Deep: Parallel sections | Auto: Detect from query",
-        )
-
-        # Graph execution toggle
-        use_graph_checkbox = gr.Checkbox(
-            value=True,
-            label="Use Graph Execution",
-            info="Enable graph-based workflow execution",
-        )
-
-        # TTS Configuration components
-        # Note: These are created outside accordion to ensure accessibility for additional_inputs
-        # The ChatInterface will display them, but grouping in accordion is not supported via additional_inputs_accordion
-        tts_voice_dropdown = gr.Dropdown(
-            choices=[
-                "af_heart",
-                "af_bella",
-                "af_nicole",
-                "af_aoede",
-                "af_kore",
-                "af_sarah",
-                "af_nova",
-                "af_sky",
-                "af_alloy",
-                "af_jessica",
-                "af_river",
-                "am_michael",
-                "am_fenrir",
-                "am_puck",
-                "am_echo",
-                "am_eric",
-                "am_liam",
-                "am_onyx",
-                "am_santa",
-                "am_adam",
-            ],
-            value=settings.tts_voice,
-            label="TTS Voice",
-            info="Select TTS voice (American English voices: af_*, am_*)",
-            visible=settings.enable_audio_output,
-        )
-        tts_speed_slider = gr.Slider(
-            minimum=0.5,
-            maximum=2.0,
-            value=settings.tts_speed,
-            step=0.1,
-            label="TTS Speech Speed",
-            info="Adjust TTS speech speed (0.5x to 2.0x)",
-            visible=settings.enable_audio_output,
-        )
-        tts_gpu_dropdown = gr.Dropdown(
-            choices=["T4", "A10", "A100", "L4", "L40S"],
-            value=settings.tts_gpu or "T4",
-            label="TTS GPU Type",
-            info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
-            visible=settings.modal_available and settings.enable_audio_output,
-            interactive=False,  # GPU type set at function definition time, requires restart
-        )
-        enable_audio_output_checkbox = gr.Checkbox(
-            value=settings.enable_audio_output,
-            label="Enable Audio Output",
-            info="Generate audio responses using TTS",
-        )
+            gr.Markdown("---")
+            
+            # Settings Section - Organized in Accordions
+            gr.Markdown("## ⚙️ Settings")
+            
+            # Research Configuration Accordion
+            with gr.Accordion("🔬 Research Configuration", open=True):
+                mode_radio = gr.Radio(
+                    choices=["simple", "advanced", "iterative", "deep", "auto"],
+                    value="simple",
+                    label="Orchestrator Mode",
+                    info=(
+                        "Simple: Linear search-judge loop | "
+                        "Advanced: Multi-agent (OpenAI) | "
+                        "Iterative: Knowledge-gap driven | "
+                        "Deep: Parallel sections | "
+                        "Auto: Smart routing"
+                    ),
+                )
+                
+                graph_mode_radio = gr.Radio(
+                    choices=["iterative", "deep", "auto"],
+                    value="auto",
+                    label="Graph Research Mode",
+                    info="Iterative: Single loop | Deep: Parallel sections | Auto: Detect from query",
+                )
+                
+                use_graph_checkbox = gr.Checkbox(
+                    value=True,
+                    label="Use Graph Execution",
+                    info="Enable graph-based workflow execution",
+                )
+            
+            # Audio/TTS Configuration Accordion
+            with gr.Accordion("🔊 Audio Output", open=False):
+                enable_audio_output_checkbox = gr.Checkbox(
+                    value=settings.enable_audio_output,
+                    label="Enable Audio Output",
+                    info="Generate audio responses using TTS",
+                )
+                
+                tts_voice_dropdown = gr.Dropdown(
+                    choices=[
+                        "af_heart",
+                        "af_bella",
+                        "af_nicole",
+                        "af_aoede",
+                        "af_kore",
+                        "af_sarah",
+                        "af_nova",
+                        "af_sky",
+                        "af_alloy",
+                        "af_jessica",
+                        "af_river",
+                        "am_michael",
+                        "am_fenrir",
+                        "am_puck",
+                        "am_echo",
+                        "am_eric",
+                        "am_liam",
+                        "am_onyx",
+                        "am_santa",
+                        "am_adam",
+                    ],
+                    value=settings.tts_voice,
+                    label="TTS Voice",
+                    info="Select TTS voice (American English voices: af_*, am_*)",
+                )
+                
+                tts_speed_slider = gr.Slider(
+                    minimum=0.5,
+                    maximum=2.0,
+                    value=settings.tts_speed,
+                    step=0.1,
+                    label="TTS Speech Speed",
+                    info="Adjust TTS speech speed (0.5x to 2.0x)",
+                )
+                
+                tts_gpu_dropdown = gr.Dropdown(
+                    choices=["T4", "A10", "A100", "L4", "L40S"],
+                    value=settings.tts_gpu or "T4",
+                    label="TTS GPU Type",
+                    info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
+                    visible=settings.modal_available,
+                    interactive=False,  # GPU type set at function definition time, requires restart
+                )
 
         # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
         # These will be empty by default and use defaults in configure_orchestrator
@@ -861,6 +864,22 @@ def create_demo() -> gr.Blocks:
             label="🔊 Audio Response",
             visible=settings.enable_audio_output,
         )
+        
+        # Update TTS component visibility based on enable_audio_output_checkbox
+        # This must be after audio_output is defined
+        def update_tts_visibility(enabled: bool) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+            """Update visibility of TTS components based on enable checkbox."""
+            return (
+                gr.update(visible=enabled),
+                gr.update(visible=enabled),
+                gr.update(visible=enabled),
+            )
+        
+        enable_audio_output_checkbox.change(
+            fn=update_tts_visibility,
+            inputs=[enable_audio_output_checkbox],
+            outputs=[tts_voice_dropdown, tts_speed_slider, audio_output],
+        )
 
         # Chat interface with multimodal support
         # Examples are provided but will NOT run at startup (cache_examples=False)
@@ -868,12 +887,12 @@ def create_demo() -> gr.Blocks:
         gr.ChatInterface(
             fn=research_agent,
             multimodal=True,  # Enable multimodal input (text + images + audio)
-            title="🧬 DeepCritical",
+            title="🔬 The DETERMINATOR",
             description=(
-                "*AI-Powered Drug Repurposing Agent — searches PubMed, "
+                "*Deep Research Agent for Medical Inquiry — searches PubMed, "
                 "ClinicalTrials.gov & Europe PMC*\n\n"
                 "---\n"
-                "*Research tool only — not for medical advice.*  \n"
+                "*Functions as a medical peer junior researcher. Research tool only — cannot answer medical questions or provide medical advice.*  \n"
                 "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
                 "**🎤 Multimodal Support**: Upload images (OCR), record audio (STT), or type text.\n\n"
                 "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
@@ -885,7 +904,7 @@ def create_demo() -> gr.Blocks:
                 # Note: Provider is optional - if empty, HF will auto-select
                 # These examples will NOT run at startup - users must click them after logging in
                 [
-                    "What drugs could be repurposed for Alzheimer's disease?",
+                    "What are the latest research findings on Alzheimer's disease treatments?",
                     "simple",
                     "Qwen/Qwen3-Next-80B-A3B-Thinking",
                     "",

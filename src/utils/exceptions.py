@@ -1,8 +1,11 @@
-"""Custom exceptions for DeepCritical."""
+"""Custom exceptions for The DETERMINATOR."""
 
 
 class DeepCriticalError(Exception):
-    """Base exception for all DeepCritical errors."""
+    """Base exception for all DETERMINATOR errors.
+
+    Note: Class name kept for backward compatibility.
+    """
 
     pass
 

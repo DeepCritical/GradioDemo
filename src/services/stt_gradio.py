@@ -23,13 +23,13 @@ class STTService:
         """Initialize STT service.
 
         Args:
-            api_url: Gradio Space URL (default: settings.stt_api_url)
+            api_url: Gradio Space URL (default: settings.stt_api_url or nvidia/canary-1b-v2)
             hf_token: HuggingFace token for authenticated Spaces (default: None)
 
         Raises:
             ConfigurationError: If API URL not configured
         """
-        self.api_url = api_url or settings.stt_api_url
+        self.api_url = api_url or settings.stt_api_url or "https://nvidia-canary-1b-v2.hf.space"
         if not self.api_url:
             raise ConfigurationError("STT API URL not configured")
         self.hf_token = hf_token

@@ -108,6 +108,17 @@ class SearchHandler:
         sources_searched: list[SourceName] = []
         errors: list[str] = []
 
+        # Map tool names to SourceName values
+        # Some tools have internal names that differ from SourceName literals
+        tool_name_to_source: dict[str, SourceName] = {
+            "duckduckgo": "web",
+            "pubmed": "pubmed",
+            "clinicaltrials": "clinicaltrials",
+            "europepmc": "europepmc",
+            "rag": "rag",
+            "web": "web",  # In case tool already uses "web"
+        }
+
         for tool, result in zip(self.tools, results, strict=True):
             if isinstance(result, Exception):
                 errors.append(f"{tool.name}: {result!s}")
@@ -117,8 +128,14 @@ class SearchHandler:
                 success_result = cast(list[Evidence], result)
                 all_evidence.extend(success_result)
 
-                # Cast tool.name to SourceName (centralized type from models)
-                tool_name = cast(SourceName, tool.name)
+                # Map tool.name to SourceName (handle tool names that don't match SourceName literals)
+                tool_name = tool_name_to_source.get(tool.name, cast(SourceName, tool.name))
+                if tool_name not in ["pubmed", "clinicaltrials", "biorxiv", "europepmc", "preprint", "rag", "web"]:
+                    logger.warning(
+                        "Tool name not in SourceName literals, defaulting to 'web'",
+                        tool_name=tool.name,
+                    )
+                    tool_name = "web"
                 sources_searched.append(tool_name)
                 logger.info("Search tool succeeded", tool=tool.name, count=len(success_result))
 

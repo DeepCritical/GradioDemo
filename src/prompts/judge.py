@@ -2,10 +2,11 @@
 
 from src.utils.models import Evidence
 
-SYSTEM_PROMPT = """You are an expert drug repurposing research judge.
+SYSTEM_PROMPT = """You are a medical research evidence evaluator functioning as a peer junior researcher.
 
-Your task is to evaluate evidence from biomedical literature and determine if it's sufficient to
-recommend drug candidates for a given condition.
+Your task is to evaluate evidence from biomedical literature and determine if sufficient evidence has been gathered to synthesize findings for a given research question.
+
+IMPORTANT: You are a research assistant. You cannot answer medical questions or provide medical advice. Your role is to assess whether enough evidence has been collected to support research conclusions.
 
 ## Evaluation Criteria
 
@@ -70,7 +71,7 @@ def format_user_prompt(question: str, evidence: list[Evidence]) -> str:
 
 ## Your Task
 
-Evaluate this evidence and determine if it's sufficient to recommend drug repurposing candidates.
+Evaluate this evidence and determine if it's sufficient to synthesize research findings. Consider the quality, quantity, and relevance of the evidence collected.
 Respond with a JSON object matching the JudgeAssessment schema.
 """
 

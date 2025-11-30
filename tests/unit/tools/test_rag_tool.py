@@ -46,11 +46,11 @@ class TestRAGTool:
                 },
             },
             {
-                "text": "Drug repurposing offers faster path to treatment.",
+                "text": "Research offers faster path to treatment discovery.",
                 "score": 0.72,
                 "metadata": {
                     "source": "pubmed",
-                    "title": "Drug Repurposing Strategies",
+                    "title": "Research Strategies for Treatment Discovery",
                     "url": "https://example.com/drug-repurposing",
                     "date": "Unknown",
                     "authors": "",

@@ -164,6 +164,20 @@ class Settings(BaseSettings):
         description="Modal GPU type for TTS (T4, A10, A100, L4, L40S). None uses default T4.",
     )
 
+    # STT (Speech-to-Text) Configuration
+    stt_api_url: str | None = Field(
+        default="https://nvidia-canary-1b-v2.hf.space",
+        description="Gradio Space URL for STT service (default: nvidia/canary-1b-v2)",
+    )
+    stt_source_lang: str = Field(
+        default="English",
+        description="Source language for STT (full name like 'English', 'Spanish', etc.)",
+    )
+    stt_target_lang: str = Field(
+        default="English",
+        description="Target language for STT (full name like 'English', 'Spanish', etc.)",
+    )
+
     # Report File Output Configuration
     save_reports_to_file: bool = Field(
         default=True,

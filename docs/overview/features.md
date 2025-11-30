@@ -1,6 +1,6 @@
 # Features
 
-DeepCritical provides a comprehensive set of features for AI-assisted research:
+The DETERMINATOR provides a comprehensive set of features for AI-assisted research:
 
 ## Core Features
 
@@ -14,7 +14,7 @@ DeepCritical provides a comprehensive set of features for AI-assisted research:
 ### MCP Integration
 
 - **Model Context Protocol**: Expose search tools via MCP server
-- **Claude Desktop**: Use DeepCritical tools directly from Claude Desktop
+- **Claude Desktop**: Use The DETERMINATOR tools directly from Claude Desktop
 - **MCP Clients**: Compatible with any MCP-compatible client
 
 ### Authentication

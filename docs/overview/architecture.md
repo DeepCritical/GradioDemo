@@ -1,6 +1,6 @@
 # Architecture Overview
 
-DeepCritical is a deep research agent system that uses iterative search-and-judge loops to comprehensively answer research questions. The system supports multiple orchestration patterns, graph-based execution, parallel research workflows, and long-running task management with real-time streaming.
+The DETERMINATOR is a deep research agent system that uses iterative search-and-judge loops to comprehensively answer research questions. The system supports multiple orchestration patterns, graph-based execution, parallel research workflows, and long-running task management with real-time streaming.
 
 ## Core Architecture
 
