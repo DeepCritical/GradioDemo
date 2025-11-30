@@ -74,7 +74,7 @@ def configure_orchestrator(
 
     # Create search tools with RAG enabled
     # Pass OAuth token to SearchHandler so it can be used by RAG service
-    tools = [PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()]
+    tools = [Neo4jSearchTool(),PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()]
 
     # Add web search tool if available
     from src.tools.web_search_factory import create_web_search_tool
@@ -86,7 +86,6 @@ def configure_orchestrator(
 
     search_handler = SearchHandler(
         tools=tools,
-        tools=[Neo4jSearchTool(), PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
         timeout=config.search_timeout,
         include_rag=True,
         auto_ingest_to_rag=True,
