@@ -1171,7 +1171,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "chromadb" },
     { name = "ddgs" },
-    { name = "duckduckgo-search" },
+    { name = "fake-useragent" },
     { name = "gradio", extra = ["mcp", "oauth"] },
     { name = "gradio-client" },
     { name = "httpx" },
@@ -1197,6 +1197,7 @@ dependencies = [
     { name = "requests" },
     { name = "rpds-py" },
     { name = "sentence-transformers" },
+    { name = "socksio" },
     { name = "soundfile" },
     { name = "structlog" },
     { name = "tenacity" },
@@ -1258,7 +1259,7 @@ requires-dist = [
     { name = "chromadb", marker = "extra == 'embeddings'", specifier = ">=0.4.0" },
     { name = "chromadb", marker = "extra == 'modal'", specifier = ">=0.4.0" },
     { name = "ddgs", specifier = ">=9.9.2" },
-    { name = "duckduckgo-search", specifier = ">=5.0" },
+    { name = "fake-useragent", specifier = "==2.2.0" },
     { name = "gradio", extras = ["mcp", "oauth"], specifier = ">=6.0.0" },
     { name = "gradio-client", specifier = ">=1.0.0" },
     { name = "httpx", specifier = ">=0.27" },
@@ -1305,6 +1306,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
     { name = "sentence-transformers", specifier = ">=2.2.0" },
     { name = "sentence-transformers", marker = "extra == 'embeddings'", specifier = ">=2.2.0" },
+    { name = "socksio", specifier = "==1.0.0" },
     { name = "soundfile", specifier = ">=0.12.0" },
     { name = "structlog", specifier = ">=24.1" },
     { name = "tenacity", specifier = ">=8.2" },
@@ -1383,20 +1385,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d9/02/111134bfeb6e6c7ac4c74594e39a59f6c0195dc4846afbeac3cba60f1927/docutils-0.22.3.tar.gz", hash = "sha256:21486ae730e4ca9f622677b1412b879af1791efcfba517e4c6f60be543fc8cdd", size = 2290153, upload-time = "2025-11-06T02:35:55.655Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/11/a8/c6a4b901d17399c77cd81fb001ce8961e9f5e04d3daf27e8925cb012e163/docutils-0.22.3-py3-none-any.whl", hash = "sha256:bd772e4aca73aff037958d44f2be5229ded4c09927fcf8690c577b66234d6ceb", size = 633032, upload-time = "2025-11-06T02:35:52.391Z" },
-]
-
-[[package]]
-name = "duckduckgo-search"
-version = "8.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "click" },
-    { name = "lxml" },
-    { name = "primp" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/10/ef/07791a05751e6cc9de1dd49fb12730259ee109b18e6d097e25e6c32d5617/duckduckgo_search-8.1.1.tar.gz", hash = "sha256:9da91c9eb26a17e016ea1da26235d40404b46b0565ea86d75a9f78cc9441f935", size = 22868, upload-time = "2025-07-06T15:30:59.73Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/db/72/c027b3b488b1010cf71670032fcf7e681d44b81829d484bb04e31a949a8d/duckduckgo_search-8.1.1-py3-none-any.whl", hash = "sha256:f48adbb06626ee05918f7e0cef3a45639e9939805c4fc179e68c48a12f1b5062", size = 18932, upload-time = "2025-07-06T15:30:58.339Z" },
 ]
 
 [[package]]
