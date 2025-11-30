@@ -27,6 +27,7 @@ class SearchHandler:
         timeout: float = 30.0,
         include_rag: bool = False,
         auto_ingest_to_rag: bool = True,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize the search handler.
@@ -36,10 +37,12 @@ class SearchHandler:
             timeout: Timeout for each search in seconds
             include_rag: Whether to include RAG tool in searches
             auto_ingest_to_rag: Whether to automatically ingest results into RAG
+            oauth_token: Optional OAuth token from HuggingFace login (for RAG LLM)
         """
         self.tools = list(tools)  # Make a copy
         self.timeout = timeout
         self.auto_ingest_to_rag = auto_ingest_to_rag
+        self.oauth_token = oauth_token
         self._rag_service: LlamaIndexRAGService | None = None
 
         if include_rag:
@@ -48,7 +51,7 @@ class SearchHandler:
     def add_rag_tool(self) -> None:
         """Add RAG tool to the tools list if available."""
         try:
-            rag_tool = create_rag_tool()
+            rag_tool = create_rag_tool(oauth_token=self.oauth_token)
             self.tools.append(rag_tool)
             logger.info("RAG tool added to search handler")
         except ConfigurationError:
@@ -67,9 +70,11 @@ class SearchHandler:
 
                 # Use local embeddings by default (no API key required)
                 # Use in-memory ChromaDB to avoid file system issues
+                # Pass OAuth token for LLM query synthesis
                 self._rag_service = get_rag_service(
                     use_openai_embeddings=False,
                     use_in_memory=True,  # Use in-memory for better reliability
+                    oauth_token=self.oauth_token,
                 )
                 logger.info("RAG service initialized for ingestion with local embeddings")
             except (ConfigurationError, ImportError):

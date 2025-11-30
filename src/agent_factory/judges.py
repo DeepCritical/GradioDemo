@@ -26,22 +26,28 @@ from src.utils.models import AssessmentDetails, Evidence, JudgeAssessment
 logger = structlog.get_logger()
 
 
-def get_model() -> Any:
+def get_model(oauth_token: str | None = None) -> Any:
     """Get the LLM model based on configuration.
 
     Explicitly passes API keys from settings to avoid requiring
     users to export environment variables manually.
+
+    Args:
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
     """
     llm_provider = settings.llm_provider
+
+    # Priority: oauth_token > env vars
+    effective_hf_token = oauth_token or settings.hf_token or settings.huggingface_api_key
 
     if llm_provider == "anthropic":
         provider = AnthropicProvider(api_key=settings.anthropic_api_key)
         return AnthropicModel(settings.anthropic_model, provider=provider)
 
     if llm_provider == "huggingface":
-        # Free tier - uses HF_TOKEN from environment if available
+        # Free tier - uses OAuth token or HF_TOKEN from environment if available
         model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-        hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
+        hf_provider = HuggingFaceProvider(api_key=effective_hf_token)
         return HuggingFaceModel(model_name, provider=hf_provider)
 
     if llm_provider == "openai":
@@ -53,7 +59,7 @@ def get_model() -> Any:
         logger.warning("Unknown LLM provider, defaulting to HuggingFace", provider=llm_provider)
 
     model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-    hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
+    hf_provider = HuggingFaceProvider(api_key=effective_hf_token)
     return HuggingFaceModel(model_name, provider=hf_provider)
 
 
@@ -176,16 +182,19 @@ class HFInferenceJudgeHandler:
         "HuggingFaceH4/zephyr-7b-beta",  # Fallback (Ungated)
     ]
 
-    def __init__(self, model_id: str | None = None) -> None:
+    def __init__(
+        self, model_id: str | None = None, api_key: str | None = None
+    ) -> None:
         """
         Initialize with HF Inference client.
 
         Args:
             model_id: Optional specific model ID. If None, uses FALLBACK_MODELS chain.
+            api_key: Optional HuggingFace API key/token. If None, uses HF_TOKEN from env.
         """
         self.model_id = model_id
-        # Will automatically use HF_TOKEN from env if available
-        self.client = InferenceClient()
+        # Pass api_key to InferenceClient if provided, otherwise it will use HF_TOKEN from env
+        self.client = InferenceClient(api_key=api_key) if api_key else InferenceClient()
         self.call_count = 0
         self.last_question: str | None = None
         self.last_evidence: list[Evidence] | None = None

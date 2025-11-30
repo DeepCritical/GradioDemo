@@ -40,6 +40,7 @@ class LlamaIndexRAGService:
         similarity_top_k: int = 5,
         use_openai_embeddings: bool | None = None,
         use_in_memory: bool = False,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize LlamaIndex RAG service.
@@ -51,6 +52,7 @@ class LlamaIndexRAGService:
             similarity_top_k: Number of top results to retrieve
             use_openai_embeddings: Force OpenAI embeddings (None = auto-detect)
             use_in_memory: Use in-memory ChromaDB client (useful for tests)
+            oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
         """
         # Import dependencies and store references
         deps = self._import_dependencies()
@@ -71,6 +73,7 @@ class LlamaIndexRAGService:
         self.persist_dir = persist_dir or settings.chroma_db_path
         self.similarity_top_k = similarity_top_k
         self.use_in_memory = use_in_memory
+        self.oauth_token = oauth_token
 
         # Configure embeddings and LLM
         use_openai = use_openai_embeddings if use_openai_embeddings is not None else False
@@ -201,9 +204,15 @@ class LlamaIndexRAGService:
 
     def _configure_llm(self, huggingface_llm: Any, openai_llm: Any) -> None:
         """Configure LLM for query synthesis."""
-        if huggingface_llm is not None and (settings.hf_token or settings.huggingface_api_key):
+        # Priority: oauth_token > env vars
+        effective_token = (
+            self.oauth_token
+            or settings.hf_token
+            or settings.huggingface_api_key
+        )
+        if huggingface_llm is not None and effective_token:
             model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-            token = settings.hf_token or settings.huggingface_api_key
+            token = effective_token
 
             # Check if it's HuggingFaceInferenceAPI (API-based) or HuggingFaceLLM (local)
             llm_class_name = (
@@ -430,6 +439,7 @@ class LlamaIndexRAGService:
 
 def get_rag_service(
     collection_name: str = "deepcritical_evidence",
+    oauth_token: str | None = None,
     **kwargs: Any,
 ) -> LlamaIndexRAGService:
     """
@@ -437,6 +447,7 @@ def get_rag_service(
 
     Args:
         collection_name: Name of the ChromaDB collection
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
         **kwargs: Additional arguments for LlamaIndexRAGService
             Defaults to use_openai_embeddings=False (local embeddings)
 
@@ -450,4 +461,6 @@ def get_rag_service(
     # Default to local embeddings if not explicitly set
     if "use_openai_embeddings" not in kwargs:
         kwargs["use_openai_embeddings"] = False
-    return LlamaIndexRAGService(collection_name=collection_name, **kwargs)
+    return LlamaIndexRAGService(
+        collection_name=collection_name, oauth_token=oauth_token, **kwargs
+    )

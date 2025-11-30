@@ -81,6 +81,8 @@ def create_orchestrator(
             max_iterations=config.max_iterations if config else 5,
             max_time_minutes=10,
             use_graph=True,
+            search_handler=search_handler,
+            judge_handler=judge_handler,
         )
 
     # Simple mode requires handlers

@@ -5,6 +5,8 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import gradio as gr
+import numpy as np
+from gradio.components.multimodal_textbox import MultimodalPostprocess
 
 # Try to import HuggingFace support (may not be available in all pydantic-ai versions)
 # According to https://ai.pydantic.dev/models/huggingface/, HuggingFace support requires
@@ -26,6 +28,8 @@ except ImportError:
 
 from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
 from src.orchestrator_factory import create_orchestrator
+from src.services.audio_processing import get_audio_service
+from src.services.multimodal_processing import get_multimodal_service
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
@@ -40,16 +44,20 @@ def configure_orchestrator(
     oauth_token: str | None = None,
     hf_model: str | None = None,
     hf_provider: str | None = None,
+    graph_mode: str | None = None,
+    use_graph: bool = True,
 ) -> tuple[Any, str]:
     """
     Create an orchestrator instance.
 
     Args:
         use_mock: If True, use MockJudgeHandler (no API key needed)
-        mode: Orchestrator mode ("simple" or "advanced")
+        mode: Orchestrator mode ("simple", "advanced", "iterative", "deep", or "auto")
         oauth_token: Optional OAuth token from HuggingFace login
         hf_model: Selected HuggingFace model ID
         hf_provider: Selected inference provider
+        graph_mode: Graph research mode ("iterative", "deep", or "auto") - used when mode is graph-based
+        use_graph: Whether to use graph execution (True) or agent chains (False)
 
     Returns:
         Tuple of (Orchestrator instance, backend_name)
@@ -60,10 +68,14 @@ def configure_orchestrator(
         max_results_per_tool=10,
     )
 
-    # Create search tools
+    # Create search tools with RAG enabled
+    # Pass OAuth token to SearchHandler so it can be used by RAG service
     search_handler = SearchHandler(
         tools=[PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
         timeout=config.search_timeout,
+        include_rag=True,
+        auto_ingest_to_rag=True,
+        oauth_token=oauth_token,
     )
 
     # Create judge (mock, real, or free tier)
@@ -109,22 +121,30 @@ def configure_orchestrator(
     # 3. Free Tier (HuggingFace Inference) - NO API KEY AVAILABLE
     else:
         # No API key available - use HFInferenceJudgeHandler with public models
-        # Don't use third-party providers (novita, groq, etc.) as they require their own API keys
-        # Use HuggingFace's own inference API with public/ungated models
-        # Pass empty provider to use HuggingFace's default (not third-party providers)
+        # HFInferenceJudgeHandler will use HF_TOKEN from env if available, otherwise public models
+        # Note: OAuth token should have been caught in effective_api_key check above
+        # If we reach here, we truly have no API key, so use public models
         judge_handler = HFInferenceJudgeHandler(
-            model_id=hf_model,
-            api_key=None,  # No API key - will use public models only
-            provider=None,  # Don't specify provider - use HuggingFace's default
+            model_id=hf_model if hf_model else None,
+            api_key=None,  # Will use HF_TOKEN from env if available, otherwise public models
         )
         model_display = hf_model.split("/")[-1] if hf_model else "Default (Public Models)"
         backend_info = f"Free Tier ({model_display} - Public Models Only)"
+
+    # Determine effective mode
+    # If mode is already iterative/deep/auto, use it directly
+    # If mode is "graph" or "simple", use graph_mode if provided
+    effective_mode = mode
+    if mode in ("graph", "simple") and graph_mode:
+        effective_mode = graph_mode
+    elif mode == "graph" and not graph_mode:
+        effective_mode = "auto"  # Default to auto if graph mode but no graph_mode specified
 
     orchestrator = create_orchestrator(
         search_handler=search_handler,
         judge_handler=judge_handler,
         config=config,
-        mode=mode,  # type: ignore
+        mode=effective_mode,  # type: ignore
     )
 
     return orchestrator, backend_info
@@ -405,19 +425,23 @@ async def handle_orchestrator_events(
 
 
 async def research_agent(
-    message: str,
+    message: str | MultimodalPostprocess,
     history: list[dict[str, Any]],
     mode: str = "simple",
     hf_model: str | None = None,
     hf_provider: str | None = None,
+    graph_mode: str = "auto",
+    use_graph: bool = True,
+    tts_voice: str = "af_heart",
+    tts_speed: float = 1.0,
     oauth_token: gr.OAuthToken | None = None,
     oauth_profile: gr.OAuthProfile | None = None,
-) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+) -> AsyncGenerator[dict[str, Any] | tuple[dict[str, Any], tuple[int, np.ndarray] | None], None]:
     """
     Gradio chat function that runs the research agent.
 
     Args:
-        message: User's research question
+        message: User's research question (str or MultimodalPostprocess with text/files)
         history: Chat history (Gradio format)
         mode: Orchestrator mode ("simple" or "advanced")
         hf_model: Selected HuggingFace model ID (from dropdown)
@@ -426,8 +450,12 @@ async def research_agent(
         oauth_profile: Gradio OAuth profile (None if user not logged in)
 
     Yields:
-        ChatMessage objects with metadata for accordion display
+        ChatMessage objects with metadata for accordion display, optionally with audio output
     """
+    import structlog
+
+    logger = structlog.get_logger()
+
     # REQUIRE LOGIN BEFORE USE
     # Extract OAuth token and username using Gradio's OAuth types
     # According to Gradio docs: OAuthToken and OAuthProfile are None if user not logged in
@@ -465,14 +493,37 @@ async def research_agent(
                 "before using this application.\n\n"
                 "The login button is required to access the AI models and research tools."
             ),
-        }
+        }, None
         return
 
-    if not message.strip():
+    # Process multimodal input (text + images + audio)
+    processed_text = ""
+    audio_input_data: tuple[int, np.ndarray] | None = None
+
+    if isinstance(message, dict):
+        # MultimodalPostprocess format: {"text": str, "files": list[FileData]}
+        processed_text = message.get("text", "") or ""
+        files = message.get("files", [])
+
+        # Process multimodal input (images, audio files)
+        if files and settings.enable_image_input:
+            try:
+                multimodal_service = get_multimodal_service()
+                processed_text = await multimodal_service.process_multimodal_input(
+                    processed_text, files=files, hf_token=token_value
+                )
+            except Exception as e:
+                logger.warning("multimodal_processing_failed", error=str(e))
+                # Continue with text-only input
+    else:
+        # Plain string message
+        processed_text = str(message) if message else ""
+
+    if not processed_text.strip():
         yield {
             "role": "assistant",
-            "content": "Please enter a research question.",
-        }
+            "content": "Please enter a research question or provide an image/audio input.",
+        }, None
         return
 
     # Check available keys (use token_value instead of oauth_token)
@@ -501,6 +552,8 @@ async def research_agent(
             oauth_token=token_value,  # Use extracted token value
             hf_model=model_id,  # None will use defaults in configure_orchestrator
             hf_provider=provider_name,  # None will use defaults in configure_orchestrator
+            graph_mode=graph_mode if graph_mode else None,
+            use_graph=use_graph,
         )
 
         yield {
@@ -508,9 +561,41 @@ async def research_agent(
             "content": f"🧠 **Backend**: {backend_name}\n\n",
         }
 
-        # Handle orchestrator events
-        async for msg in handle_orchestrator_events(orchestrator, message):
-            yield msg
+        # Handle orchestrator events and generate audio output
+        audio_output_data: tuple[int, np.ndarray] | None = None
+        final_message = ""
+
+        async for msg in handle_orchestrator_events(orchestrator, processed_text):
+            # Track final message for TTS
+            if isinstance(msg, dict) and msg.get("role") == "assistant":
+                content = msg.get("content", "")
+                metadata = msg.get("metadata", {})
+                # This is the main response (not an accordion) if no title in metadata
+                if content and not metadata.get("title"):
+                    final_message = content
+
+            # Yield without audio for intermediate messages
+            yield msg, None
+
+        # Generate audio output for final response
+        if final_message and settings.enable_audio_output:
+            try:
+                audio_service = get_audio_service()
+                # Use UI-configured voice and speed, fallback to settings defaults
+                audio_output_data = await audio_service.generate_audio_output(
+                    final_message,
+                    voice=tts_voice or settings.tts_voice,
+                    speed=tts_speed if tts_speed else settings.tts_speed,
+                )
+            except Exception as e:
+                logger.warning("audio_synthesis_failed", error=str(e))
+                # Continue without audio output
+
+        # If we have audio output, we need to yield it with the final message
+        # Note: The final message was already yielded above, so we yield None, audio_output_data
+        # This will update the audio output component
+        if audio_output_data is not None:
+            yield None, audio_output_data
 
     except Exception as e:
         # Return error message without metadata to avoid issues during example caching
@@ -521,7 +606,7 @@ async def research_agent(
         yield {
             "role": "assistant",
             "content": f"Error: {error_msg}. Please check your configuration and try again.",
-        }
+        }, None
 
 
 def create_demo() -> gr.Blocks:
@@ -566,6 +651,72 @@ def create_demo() -> gr.Blocks:
             ),
         )
 
+        # Graph mode selection
+        graph_mode_radio = gr.Radio(
+            choices=["iterative", "deep", "auto"],
+            value="auto",
+            label="Graph Research Mode",
+            info="Iterative: Single loop | Deep: Parallel sections | Auto: Detect from query",
+        )
+
+        # Graph execution toggle
+        use_graph_checkbox = gr.Checkbox(
+            value=True,
+            label="Use Graph Execution",
+            info="Enable graph-based workflow execution",
+        )
+
+        # TTS Configuration (in Settings accordion)
+        with gr.Accordion("🎤 Audio Settings", open=False, visible=settings.enable_audio_output):
+            tts_voice_dropdown = gr.Dropdown(
+                choices=[
+                    "af_heart",
+                    "af_bella",
+                    "af_nicole",
+                    "af_aoede",
+                    "af_kore",
+                    "af_sarah",
+                    "af_nova",
+                    "af_sky",
+                    "af_alloy",
+                    "af_jessica",
+                    "af_river",
+                    "am_michael",
+                    "am_fenrir",
+                    "am_puck",
+                    "am_echo",
+                    "am_eric",
+                    "am_liam",
+                    "am_onyx",
+                    "am_santa",
+                    "am_adam",
+                ],
+                value=settings.tts_voice,
+                label="Voice",
+                info="Select TTS voice (American English voices: af_*, am_*)",
+            )
+            tts_speed_slider = gr.Slider(
+                minimum=0.5,
+                maximum=2.0,
+                value=settings.tts_speed,
+                step=0.1,
+                label="Speech Speed",
+                info="Adjust TTS speech speed (0.5x to 2.0x)",
+            )
+            tts_gpu_dropdown = gr.Dropdown(
+                choices=["T4", "A10", "A100", "L4", "L40S"],
+                value=settings.tts_gpu or "T4",
+                label="GPU Type",
+                info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
+                visible=settings.modal_available,
+                interactive=False,  # GPU type set at function definition time, requires restart
+            )
+            enable_audio_output_checkbox = gr.Checkbox(
+                value=settings.enable_audio_output,
+                label="Enable Audio Output",
+                info="Generate audio responses using TTS",
+            )
+
         # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
         # These will be empty by default and use defaults in configure_orchestrator
         with gr.Row(visible=False):
@@ -581,11 +732,18 @@ def create_demo() -> gr.Blocks:
                 visible=False,  # Hidden from UI
             )
 
-        # Chat interface with model/provider selection
+        # Audio output component (for TTS response)
+        audio_output = gr.Audio(
+            label="🔊 Audio Response",
+            visible=settings.enable_audio_output,
+        )
+
+        # Chat interface with multimodal support
         # Examples are provided but will NOT run at startup (cache_examples=False)
         # Users must log in first before using examples or submitting queries
         gr.ChatInterface(
             fn=research_agent,
+            multimodal=True,  # Enable multimodal input (text + images + audio)
             title="🧬 DeepCritical",
             description=(
                 "*AI-Powered Drug Repurposing Agent — searches PubMed, "
@@ -593,6 +751,7 @@ def create_demo() -> gr.Blocks:
                 "---\n"
                 "*Research tool only — not for medical advice.*  \n"
                 "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
+                "**🎤 Multimodal Support**: Upload images (OCR), record audio (STT), or type text.\n\n"
                 "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
             ),
             examples=[
@@ -606,18 +765,24 @@ def create_demo() -> gr.Blocks:
                     "simple",
                     "Qwen/Qwen3-Next-80B-A3B-Thinking",
                     "",
+                    "auto",
+                    True,
                 ],
                 [
                     "Is metformin effective for treating cancer? Investigate mechanism of action.",
                     "iterative",
                     "Qwen/Qwen3-235B-A22B-Instruct-2507",
                     "",
+                    "iterative",
+                    True,
                 ],
                 [
                     "Create a comprehensive report on Long COVID treatments including clinical trials, mechanisms, and safety.",
                     "deep",
                     "zai-org/GLM-4.5-Air",
                     "nebius",
+                    "deep",
+                    True,
                 ],
             ],
             cache_examples=False,  # CRITICAL: Disable example caching to prevent examples from running at startup
@@ -627,9 +792,14 @@ def create_demo() -> gr.Blocks:
                 mode_radio,
                 hf_model_dropdown,
                 hf_provider_dropdown,
+                graph_mode_radio,
+                use_graph_checkbox,
+                tts_voice_dropdown,
+                tts_speed_slider,
                 # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters
                 # when user is logged in - they should NOT be added to additional_inputs
             ],
+            additional_outputs=[audio_output],  # Add audio output for TTS
         )
 
     return demo  # type: ignore[no-any-return]
@@ -642,7 +812,7 @@ def main() -> None:
         # server_name="0.0.0.0",
         # server_port=7860,
         # share=False,
-        mcp_server=False,
+        mcp_server=True,  # Enable MCP server for Claude Desktop integration
         ssr_mode=False,  # Fix for intermittent loading/hydration issues in HF Spaces
     )
 
