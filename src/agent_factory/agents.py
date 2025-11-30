@@ -27,12 +27,13 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
-def create_input_parser_agent(model: Any | None = None) -> "InputParserAgent":
+def create_input_parser_agent(model: Any | None = None, oauth_token: str | None = None) -> "InputParserAgent":
     """
     Create input parser agent for query analysis and research mode detection.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured InputParserAgent instance
@@ -44,18 +45,19 @@ def create_input_parser_agent(model: Any | None = None) -> "InputParserAgent":
 
     try:
         logger.debug("Creating input parser agent")
-        return _create_agent(model=model)
+        return _create_agent(model=model, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create input parser agent", error=str(e))
         raise ConfigurationError(f"Failed to create input parser agent: {e}") from e
 
 
-def create_planner_agent(model: Any | None = None) -> "PlannerAgent":
+def create_planner_agent(model: Any | None = None, oauth_token: str | None = None) -> "PlannerAgent":
     """
     Create planner agent with web search and crawl tools.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured PlannerAgent instance
@@ -68,18 +70,19 @@ def create_planner_agent(model: Any | None = None) -> "PlannerAgent":
 
     try:
         logger.debug("Creating planner agent")
-        return _create_planner_agent(model=model)
+        return _create_planner_agent(model=model, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create planner agent", error=str(e))
         raise ConfigurationError(f"Failed to create planner agent: {e}") from e
 
 
-def create_knowledge_gap_agent(model: Any | None = None) -> "KnowledgeGapAgent":
+def create_knowledge_gap_agent(model: Any | None = None, oauth_token: str | None = None) -> "KnowledgeGapAgent":
     """
     Create knowledge gap agent for evaluating research completeness.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured KnowledgeGapAgent instance
@@ -91,18 +94,19 @@ def create_knowledge_gap_agent(model: Any | None = None) -> "KnowledgeGapAgent":
 
     try:
         logger.debug("Creating knowledge gap agent")
-        return _create_agent(model=model)
+        return _create_agent(model=model, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create knowledge gap agent", error=str(e))
         raise ConfigurationError(f"Failed to create knowledge gap agent: {e}") from e
 
 
-def create_tool_selector_agent(model: Any | None = None) -> "ToolSelectorAgent":
+def create_tool_selector_agent(model: Any | None = None, oauth_token: str | None = None) -> "ToolSelectorAgent":
     """
     Create tool selector agent for choosing tools to address gaps.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured ToolSelectorAgent instance
@@ -114,18 +118,19 @@ def create_tool_selector_agent(model: Any | None = None) -> "ToolSelectorAgent":
 
     try:
         logger.debug("Creating tool selector agent")
-        return _create_agent(model=model)
+        return _create_agent(model=model, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create tool selector agent", error=str(e))
         raise ConfigurationError(f"Failed to create tool selector agent: {e}") from e
 
 
-def create_thinking_agent(model: Any | None = None) -> "ThinkingAgent":
+def create_thinking_agent(model: Any | None = None, oauth_token: str | None = None) -> "ThinkingAgent":
     """
     Create thinking agent for generating observations.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured ThinkingAgent instance
@@ -137,18 +142,19 @@ def create_thinking_agent(model: Any | None = None) -> "ThinkingAgent":
 
     try:
         logger.debug("Creating thinking agent")
-        return _create_agent(model=model)
+        return _create_agent(model=model, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create thinking agent", error=str(e))
         raise ConfigurationError(f"Failed to create thinking agent: {e}") from e
 
 
-def create_writer_agent(model: Any | None = None) -> "WriterAgent":
+def create_writer_agent(model: Any | None = None, oauth_token: str | None = None) -> "WriterAgent":
     """
     Create writer agent for generating final reports.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured WriterAgent instance
@@ -160,18 +166,19 @@ def create_writer_agent(model: Any | None = None) -> "WriterAgent":
 
     try:
         logger.debug("Creating writer agent")
-        return _create_agent(model=model)
+        return _create_agent(model=model, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create writer agent", error=str(e))
         raise ConfigurationError(f"Failed to create writer agent: {e}") from e
 
 
-def create_long_writer_agent(model: Any | None = None) -> "LongWriterAgent":
+def create_long_writer_agent(model: Any | None = None, oauth_token: str | None = None) -> "LongWriterAgent":
     """
     Create long writer agent for iteratively writing report sections.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured LongWriterAgent instance
@@ -183,18 +190,19 @@ def create_long_writer_agent(model: Any | None = None) -> "LongWriterAgent":
 
     try:
         logger.debug("Creating long writer agent")
-        return _create_agent(model=model)
+        return _create_agent(model=model, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create long writer agent", error=str(e))
         raise ConfigurationError(f"Failed to create long writer agent: {e}") from e
 
 
-def create_proofreader_agent(model: Any | None = None) -> "ProofreaderAgent":
+def create_proofreader_agent(model: Any | None = None, oauth_token: str | None = None) -> "ProofreaderAgent":
     """
     Create proofreader agent for finalizing report drafts.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured ProofreaderAgent instance
@@ -206,7 +214,7 @@ def create_proofreader_agent(model: Any | None = None) -> "ProofreaderAgent":
 
     try:
         logger.debug("Creating proofreader agent")
-        return _create_agent(model=model)
+        return _create_agent(model=model, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create proofreader agent", error=str(e))
         raise ConfigurationError(f"Failed to create proofreader agent: {e}") from e

@@ -407,12 +407,13 @@ class LongWriterAgent:
         return re.sub(r"^(#+)\s(.+)$", adjust_heading_level, section_markdown, flags=re.MULTILINE)
 
 
-def create_long_writer_agent(model: Any | None = None) -> LongWriterAgent:
+def create_long_writer_agent(model: Any | None = None, oauth_token: str | None = None) -> LongWriterAgent:
     """
     Factory function to create a long writer agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured LongWriterAgent instance
@@ -422,7 +423,7 @@ def create_long_writer_agent(model: Any | None = None) -> LongWriterAgent:
     """
     try:
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         return LongWriterAgent(model=model)
 

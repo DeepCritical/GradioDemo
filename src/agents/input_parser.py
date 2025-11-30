@@ -152,12 +152,13 @@ class InputParserAgent:
             )
 
 
-def create_input_parser_agent(model: Any | None = None) -> InputParserAgent:
+def create_input_parser_agent(model: Any | None = None, oauth_token: str | None = None) -> InputParserAgent:
     """
     Factory function to create an input parser agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured InputParserAgent instance
@@ -168,7 +169,7 @@ def create_input_parser_agent(model: Any | None = None) -> InputParserAgent:
     try:
         # Get model from settings if not provided
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         # Create and return input parser agent
         return InputParserAgent(model=model)
