@@ -552,8 +552,57 @@ class GraphOrchestrator:
 
             current_node_id = next_nodes[0]  # For now, take first next node (handle parallel later)
 
-        # Final event - get result from the last executed node (which should be an exit node)
-        final_result = context.get_node_result(current_node_id) if current_node_id else None
+        # Final event - get result from exit nodes (prioritize synthesizer/writer nodes)
+        # First try to get result from current node (if it's an exit node)
+        final_result = None
+        if current_node_id and current_node_id in self._graph.exit_nodes:
+            final_result = context.get_node_result(current_node_id)
+            self.logger.debug(
+                "Final result from current exit node",
+                node_id=current_node_id,
+                has_result=final_result is not None,
+                result_type=type(final_result).__name__ if final_result else None,
+            )
+        
+        # If no result from current node, check all exit nodes for results
+        # Prioritize synthesizer (deep research) or writer (iterative research)
+        if not final_result:
+            exit_node_priority = ["synthesizer", "writer"]
+            for exit_node_id in exit_node_priority:
+                if exit_node_id in self._graph.exit_nodes:
+                    result = context.get_node_result(exit_node_id)
+                    if result:
+                        final_result = result
+                        current_node_id = exit_node_id
+                        self.logger.debug(
+                            "Final result from priority exit node",
+                            node_id=exit_node_id,
+                            result_type=type(final_result).__name__,
+                        )
+                        break
+            
+            # If still no result, check all exit nodes
+            if not final_result:
+                for exit_node_id in self._graph.exit_nodes:
+                    result = context.get_node_result(exit_node_id)
+                    if result:
+                        final_result = result
+                        current_node_id = exit_node_id
+                        self.logger.debug(
+                            "Final result from any exit node",
+                            node_id=exit_node_id,
+                            result_type=type(final_result).__name__,
+                        )
+                        break
+        
+        # Log warning if no result found
+        if not final_result:
+            self.logger.warning(
+                "No final result found in exit nodes",
+                exit_nodes=list(self._graph.exit_nodes),
+                visited_nodes=list(context.visited_nodes),
+                all_node_results=list(context.node_results.keys()),
+            )
 
         # Check if final result contains file information
         event_data: dict[str, Any] = {"mode": self.mode, "iterations": iteration}
@@ -561,21 +610,45 @@ class GraphOrchestrator:
 
         if isinstance(final_result, str):
             message = final_result
+            self.logger.debug("Final message extracted from string result", length=len(message))
         elif isinstance(final_result, dict):
-            # If result is a dict, check for file paths
+            # First check for message key (most important)
+            if "message" in final_result:
+                message = final_result["message"]
+                self.logger.debug(
+                    "Final message extracted from dict 'message' key",
+                    length=len(message) if isinstance(message, str) else 0,
+                )
+            
+            # Then check for file paths
             if "file" in final_result:
                 file_path = final_result["file"]
                 if isinstance(file_path, str):
                     event_data["file"] = file_path
-                    message = final_result.get("message", "Report generated. Download available.")
+                    # Only override message if not already set from "message" key
+                    if "message" not in final_result:
+                        message = "Report generated. Download available."
+                    self.logger.debug("File path added to event data", file_path=file_path)
             elif "files" in final_result:
                 files = final_result["files"]
                 if isinstance(files, list):
                     event_data["files"] = files
-                    message = final_result.get("message", "Report generated. Downloads available.")
+                    # Only override message if not already set from "message" key
+                    if "message" not in final_result:
+                        message = "Report generated. Downloads available."
                 elif isinstance(files, str):
                     event_data["files"] = [files]
-                    message = final_result.get("message", "Report generated. Download available.")
+                    # Only override message if not already set from "message" key
+                    if "message" not in final_result:
+                        message = "Report generated. Download available."
+                self.logger.debug("File paths added to event data", count=len(event_data.get("files", [])))
+        else:
+            # Log warning if result type is unexpected
+            self.logger.warning(
+                "Final result has unexpected type",
+                result_type=type(final_result).__name__ if final_result else None,
+                result_repr=str(final_result)[:200] if final_result else None,
+            )
 
         yield AgentEvent(
             type="complete",
