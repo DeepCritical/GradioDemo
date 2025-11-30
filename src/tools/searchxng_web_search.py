@@ -114,3 +114,4 @@ class SearchXNGWebSearchTool:
             logger.error("Unexpected error in SearchXNG search", error=str(e), query=final_query)
             raise SearchError(f"SearchXNG search failed: {e}") from e
 
+

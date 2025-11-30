@@ -126,3 +126,4 @@ async def crawl_website(starting_url: str) -> list[ScrapeResult] | str:
     result = await scrape_urls(pages_to_scrape_snippets)
     return result
 
+

@@ -67,3 +67,4 @@ def create_web_search_tool() -> SearchTool | None:
         logger.error("Unexpected error creating web search tool", error=str(e), provider=provider)
         return None
 
+

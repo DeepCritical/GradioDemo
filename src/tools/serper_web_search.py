@@ -114,3 +114,4 @@ class SerperWebSearchTool:
             logger.error("Unexpected error in Serper search", error=str(e), query=final_query)
             raise SearchError(f"Serper search failed: {e}") from e
 
+
