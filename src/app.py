@@ -534,17 +534,12 @@ def create_demo() -> gr.Blocks:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
     with gr.Blocks(title="🧬 DeepCritical") as demo:
-        # Add login button at the top in a visible Row container
-        # LoginButton must be visible and properly configured for OAuth to work
-        # Using a Row with scale ensures the button is displayed prominently at the top
-        with gr.Row(equal_height=False):
-            with gr.Column(scale=1, min_width=200):
-                login_btn = gr.LoginButton(
-                    value="Sign in with Hugging Face",
-                    variant="huggingface",
-                    size="lg",
-                )
-
+        # Add login button - place directly in Blocks context (before ChatInterface)
+        # Reference: https://huggingface.co/spaces/multimodalart/nano-banana
+        # LoginButton automatically handles OAuth flow when placed in Blocks context
+        # Must be placed directly without containers to ensure proper rendering
+        login_button = gr.LoginButton()
+        
         # Create settings components (hidden - used only for additional_inputs)
         # Model/provider selection removed to avoid dropdown value mismatch errors
         # Settings will use defaults from configure_orchestrator

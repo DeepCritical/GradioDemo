@@ -62,3 +62,4 @@ async def web_search(query: str) -> str:
         logger.error("Web search failed", error=str(e), query=query)
         return f"Error performing web search: {e!s}"
 
+
