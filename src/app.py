@@ -96,13 +96,11 @@ def configure_orchestrator(
                 "HuggingFace models are not available in this version of pydantic-ai. "
                 "Please install with: uv add 'pydantic-ai[huggingface]' to use HuggingFace inference providers."
             )
-        # Inference API - uses HuggingFace Inference API via AsyncInferenceClient
+        # Inference API - uses HuggingFace Inference API
         # Per https://ai.pydantic.dev/models/huggingface/#configure-the-provider
-        # Create AsyncInferenceClient for inference API
-        # AsyncInferenceClient accepts 'token' parameter for API key
-        hf_client = AsyncInferenceClient(token=effective_api_key)  # type: ignore[misc]
-        # Pass client to HuggingFaceProvider for inference API usage
-        provider = HuggingFaceProvider(hf_client=hf_client)  # type: ignore[misc]
+        # HuggingFaceProvider accepts api_key parameter directly
+        # This is consistent with usage in src/utils/llm_factory.py and src/agent_factory/judges.py
+        provider = HuggingFaceProvider(api_key=effective_api_key)  # type: ignore[misc]
         model = HuggingFaceModel(model_name, provider=provider)  # type: ignore[misc]
         backend_info = "API (HuggingFace OAuth)" if oauth_token else "API (Env Config)"
 
