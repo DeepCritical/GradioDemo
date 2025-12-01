@@ -28,9 +28,11 @@ from src.agent_factory.graph_builder import (
     create_deep_graph,
     create_iterative_graph,
 )
+from src.legacy_orchestrator import JudgeHandlerProtocol, SearchHandlerProtocol
 from src.middleware.budget_tracker import BudgetTracker
 from src.middleware.state_machine import WorkflowState, init_workflow_state
 from src.orchestrator.research_flow import DeepResearchFlow, IterativeResearchFlow
+from src.services.report_file_service import ReportFileService, get_report_file_service
 from src.utils.models import AgentEvent
 
 if TYPE_CHECKING:
@@ -121,6 +123,9 @@ class GraphOrchestrator:
         max_iterations: int = 5,
         max_time_minutes: int = 10,
         use_graph: bool = True,
+        search_handler: SearchHandlerProtocol | None = None,
+        judge_handler: JudgeHandlerProtocol | None = None,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize graph orchestrator.
@@ -130,12 +135,21 @@ class GraphOrchestrator:
             max_iterations: Maximum iterations per loop
             max_time_minutes: Maximum time per loop
             use_graph: Whether to use graph execution (True) or agent chains (False)
+            search_handler: Optional search handler for tool execution
+            judge_handler: Optional judge handler for evidence assessment
+            oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
         """
         self.mode = mode
         self.max_iterations = max_iterations
         self.max_time_minutes = max_time_minutes
         self.use_graph = use_graph
+        self.search_handler = search_handler
+        self.judge_handler = judge_handler
+        self.oauth_token = oauth_token
         self.logger = logger
+
+        # Initialize file service (lazy if not provided)
+        self._file_service: ReportFileService | None = None
 
         # Initialize flows (for backward compatibility)
         self._iterative_flow: IterativeResearchFlow | None = None
@@ -144,6 +158,21 @@ class GraphOrchestrator:
         # Graph execution components (lazy initialization)
         self._graph: ResearchGraph | None = None
         self._budget_tracker: BudgetTracker | None = None
+
+    def _get_file_service(self) -> ReportFileService | None:
+        """
+        Get file service instance (lazy initialization).
+
+        Returns:
+            ReportFileService instance or None if disabled
+        """
+        if self._file_service is None:
+            try:
+                self._file_service = get_report_file_service()
+            except Exception as e:
+                self.logger.warning("Failed to initialize file service", error=str(e))
+                return None
+        return self._file_service
 
     async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
         """
@@ -248,6 +277,8 @@ class GraphOrchestrator:
                 self._iterative_flow = IterativeResearchFlow(
                     max_iterations=self.max_iterations,
                     max_time_minutes=self.max_time_minutes,
+                    judge_handler=self.judge_handler,
+                    oauth_token=self.oauth_token,
                 )
 
             try:
@@ -278,9 +309,12 @@ class GraphOrchestrator:
             )
 
             if self._deep_flow is None:
+                # DeepResearchFlow creates its own judge_handler internally
+                # The judge_handler is passed to IterativeResearchFlow in parallel loops
                 self._deep_flow = DeepResearchFlow(
                     max_iterations=self.max_iterations,
                     max_time_minutes=self.max_time_minutes,
+                    oauth_token=self.oauth_token,
                 )
 
             try:
@@ -312,11 +346,11 @@ class GraphOrchestrator:
             Constructed ResearchGraph
         """
         if mode == "iterative":
-            # Get agents
-            knowledge_gap_agent = create_knowledge_gap_agent()
-            tool_selector_agent = create_tool_selector_agent()
-            thinking_agent = create_thinking_agent()
-            writer_agent = create_writer_agent()
+            # Get agents - pass OAuth token for HuggingFace authentication
+            knowledge_gap_agent = create_knowledge_gap_agent(oauth_token=self.oauth_token)
+            tool_selector_agent = create_tool_selector_agent(oauth_token=self.oauth_token)
+            thinking_agent = create_thinking_agent(oauth_token=self.oauth_token)
+            writer_agent = create_writer_agent(oauth_token=self.oauth_token)
 
             # Create graph
             graph = create_iterative_graph(
@@ -326,13 +360,13 @@ class GraphOrchestrator:
                 writer_agent=writer_agent.agent,
             )
         else:  # deep
-            # Get agents
-            planner_agent = create_planner_agent()
-            knowledge_gap_agent = create_knowledge_gap_agent()
-            tool_selector_agent = create_tool_selector_agent()
-            thinking_agent = create_thinking_agent()
-            writer_agent = create_writer_agent()
-            long_writer_agent = create_long_writer_agent()
+            # Get agents - pass OAuth token for HuggingFace authentication
+            planner_agent = create_planner_agent(oauth_token=self.oauth_token)
+            knowledge_gap_agent = create_knowledge_gap_agent(oauth_token=self.oauth_token)
+            tool_selector_agent = create_tool_selector_agent(oauth_token=self.oauth_token)
+            thinking_agent = create_thinking_agent(oauth_token=self.oauth_token)
+            writer_agent = create_writer_agent(oauth_token=self.oauth_token)
+            long_writer_agent = create_long_writer_agent(oauth_token=self.oauth_token)
 
             # Create graph
             graph = create_deep_graph(
@@ -472,7 +506,8 @@ class GraphOrchestrator:
         current_node_id = self._graph.entry_node
         iteration = 0
 
-        while current_node_id and current_node_id not in self._graph.exit_nodes:
+        # Execute nodes until we reach an exit node
+        while current_node_id:
             # Check budget
             if not context.budget_tracker.can_continue("graph_execution"):
                 self.logger.warning("Budget exceeded, exiting graph execution")
@@ -503,25 +538,122 @@ class GraphOrchestrator:
                 )
                 break
 
+            # Check if current node is an exit node - if so, we're done
+            if current_node_id in self._graph.exit_nodes:
+                break
+
             # Get next node(s)
             next_nodes = self._get_next_node(current_node_id, context)
 
             if not next_nodes:
-                # No more nodes, check if we're at exit
-                if current_node_id in self._graph.exit_nodes:
-                    break
-                # Otherwise, we've reached a dead end
+                # No more nodes, we've reached a dead end
                 self.logger.warning("Reached dead end in graph", node_id=current_node_id)
                 break
 
             current_node_id = next_nodes[0]  # For now, take first next node (handle parallel later)
 
-        # Final event
-        final_result = context.get_node_result(current_node_id) if current_node_id else None
+        # Final event - get result from exit nodes (prioritize synthesizer/writer nodes)
+        # First try to get result from current node (if it's an exit node)
+        final_result = None
+        if current_node_id and current_node_id in self._graph.exit_nodes:
+            final_result = context.get_node_result(current_node_id)
+            self.logger.debug(
+                "Final result from current exit node",
+                node_id=current_node_id,
+                has_result=final_result is not None,
+                result_type=type(final_result).__name__ if final_result else None,
+            )
+        
+        # If no result from current node, check all exit nodes for results
+        # Prioritize synthesizer (deep research) or writer (iterative research)
+        if not final_result:
+            exit_node_priority = ["synthesizer", "writer"]
+            for exit_node_id in exit_node_priority:
+                if exit_node_id in self._graph.exit_nodes:
+                    result = context.get_node_result(exit_node_id)
+                    if result:
+                        final_result = result
+                        current_node_id = exit_node_id
+                        self.logger.debug(
+                            "Final result from priority exit node",
+                            node_id=exit_node_id,
+                            result_type=type(final_result).__name__,
+                        )
+                        break
+            
+            # If still no result, check all exit nodes
+            if not final_result:
+                for exit_node_id in self._graph.exit_nodes:
+                    result = context.get_node_result(exit_node_id)
+                    if result:
+                        final_result = result
+                        current_node_id = exit_node_id
+                        self.logger.debug(
+                            "Final result from any exit node",
+                            node_id=exit_node_id,
+                            result_type=type(final_result).__name__,
+                        )
+                        break
+        
+        # Log warning if no result found
+        if not final_result:
+            self.logger.warning(
+                "No final result found in exit nodes",
+                exit_nodes=list(self._graph.exit_nodes),
+                visited_nodes=list(context.visited_nodes),
+                all_node_results=list(context.node_results.keys()),
+            )
+
+        # Check if final result contains file information
+        event_data: dict[str, Any] = {"mode": self.mode, "iterations": iteration}
+        message: str = "Research completed"
+
+        if isinstance(final_result, str):
+            message = final_result
+            self.logger.debug("Final message extracted from string result", length=len(message))
+        elif isinstance(final_result, dict):
+            # First check for message key (most important)
+            if "message" in final_result:
+                message = final_result["message"]
+                self.logger.debug(
+                    "Final message extracted from dict 'message' key",
+                    length=len(message) if isinstance(message, str) else 0,
+                )
+            
+            # Then check for file paths
+            if "file" in final_result:
+                file_path = final_result["file"]
+                if isinstance(file_path, str):
+                    event_data["file"] = file_path
+                    # Only override message if not already set from "message" key
+                    if "message" not in final_result:
+                        message = "Report generated. Download available."
+                    self.logger.debug("File path added to event data", file_path=file_path)
+            elif "files" in final_result:
+                files = final_result["files"]
+                if isinstance(files, list):
+                    event_data["files"] = files
+                    # Only override message if not already set from "message" key
+                    if "message" not in final_result:
+                        message = "Report generated. Downloads available."
+                elif isinstance(files, str):
+                    event_data["files"] = [files]
+                    # Only override message if not already set from "message" key
+                    if "message" not in final_result:
+                        message = "Report generated. Download available."
+                self.logger.debug("File paths added to event data", count=len(event_data.get("files", [])))
+        else:
+            # Log warning if result type is unexpected
+            self.logger.warning(
+                "Final result has unexpected type",
+                result_type=type(final_result).__name__ if final_result else None,
+                result_repr=str(final_result)[:200] if final_result else None,
+            )
+
         yield AgentEvent(
             type="complete",
-            message=final_result if isinstance(final_result, str) else "Research completed",
-            data={"mode": self.mode, "iterations": iteration},
+            message=message,
+            data=event_data,
             iteration=iteration,
         )
 
@@ -571,7 +703,7 @@ class GraphOrchestrator:
         Returns:
             Agent execution result
         """
-        # Special handling for synthesizer node
+        # Special handling for synthesizer node (deep research)
         if node.node_id == "synthesizer":
             # Call LongWriterAgent.write_report() directly instead of using agent.run()
             from src.agent_factory.agents import create_long_writer_agent
@@ -600,7 +732,7 @@ class GraphOrchestrator:
             )
 
             # Get LongWriterAgent instance and call write_report directly
-            long_writer_agent = create_long_writer_agent()
+            long_writer_agent = create_long_writer_agent(oauth_token=self.oauth_token)
             final_report = await long_writer_agent.write_report(
                 original_query=query,
                 report_title=report_plan.report_title,
@@ -611,6 +743,109 @@ class GraphOrchestrator:
             estimated_tokens = len(final_report) // 4  # Rough token estimate
             context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
 
+            # Save report to file if enabled (may generate multiple formats)
+            file_path: str | None = None
+            pdf_path: str | None = None
+            try:
+                file_service = self._get_file_service()
+                if file_service:
+                    # Use save_report_multiple_formats to get both MD and PDF if enabled
+                    saved_files = file_service.save_report_multiple_formats(
+                        report_content=final_report,
+                        query=query,
+                    )
+                    file_path = saved_files.get("md")
+                    pdf_path = saved_files.get("pdf")
+                    self.logger.info(
+                        "Report saved to file",
+                        md_path=file_path,
+                        pdf_path=pdf_path,
+                    )
+            except Exception as e:
+                # Don't fail the entire operation if file saving fails
+                self.logger.warning("Failed to save report to file", error=str(e))
+                file_path = None
+                pdf_path = None
+
+            # Return dict with file paths if available, otherwise return string (backward compatible)
+            if file_path:
+                result: dict[str, Any] = {
+                    "message": final_report,
+                    "file": file_path,
+                }
+                # Add PDF path if generated
+                if pdf_path:
+                    result["files"] = [file_path, pdf_path]
+                return result
+            return final_report
+
+        # Special handling for writer node (iterative research)
+        if node.node_id == "writer":
+            # Call WriterAgent.write_report() directly instead of using agent.run()
+            # Collect all findings from workflow state
+            from src.agent_factory.agents import create_writer_agent
+
+            # Get all evidence from workflow state and convert to findings string
+            evidence = context.state.evidence
+            if evidence:
+                # Convert evidence to findings format (similar to conversation.get_all_findings())
+                findings_parts: list[str] = []
+                for ev in evidence:
+                    finding = f"**{ev.title}**\n{ev.content}"
+                    if ev.url:
+                        finding += f"\nSource: {ev.url}"
+                    findings_parts.append(finding)
+                all_findings = "\n\n".join(findings_parts)
+            else:
+                all_findings = "No findings available yet."
+
+            # Get WriterAgent instance and call write_report directly
+            writer_agent = create_writer_agent(oauth_token=self.oauth_token)
+            final_report = await writer_agent.write_report(
+                query=query,
+                findings=all_findings,
+                output_length="",
+                output_instructions="",
+            )
+
+            # Estimate tokens (rough estimate)
+            estimated_tokens = len(final_report) // 4  # Rough token estimate
+            context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
+
+            # Save report to file if enabled (may generate multiple formats)
+            file_path: str | None = None
+            pdf_path: str | None = None
+            try:
+                file_service = self._get_file_service()
+                if file_service:
+                    # Use save_report_multiple_formats to get both MD and PDF if enabled
+                    saved_files = file_service.save_report_multiple_formats(
+                        report_content=final_report,
+                        query=query,
+                    )
+                    file_path = saved_files.get("md")
+                    pdf_path = saved_files.get("pdf")
+                    self.logger.info(
+                        "Report saved to file",
+                        md_path=file_path,
+                        pdf_path=pdf_path,
+                    )
+            except Exception as e:
+                # Don't fail the entire operation if file saving fails
+                self.logger.warning("Failed to save report to file", error=str(e))
+                file_path = None
+                pdf_path = None
+
+            # Return dict with file paths if available, otherwise return string (backward compatible)
+            if file_path:
+                result: dict[str, Any] = {
+                    "message": final_report,
+                    "file": file_path,
+                }
+                # Add PDF path if generated
+                if pdf_path:
+                    result["files"] = [file_path, pdf_path]
+                return result
             return final_report
 
         # Standard agent execution
@@ -627,11 +862,95 @@ class GraphOrchestrator:
         if node.input_transformer:
             input_data = node.input_transformer(input_data)
 
-        # Execute agent
-        result = await node.agent.run(input_data)
+        # Execute agent with error handling
+        try:
+            result = await node.agent.run(input_data)
+        except Exception as e:
+            # Handle validation errors and API errors for planner node
+            if node.node_id == "planner":
+                self.logger.error(
+                    "Planner agent execution failed, using fallback plan",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+                # Return a minimal fallback ReportPlan
+                from src.utils.models import ReportPlan, ReportPlanSection
+
+                # Extract query from input_data if possible
+                fallback_query = query
+                if isinstance(input_data, str):
+                    # Try to extract query from input string
+                    if "QUERY:" in input_data:
+                        fallback_query = input_data.split("QUERY:")[-1].strip()
+
+                return ReportPlan(
+                    background_context="",
+                    report_outline=[
+                        ReportPlanSection(
+                            title="Research Findings",
+                            key_question=fallback_query,
+                        )
+                    ],
+                    report_title=f"Research Report: {fallback_query[:50]}",
+                )
+            # For other nodes, re-raise the exception
+            raise
 
         # Transform output if needed
-        output = result.output
+        # Defensively extract output - handle various result formats
+        output = result.output if hasattr(result, "output") else result
+
+        # Handle case where output might be a tuple (from pydantic-ai validation errors)
+        if isinstance(output, tuple):
+            # If tuple contains a dict-like structure, try to reconstruct the object
+            if len(output) == 2 and isinstance(output[0], str) and output[0] == "research_complete":
+                # This is likely a validation error format: ('research_complete', False)
+                # Try to get the actual output from result
+                self.logger.warning(
+                    "Agent result output is a tuple, attempting to extract actual output",
+                    node_id=node.node_id,
+                    tuple_value=output,
+                )
+                # Try to get output from result attributes
+                if hasattr(result, "data"):
+                    output = result.data
+                elif hasattr(result, "response"):
+                    output = result.response
+                else:
+                    # Last resort: try to reconstruct from tuple
+                    # This shouldn't happen, but handle gracefully
+                    from src.utils.models import KnowledgeGapOutput
+
+                    if node.node_id == "knowledge_gap":
+                        # Reconstruct KnowledgeGapOutput from validation error tuple
+                        output = KnowledgeGapOutput(
+                            research_complete=output[1] if len(output) > 1 else False,
+                            outstanding_gaps=[],
+                        )
+                        self.logger.info(
+                            "Reconstructed KnowledgeGapOutput from validation error tuple",
+                            node_id=node.node_id,
+                            research_complete=output.research_complete,
+                        )
+                    else:
+                        # For other nodes, try to extract meaningful output or use fallback
+                        self.logger.warning(
+                            "Agent node output is tuple format, attempting extraction",
+                            node_id=node.node_id,
+                            tuple_value=output,
+                        )
+                        # Try to extract first meaningful element
+                        if len(output) > 0:
+                            # If first element is a string or dict, might be the actual output
+                            if isinstance(output[0], (str, dict)):
+                                output = output[0]
+                            else:
+                                # Last resort: use first element
+                                output = output[0]
+                        else:
+                            # Empty tuple - use None and let downstream handle it
+                            output = None
+
         if node.output_transformer:
             output = node.output_transformer(output)
 
@@ -639,6 +958,34 @@ class GraphOrchestrator:
         if hasattr(result, "usage") and result.usage:
             tokens = result.usage.total_tokens if hasattr(result.usage, "total_tokens") else 0
             context.budget_tracker.add_tokens("graph_execution", tokens)
+
+        # Special handling for knowledge_gap node: optionally call judge_handler
+        if node.node_id == "knowledge_gap" and self.judge_handler:
+            # Get evidence from workflow state
+            evidence = context.state.evidence
+            if evidence:
+                try:
+                    from src.utils.models import JudgeAssessment
+
+                    # Call judge handler to assess evidence
+                    judge_assessment: JudgeAssessment = await self.judge_handler.assess(
+                        question=query, evidence=evidence
+                    )
+                    # Store assessment in context for decision node to use
+                    context.set_node_result("judge_assessment", judge_assessment)
+                    self.logger.info(
+                        "Judge assessment completed",
+                        sufficient=judge_assessment.sufficient,
+                        confidence=judge_assessment.confidence,
+                        recommendation=judge_assessment.recommendation,
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        "Judge handler assessment failed",
+                        error=str(e),
+                        node_id=node.node_id,
+                    )
+                    # Continue without judge assessment
 
         return output
 
@@ -650,6 +997,7 @@ class GraphOrchestrator:
         Special handling for deep research state nodes:
         - "store_plan": Stores ReportPlan in context for parallel loops
         - "collect_drafts": Stores section drafts in context for synthesizer
+        - "execute_tools": Executes search using search_handler
 
         Args:
             node: The state node
@@ -659,6 +1007,58 @@ class GraphOrchestrator:
         Returns:
             State update result
         """
+        # Special handling for execute_tools node
+        if node.node_id == "execute_tools":
+            # Get AgentSelectionPlan from tool_selector node result
+            tool_selector_result = context.get_node_result("tool_selector")
+            from src.utils.models import AgentSelectionPlan, SearchResult
+
+            # Extract query from context or use original query
+            search_query = query
+            if tool_selector_result and isinstance(tool_selector_result, AgentSelectionPlan):
+                # Use the gap or query from the selection plan
+                if tool_selector_result.tasks:
+                    # Use the first task's query if available
+                    first_task = tool_selector_result.tasks[0]
+                    if hasattr(first_task, "query") and first_task.query:
+                        search_query = first_task.query
+                    elif hasattr(first_task, "tool_input") and isinstance(
+                        first_task.tool_input, str
+                    ):
+                        search_query = first_task.tool_input
+
+            # Execute search using search_handler
+            if self.search_handler:
+                try:
+                    search_result: SearchResult = await self.search_handler.execute(
+                        query=search_query, max_results_per_tool=10
+                    )
+                    # Add evidence to workflow state (add_evidence expects a list)
+                    context.state.add_evidence(search_result.evidence)
+                    # Store evidence list in context for next nodes
+                    context.set_node_result(node.node_id, search_result.evidence)
+                    self.logger.info(
+                        "Tools executed via search_handler",
+                        query=search_query[:100],
+                        evidence_count=len(search_result.evidence),
+                    )
+                    return search_result.evidence
+                except Exception as e:
+                    self.logger.error(
+                        "Search handler execution failed",
+                        error=str(e),
+                        query=search_query[:100],
+                    )
+                    # Return empty list on error to allow graph to continue
+                    return []
+            else:
+                # Fallback: log warning and return empty list
+                self.logger.warning(
+                    "Search handler not available for execute_tools node",
+                    node_id=node.node_id,
+                )
+                return []
+
         # Get previous result for state update
         # For "store_plan", get from planner node
         # For "collect_drafts", get from parallel_loops node
@@ -696,10 +1096,96 @@ class GraphOrchestrator:
             Next node ID
         """
         # Get previous result for decision
-        prev_result = context.get_node_result(context.current_node)
+        # The decision node needs the result from the node that connects to it
+        # Find the previous node by searching edges
+        prev_node_id: str | None = None
+        if self._graph:
+            # Find which node connects to this decision node
+            for from_node, edge_list in self._graph.edges.items():
+                for edge in edge_list:
+                    if edge.to_node == node.node_id:
+                        prev_node_id = from_node
+                        break
+                if prev_node_id:
+                    break
+
+        # Fallback: For continue_decision, it always comes from knowledge_gap
+        if not prev_node_id and node.node_id == "continue_decision":
+            prev_node_id = "knowledge_gap"
+
+        # Get result from previous node (or current node if no previous found)
+        if prev_node_id:
+            prev_result = context.get_node_result(prev_node_id)
+        else:
+            # Fallback: try to get from visited nodes (last visited before current)
+            visited_list = list(context.visited_nodes)
+            if len(visited_list) > 0:
+                prev_node_id = visited_list[-1]
+                prev_result = context.get_node_result(prev_node_id)
+            else:
+                prev_result = context.get_node_result(context.current_node)
+
+        # Handle case where result might be a tuple (from pydantic-ai validation errors)
+        # Extract the actual result object if it's a tuple
+        if isinstance(prev_result, tuple) and len(prev_result) > 0:
+            # Check if first element is a KnowledgeGapOutput-like object
+            if hasattr(prev_result[0], "research_complete"):
+                prev_result = prev_result[0]
+            elif len(prev_result) > 1 and hasattr(prev_result[1], "research_complete"):
+                prev_result = prev_result[1]
+            elif len(prev_result) == 2 and isinstance(prev_result[0], str) and prev_result[0] == "research_complete":
+                # Handle validation error format: ('research_complete', False)
+                # Reconstruct KnowledgeGapOutput from tuple
+                from src.utils.models import KnowledgeGapOutput
+                self.logger.warning(
+                    "Decision node received validation error tuple, reconstructing KnowledgeGapOutput",
+                    node_id=node.node_id,
+                    tuple_value=prev_result,
+                )
+                prev_result = KnowledgeGapOutput(
+                    research_complete=prev_result[1] if len(prev_result) > 1 else False,
+                    outstanding_gaps=[],
+                )
+            else:
+                # If tuple doesn't contain the object, try to reconstruct or use fallback
+                self.logger.warning(
+                    "Decision node received unexpected tuple format, attempting reconstruction",
+                    node_id=node.node_id,
+                    tuple_length=len(prev_result),
+                    tuple_types=[type(x).__name__ for x in prev_result],
+                )
+                # Try to reconstruct KnowledgeGapOutput if this is from knowledge_gap node
+                if prev_node_id == "knowledge_gap":
+                    from src.utils.models import KnowledgeGapOutput
+                    # Try to extract research_complete from tuple
+                    research_complete = False
+                    for item in prev_result:
+                        if isinstance(item, bool):
+                            research_complete = item
+                            break
+                        elif isinstance(item, dict) and "research_complete" in item:
+                            research_complete = item["research_complete"]
+                            break
+                    prev_result = KnowledgeGapOutput(
+                        research_complete=research_complete,
+                        outstanding_gaps=[],
+                    )
+                else:
+                    # For other nodes, use first element as fallback
+                    prev_result = prev_result[0]
 
         # Make decision
-        next_node_id = node.decision_function(prev_result)
+        try:
+            next_node_id = node.decision_function(prev_result)
+        except Exception as e:
+            self.logger.error(
+                "Decision function failed",
+                node_id=node.node_id,
+                error=str(e),
+                prev_result_type=type(prev_result).__name__,
+            )
+            # Default to first option on error
+            next_node_id = node.options[0]
 
         # Validate decision
         if next_node_id not in node.options:
@@ -797,8 +1283,10 @@ class GraphOrchestrator:
             sections=len(report_plan.report_outline),
         )
 
-        # Create judge handler for iterative flows
-        judge_handler = create_judge_handler()
+        # Use judge handler from GraphOrchestrator if available, otherwise create new one
+        judge_handler = self.judge_handler
+        if judge_handler is None:
+            judge_handler = create_judge_handler()
 
         # Create and execute iterative research flows for each section
         async def run_section_research(section_index: int) -> str:
@@ -812,7 +1300,8 @@ class GraphOrchestrator:
                     max_time_minutes=self.max_time_minutes,
                     verbose=False,  # Less verbose in parallel execution
                     use_graph=False,  # Use agent chains for section research
-                    judge_handler=judge_handler,
+                    judge_handler=self.judge_handler or judge_handler,
+                    oauth_token=self.oauth_token,
                 )
 
                 # Run research for this section
@@ -915,7 +1404,7 @@ class GraphOrchestrator:
         """
         try:
             # Use input parser agent for intelligent mode detection
-            input_parser = create_input_parser_agent()
+            input_parser = create_input_parser_agent(oauth_token=self.oauth_token)
             parsed_query = await input_parser.parse(query)
             self.logger.info(
                 "Research mode detected by input parser",
@@ -953,6 +1442,9 @@ def create_graph_orchestrator(
     max_iterations: int = 5,
     max_time_minutes: int = 10,
     use_graph: bool = True,
+    search_handler: SearchHandlerProtocol | None = None,
+    judge_handler: JudgeHandlerProtocol | None = None,
+    oauth_token: str | None = None,
 ) -> GraphOrchestrator:
     """
     Factory function to create a graph orchestrator.
@@ -962,6 +1454,9 @@ def create_graph_orchestrator(
         max_iterations: Maximum iterations per loop
         max_time_minutes: Maximum time per loop
         use_graph: Whether to use graph execution (True) or agent chains (False)
+        search_handler: Optional search handler for tool execution
+        judge_handler: Optional judge handler for evidence assessment
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured GraphOrchestrator instance
@@ -971,4 +1466,7 @@ def create_graph_orchestrator(
         max_iterations=max_iterations,
         max_time_minutes=max_time_minutes,
         use_graph=use_graph,
+        search_handler=search_handler,
+        judge_handler=judge_handler,
+        oauth_token=oauth_token,
     )

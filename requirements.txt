@@ -15,7 +15,9 @@ anthropic>=0.18.0
 
 # HTTP & Parsing
 httpx>=0.27
+aiohttp>=3.13.2  # Required for website crawling
 beautifulsoup4>=4.12
+lxml>=6.0.2  # Required for BeautifulSoup lxml parser (faster than html.parser)
 xmltodict>=0.13
 
 # HuggingFace Hub
@@ -33,29 +35,58 @@ limits>=3.0  # Rate limiting
 pydantic-graph>=1.22.0
 
 # Web search
-duckduckgo-search>=5.0
-
-# Multi-agent orchestration (Advanced mode)
-agent-framework-core>=1.0.0b251120,<2.0.0
-
+ddgs>=9.9.2  # duckduckgo-search has been renamed to ddgs
+fake-useragent==2.2.0
+socksio==1.0.0
 # LlamaIndex RAG
 llama-index-llms-huggingface>=0.6.1
 llama-index-llms-huggingface-api>=0.6.1
 llama-index-vector-stores-chroma>=0.5.3
 llama-index>=0.14.8
-llama-index-llms-openai>=0.6.9
-llama-index-embeddings-openai>=0.5.1
+
+# Audio/Image processing
+gradio-client>=1.0.0  # For STT/OCR API calls
+soundfile>=0.12.0  # For audio file I/O
+pillow>=10.0.0  # For image processing
+
+# TTS dependencies (for Modal GPU TTS)
+torch>=2.0.0  # Required by Kokoro TTS
+transformers>=4.57.2  # Required by Kokoro TTS
+modal>=0.63.0  # Required for TTS GPU execution
+# Note: Kokoro is installed in Modal image from: git+https://github.com/hexgrad/kokoro.git
 
 # Embeddings & Vector Store
 tokenizers>=0.22.0,<=0.23.0
-transformers>=4.57.2
-chromadb>=0.4.0
 rpds-py>=0.29.0  # Python implementation of rpds (required by chromadb on Windows)
+chromadb>=0.4.0
 sentence-transformers>=2.2.0
-numpy<2.0
+numpy<2.0  # chromadb compatibility: uses np.float_ removed in NumPy 2.0
+neo4j>=6.0.3
+
+### DOCUMENT STUFF
+
+cssselect2==0.8.0                                                                                                                                              
+docopt==0.6.2                                                                                                                                                  
+fonttools==4.61.0
+markdown2==2.5.4
+md2pdf==1.0.1
+pydyf==0.11.0
+pyphen==0.17.2
+tinycss2==1.5.1
+tinyhtml5==2.0.0
+weasyprint==66.0
+webencodings==0.5.1
+zopfli==0.4.0
 
 # Optional: Modal for code execution
 modal>=0.63.0
 
 # Pydantic AI with HuggingFace support
 pydantic-ai-slim[huggingface]>=0.0.18
+
+# Multi-agent orchestration (Advanced mode)
+agent-framework-core>=1.0.0b251120,<2.0.0
+
+# LlamaIndex RAG - OpenAI
+llama-index-llms-openai>=0.6.9
+llama-index-embeddings-openai>=0.5.1

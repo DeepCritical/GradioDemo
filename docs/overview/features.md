@@ -1,20 +1,22 @@
 # Features
 
-DeepCritical provides a comprehensive set of features for AI-assisted research:
+The DETERMINATOR provides a comprehensive set of features for AI-assisted research:
 
 ## Core Features
 
 ### Multi-Source Search
 
-- **PubMed**: Search peer-reviewed biomedical literature via NCBI E-utilities
-- **ClinicalTrials.gov**: Search interventional clinical trials
+- **General Web Search**: Search general knowledge sources for any domain
+- **PubMed**: Search peer-reviewed biomedical literature via NCBI E-utilities (automatically used when medical knowledge needed)
+- **ClinicalTrials.gov**: Search interventional clinical trials (automatically used when medical knowledge needed)
 - **Europe PMC**: Search preprints and peer-reviewed articles (includes bioRxiv/medRxiv)
 - **RAG**: Semantic search within collected evidence using LlamaIndex
+- **Automatic Source Selection**: Automatically determines which sources are needed based on query analysis
 
 ### MCP Integration
 
 - **Model Context Protocol**: Expose search tools via MCP server
-- **Claude Desktop**: Use DeepCritical tools directly from Claude Desktop
+- **Claude Desktop**: Use The DETERMINATOR tools directly from Claude Desktop
 - **MCP Clients**: Compatible with any MCP-compatible client
 
 ### Authentication
@@ -40,9 +42,10 @@ DeepCritical provides a comprehensive set of features for AI-assisted research:
 
 - **Graph-Based Execution**: Flexible graph orchestration with conditional routing
 - **Parallel Research Loops**: Run multiple research tasks concurrently
-- **Iterative Research**: Single-loop research with search-judge-synthesize cycles
+- **Iterative Research**: Single-loop research with search-judge-synthesize cycles that continues until precise answers are found
 - **Deep Research**: Multi-section parallel research with planning and synthesis
 - **Magentic Orchestration**: Multi-agent coordination using Microsoft Agent Framework
+- **Stops at Nothing**: Only stops at configured limits (budget, time, iterations), otherwise continues until finding precise answers
 
 ### Real-Time Streaming
 
@@ -132,6 +135,7 @@ DeepCritical provides a comprehensive set of features for AI-assisted research:
 - **Code Examples**: Extensive code examples
 - **Architecture Diagrams**: Visual architecture documentation
 - **API Reference**: Complete API documentation
+
 
 
 

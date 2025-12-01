@@ -23,14 +23,20 @@ class RAGTool:
     Returns Evidence objects from RAG retrieval results.
     """
 
-    def __init__(self, rag_service: "LlamaIndexRAGService | None" = None) -> None:
+    def __init__(
+        self,
+        rag_service: "LlamaIndexRAGService | None" = None,
+        oauth_token: str | None = None,
+    ) -> None:
         """
         Initialize RAG tool.
 
         Args:
             rag_service: Optional RAG service instance. If None, will be lazy-initialized.
+            oauth_token: Optional OAuth token from HuggingFace login (for RAG LLM)
         """
         self._rag_service = rag_service
+        self.oauth_token = oauth_token
         self.logger = logger
 
     @property
@@ -54,9 +60,11 @@ class RAGTool:
 
                 # Use local embeddings by default (no API key required)
                 # Use in-memory ChromaDB to avoid file system issues
+                # Pass OAuth token for LLM query synthesis
                 self._rag_service = get_rag_service(
                     use_openai_embeddings=False,
                     use_in_memory=True,  # Use in-memory for better reliability
+                    oauth_token=self.oauth_token,
                 )
                 self.logger.info("RAG service initialized with local embeddings")
             except (ConfigurationError, ImportError) as e:
@@ -170,12 +178,14 @@ class RAGTool:
 
 def create_rag_tool(
     rag_service: "LlamaIndexRAGService | None" = None,
+    oauth_token: str | None = None,
 ) -> RAGTool:
     """
     Factory function to create a RAG tool.
 
     Args:
         rag_service: Optional RAG service instance. If None, will be lazy-initialized.
+        oauth_token: Optional OAuth token from HuggingFace login (for RAG LLM)
 
     Returns:
         Configured RAGTool instance
@@ -184,7 +194,7 @@ def create_rag_tool(
         ConfigurationError: If RAG service cannot be initialized and rag_service is None
     """
     try:
-        return RAGTool(rag_service=rag_service)
+        return RAGTool(rag_service=rag_service, oauth_token=oauth_token)
     except Exception as e:
         logger.error("Failed to create RAG tool", error=str(e))
         raise ConfigurationError(f"Failed to create RAG tool: {e}") from e

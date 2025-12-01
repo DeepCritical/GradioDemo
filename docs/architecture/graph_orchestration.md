@@ -216,6 +216,5 @@ This allows gradual migration and fallback if needed.
 ## See Also
 
 - [Orchestrators](orchestrators.md) - Overview of all orchestrator patterns
-- [Workflows](workflows.md) - Workflow diagrams and patterns
 - [Workflow Diagrams](workflow-diagrams.md) - Detailed workflow diagrams
 - [API Reference - Orchestrators](../api/orchestrators.md) - API documentation

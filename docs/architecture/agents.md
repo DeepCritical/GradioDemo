@@ -173,3 +173,25 @@ Factory functions:
 - [Orchestrators](orchestrators.md) - How agents are orchestrated
 - [API Reference - Agents](../api/agents.md) - API documentation
 - [Contributing - Code Style](../contributing/code-style.md) - Development guidelines
+<<<<<<< HEAD
+=======
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> 8086ce5fefde1c867880661d57e1299029a91ead

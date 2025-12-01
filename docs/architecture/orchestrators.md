@@ -160,9 +160,7 @@ All orchestrators yield `AgentEvent` objects:
 
 ## See Also
 
-- [Graph Orchestration](graph-orchestration.md) - Graph-based execution details
-- [Graph Orchestration (Detailed)](graph_orchestration.md) - Detailed graph architecture
-- [Workflows](workflows.md) - Workflow diagrams and patterns
+- [Graph Orchestration](graph_orchestration.md) - Graph-based execution details
 - [Workflow Diagrams](workflow-diagrams.md) - Detailed workflow diagrams
 - [API Reference - Orchestrators](../api/orchestrators.md) - API documentation
 

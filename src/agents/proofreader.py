@@ -181,12 +181,13 @@ REPORT DRAFT:
         return f"# Research Report\n\n## Query\n{query}\n\n" + "\n\n".join(sections)
 
 
-def create_proofreader_agent(model: Any | None = None) -> ProofreaderAgent:
+def create_proofreader_agent(model: Any | None = None, oauth_token: str | None = None) -> ProofreaderAgent:
     """
     Factory function to create a proofreader agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured ProofreaderAgent instance
@@ -196,7 +197,7 @@ def create_proofreader_agent(model: Any | None = None) -> ProofreaderAgent:
     """
     try:
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         return ProofreaderAgent(model=model)
 

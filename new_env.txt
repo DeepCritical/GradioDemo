@@ -1,0 +1,104 @@
+# ============================================
+# DeepCritical - New Environment Variables
+# ============================================
+# Add these to your .env file for multimodal audio/image support
+# ============================================
+
+# ============================================
+# Audio Processing Configuration (TTS)
+# ============================================
+# Kokoro TTS Model Configuration
+TTS_MODEL=hexgrad/Kokoro-82M
+TTS_VOICE=af_heart
+TTS_SPEED=1.0
+TTS_GPU=T4
+TTS_TIMEOUT=60
+
+# Available TTS Voices:
+# American English Female: af_heart, af_bella, af_nicole, af_aoede, af_kore, af_sarah, af_nova, af_sky, af_alloy, af_jessica, af_river
+# American English Male: am_michael, am_fenrir, am_puck, am_echo, am_eric, am_liam, am_onyx, am_santa, am_adam
+
+# Available GPU Types (Modal):
+# T4 - Cheapest, good for testing (default)
+# A10 - Good balance of cost/performance
+# A100 - Fastest, most expensive
+# L4 - NVIDIA L4 GPU
+# L40S - NVIDIA L40S GPU
+# Note: GPU type is set at function definition time. Changes require app restart.
+
+# ============================================
+# Audio Processing Configuration (STT)
+# ============================================
+# Speech-to-Text API Configuration
+STT_API_URL=nvidia/canary-1b-v2
+STT_SOURCE_LANG=English
+STT_TARGET_LANG=English
+
+# Available STT Languages:
+# English, Bulgarian, Croatian, Czech, Danish, Dutch, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian, Ukrainian
+
+# ============================================
+# Audio Feature Flags
+# ============================================
+ENABLE_AUDIO_INPUT=true
+ENABLE_AUDIO_OUTPUT=true
+
+# ============================================
+# Image OCR Configuration
+# ============================================
+OCR_API_URL=prithivMLmods/Multimodal-OCR3
+ENABLE_IMAGE_INPUT=true
+
+# ============================================
+# Modal Configuration (Required for TTS)
+# ============================================
+# Modal credentials are required for TTS (Text-to-Speech) functionality
+# Get your credentials from: https://modal.com/
+MODAL_TOKEN_ID=your_modal_token_id_here
+MODAL_TOKEN_SECRET=your_modal_token_secret_here
+
+# ============================================
+# Existing Environment Variables (for reference)
+# ============================================
+# These are already documented elsewhere, but included for completeness:
+
+# LLM API Keys (for research agent)
+# OPENAI_API_KEY=your_openai_key
+# ANTHROPIC_API_KEY=your_anthropic_key
+# HF_TOKEN=your_huggingface_token
+# HUGGINGFACE_API_KEY=your_huggingface_key
+
+# Embedding Configuration
+# OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+# LOCAL_EMBEDDING_MODEL=all-MiniLM-L6-v2
+# EMBEDDING_PROVIDER=local
+
+# Search Configuration
+# WEB_SEARCH_PROVIDER=duckduckgo
+# SERPER_API_KEY=your_serper_key
+# BRAVE_API_KEY=your_brave_key
+# TAVILY_API_KEY=your_tavily_key
+
+# PubMed Configuration
+# NCBI_API_KEY=your_ncbi_key
+
+# ============================================
+# Usage Instructions
+# ============================================
+# 1. Copy the variables you need to your .env file
+# 2. Replace placeholder values (your_modal_token_id_here, etc.) with actual credentials
+# 3. For TTS to work, you MUST configure MODAL_TOKEN_ID and MODAL_TOKEN_SECRET
+# 4. STT and OCR work without additional API keys (use public Gradio Spaces)
+# 5. GPU type changes require app restart to take effect
+# 6. Voice and speed can be changed at runtime via UI Settings accordion
+
+
+
+
+
+
+
+
+
+
+

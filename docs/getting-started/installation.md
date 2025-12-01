@@ -146,8 +146,11 @@ uv run pre-commit install
 
 
 
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
+=======
+>>>>>>> 8086ce5fefde1c867880661d57e1299029a91ead
 
 <<<<<<< Updated upstream
 
@@ -161,6 +164,9 @@ uv run pre-commit install
 
 
 
+<<<<<<< HEAD
 
 >>>>>>> Stashed changes
 
+=======
+>>>>>>> 8086ce5fefde1c867880661d57e1299029a91ead

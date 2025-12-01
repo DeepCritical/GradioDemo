@@ -9,6 +9,7 @@ from src.tools.base import SearchTool
 from src.tools.rag_tool import create_rag_tool
 from src.utils.exceptions import ConfigurationError, SearchError
 from src.utils.models import Evidence, SearchResult, SourceName
+from src.services.neo4j_service import get_neo4j_service
 
 if TYPE_CHECKING:
     from src.services.llamaindex_rag import LlamaIndexRAGService
@@ -27,6 +28,7 @@ class SearchHandler:
         timeout: float = 30.0,
         include_rag: bool = False,
         auto_ingest_to_rag: bool = True,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize the search handler.
@@ -36,10 +38,12 @@ class SearchHandler:
             timeout: Timeout for each search in seconds
             include_rag: Whether to include RAG tool in searches
             auto_ingest_to_rag: Whether to automatically ingest results into RAG
+            oauth_token: Optional OAuth token from HuggingFace login (for RAG LLM)
         """
         self.tools = list(tools)  # Make a copy
         self.timeout = timeout
         self.auto_ingest_to_rag = auto_ingest_to_rag
+        self.oauth_token = oauth_token
         self._rag_service: LlamaIndexRAGService | None = None
 
         if include_rag:
@@ -48,7 +52,7 @@ class SearchHandler:
     def add_rag_tool(self) -> None:
         """Add RAG tool to the tools list if available."""
         try:
-            rag_tool = create_rag_tool()
+            rag_tool = create_rag_tool(oauth_token=self.oauth_token)
             self.tools.append(rag_tool)
             logger.info("RAG tool added to search handler")
         except ConfigurationError:
@@ -67,9 +71,11 @@ class SearchHandler:
 
                 # Use local embeddings by default (no API key required)
                 # Use in-memory ChromaDB to avoid file system issues
+                # Pass OAuth token for LLM query synthesis
                 self._rag_service = get_rag_service(
                     use_openai_embeddings=False,
                     use_in_memory=True,  # Use in-memory for better reliability
+                    oauth_token=self.oauth_token,
                 )
                 logger.info("RAG service initialized for ingestion with local embeddings")
             except (ConfigurationError, ImportError):
@@ -103,6 +109,17 @@ class SearchHandler:
         sources_searched: list[SourceName] = []
         errors: list[str] = []
 
+        # Map tool names to SourceName values
+        # Some tools have internal names that differ from SourceName literals
+        tool_name_to_source: dict[str, SourceName] = {
+            "duckduckgo": "web",
+            "pubmed": "pubmed",
+            "clinicaltrials": "clinicaltrials",
+            "europepmc": "europepmc",
+            "rag": "rag",
+            "web": "web",  # In case tool already uses "web"
+        }
+
         for tool, result in zip(self.tools, results, strict=True):
             if isinstance(result, Exception):
                 errors.append(f"{tool.name}: {result!s}")
@@ -112,8 +129,14 @@ class SearchHandler:
                 success_result = cast(list[Evidence], result)
                 all_evidence.extend(success_result)
 
-                # Cast tool.name to SourceName (centralized type from models)
-                tool_name = cast(SourceName, tool.name)
+                # Map tool.name to SourceName (handle tool names that don't match SourceName literals)
+                tool_name = tool_name_to_source.get(tool.name, cast(SourceName, tool.name))
+                if tool_name not in ["pubmed", "clinicaltrials", "biorxiv", "europepmc", "preprint", "rag", "web"]:
+                    logger.warning(
+                        "Tool name not in SourceName literals, defaulting to 'web'",
+                        tool_name=tool.name,
+                    )
+                    tool_name = "web"
                 sources_searched.append(tool_name)
                 logger.info("Search tool succeeded", tool=tool.name, count=len(success_result))
 
@@ -140,6 +163,32 @@ class SearchHandler:
                         )
                 except Exception as e:
                     logger.warning("Failed to ingest evidence into RAG", error=str(e))
+
+        # 🔥 INGEST INTO NEO4J KNOWLEDGE GRAPH 🔥
+        if all_evidence:
+            try:
+                neo4j_service = get_neo4j_service()
+                if neo4j_service:
+                    # Extract disease from query
+                    disease = query
+                    if "for" in query.lower():
+                        disease = query.split("for")[-1].strip().rstrip("?")
+                    
+                    # Convert Evidence objects to dicts for Neo4j
+                    papers = []
+                    for ev in all_evidence:
+                        papers.append({
+                            'id': ev.citation.url or '',
+                            'title': ev.citation.title or '',
+                            'abstract': ev.content,
+                            'url': ev.citation.url or '',
+                            'source': ev.citation.source,
+                        })
+                    
+                    stats = neo4j_service.ingest_search_results(disease, papers)
+                    logger.info("💾 Saved to Neo4j", stats=stats)
+            except Exception as e:
+                logger.warning("Neo4j ingestion failed", error=str(e))
 
         return search_result
 

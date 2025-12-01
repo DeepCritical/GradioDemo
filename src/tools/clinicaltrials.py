@@ -75,7 +75,7 @@ class ClinicalTrialsTool:
                 requests.get,
                 self.BASE_URL,
                 params=params,
-                headers={"User-Agent": "DeepCritical-Research-Agent/1.0"},
+                headers={"User-Agent": "DETERMINATOR-Research-Agent/1.0"},
                 timeout=30,
             )
             response.raise_for_status()

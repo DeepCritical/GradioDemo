@@ -1,36 +1,52 @@
 [project]
-name = "deepcritical"
+name = "determinator"
 version = "0.1.0"
-description = "AI-Native Drug Repurposing Research Agent"
+description = "The DETERMINATOR - the Deep Research Agent that Stops at Nothing"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    # Core
     "pydantic>=2.7",
     "pydantic-settings>=2.2", # For BaseSettings (config)
     "pydantic-ai>=0.0.16", # Agent framework
-    # AI Providers
     "openai>=1.0.0",
     "anthropic>=0.18.0",
-    # HTTP & Parsing
     "httpx>=0.27", # Async HTTP client (PubMed)
     "beautifulsoup4>=4.12", # HTML parsing
     "xmltodict>=0.13", # PubMed XML -> dict
     "huggingface-hub>=0.20.0", # Hugging Face Inference API
-    # UI
-    "gradio[mcp]>=6.0.0", # Chat interface with MCP server support (6.0 required for css in launch())
-    # Utils
+    "gradio[mcp,oauth]>=6.0.0", # Chat interface with MCP server support (6.0 required for css in launch())
     "python-dotenv>=1.0", # .env loading
     "tenacity>=8.2", # Retry logic
     "structlog>=24.1", # Structured logging
     "requests>=2.32.5", # ClinicalTrials.gov (httpx blocked by WAF)
     "pydantic-graph>=1.22.0",
-    "limits>=3.0", # Rate limiting
-    "duckduckgo-search>=5.0", # Web search
+    "limits>=3.0", # Web search
     "llama-index-llms-huggingface>=0.6.1",
     "llama-index-llms-huggingface-api>=0.6.1",
     "llama-index-vector-stores-chroma>=0.5.3",
     "llama-index>=0.14.8",
+    "gradio-client>=1.0.0", # For STT/OCR API calls
+    "soundfile>=0.12.0", # For audio file I/O
+    "pillow>=10.0.0", # For image processing
+    "torch>=2.0.0", # Required by Kokoro TTS
+    "transformers>=4.57.2", # Required by Kokoro TTS
+    "modal>=0.63.0", # Required for TTS GPU execution
+    "tokenizers>=0.22.0,<=0.23.0",
+    "rpds-py>=0.29.0",
+    "pydantic-ai-slim[huggingface]>=0.0.18",
+    "agent-framework-core>=1.0.0b251120,<2.0.0",
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "numpy<2.0",
+    "llama-index-llms-openai>=0.6.9",
+    "llama-index-embeddings-openai>=0.5.1",
+    "ddgs>=9.9.2",
+    "aiohttp>=3.13.2",
+    "lxml>=6.0.2",
+    "fake-useragent==2.2.0",
+    "socksio==1.0.0",
+    "neo4j>=6.0.3",
+    "md2pdf>=1.0.1",
 ]
 
 [project.optional-dependencies]
@@ -67,13 +83,13 @@ embeddings = [
 ]
 modal = [
     # Mario's Modal code execution + LlamaIndex RAG
-    "modal>=0.63.0",
+    # Note: modal>=0.63.0 is now in main dependencies for TTS support
     "llama-index>=0.11.0",
-    "llama-index-llms-openai",
-    "llama-index-embeddings-openai",
+    "llama-index-llms-openai>=0.6.9",
+    "llama-index-embeddings-openai>=0.5.1",
     "llama-index-vector-stores-chroma",
     "chromadb>=0.4.0",
-    "numpy<2.0",  # chromadb compatibility: uses np.float_ removed in NumPy 2.0
+    "numpy<2.0", # chromadb compatibility: uses np.float_ removed in NumPy 2.0
 ]
 
 [build-system]

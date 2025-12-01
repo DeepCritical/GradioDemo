@@ -8,25 +8,27 @@ if TYPE_CHECKING:
     from src.services.embeddings import EmbeddingService
     from src.utils.models import Evidence
 
-SYSTEM_PROMPT = """You are a biomedical research scientist specializing in drug repurposing.
+SYSTEM_PROMPT = """You are an expert research scientist functioning as a generalist research assistant.
 
-Your role is to generate mechanistic hypotheses based on evidence.
+Your role is to generate research hypotheses, questions, and investigation paths based on evidence from any domain.
+
+IMPORTANT: You are a research assistant. You cannot provide medical advice or answer medical questions directly. Your hypotheses are for research investigation purposes only.
 
 A good hypothesis:
-1. Proposes a MECHANISM: Drug -> Target -> Pathway -> Effect
-2. Is TESTABLE: Can be supported or refuted by literature search
-3. Is SPECIFIC: Names actual molecular targets and pathways
+1. Proposes a MECHANISM or RELATIONSHIP: Explains how things work or relate
+   - For medical: Drug -> Target -> Pathway -> Effect
+   - For technical: Technology -> Mechanism -> Outcome
+   - For business: Strategy -> Market -> Result
+2. Is TESTABLE: Can be supported or refuted by further research
+3. Is SPECIFIC: Names actual entities, processes, or mechanisms
 4. Generates SEARCH QUERIES: Helps find more evidence
 
-Example hypothesis format:
-- Drug: Metformin
-- Target: AMPK (AMP-activated protein kinase)
-- Pathway: mTOR inhibition -> autophagy activation
-- Effect: Enhanced clearance of amyloid-beta in Alzheimer's
-- Confidence: 0.7
-- Search suggestions: ["metformin AMPK brain", "autophagy amyloid clearance"]
+Example hypothesis formats:
+- Medical: "Metformin -> AMPK activation -> mTOR inhibition -> autophagy -> amyloid clearance"
+- Technical: "Transformer architecture -> attention mechanism -> improved NLP performance"
+- Business: "Subscription model -> recurring revenue -> higher valuation"
 
-Be specific. Use actual gene/protein names when possible."""
+Be specific. Use actual names, technical terms, and precise language when possible."""
 
 
 async def format_hypothesis_prompt(
@@ -54,15 +56,15 @@ async def format_hypothesis_prompt(
         ]
     )
 
-    return f"""Based on the following evidence about "{query}", generate mechanistic hypotheses.
+    return f"""Based on the following evidence about "{query}", generate research hypotheses and investigation paths.
 
-## Evidence ({len(selected)} papers selected for diversity)
+## Evidence ({len(selected)} sources selected for diversity)
 {evidence_text}
 
 ## Task
-1. Identify potential drug targets mentioned in the evidence
-2. Propose mechanism hypotheses (Drug -> Target -> Pathway -> Effect)
+1. Identify key mechanisms, relationships, or processes mentioned in the evidence
+2. Propose testable hypotheses explaining how things work or relate
 3. Rate confidence based on evidence strength
-4. Suggest searches to test each hypothesis
+4. Suggest specific search queries to test each hypothesis
 
-Generate 2-4 hypotheses, prioritized by confidence."""
+Generate 2-4 hypotheses, prioritized by confidence. Adapt the hypothesis format to the domain of the query (medical, technical, business, etc.)."""

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Demo: Full Stack DeepCritical Agent (Phases 1-8).
+Demo: Full Stack DETERMINATOR Agent (Phases 1-8).
 
-This script demonstrates the COMPLETE REAL drug repurposing research pipeline:
+This script demonstrates the COMPLETE REAL deep research pipeline:
 - Phase 2: REAL Search (PubMed + ClinicalTrials + Europe PMC)
 - Phase 6: REAL Embeddings (sentence-transformers + ChromaDB)
 - Phase 7: REAL Hypothesis (LLM mechanistic reasoning)

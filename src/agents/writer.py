@@ -175,6 +175,30 @@ FINDINGS:
             "Report writing failed after all attempts",
             error=str(last_exception) if last_exception else "Unknown error",
         )
+        
+        # Try to use evidence-based report generator for better fallback
+        try:
+            from src.middleware.state_machine import get_workflow_state
+            from src.utils.report_generator import generate_report_from_evidence
+            
+            state = get_workflow_state()
+            if state and state.evidence:
+                self.logger.info(
+                    "Using evidence-based report generator for fallback",
+                    evidence_count=len(state.evidence),
+                )
+                return generate_report_from_evidence(
+                    query=query,
+                    evidence=state.evidence,
+                    findings=findings,
+                )
+        except Exception as e:
+            self.logger.warning(
+                "Failed to use evidence-based report generator",
+                error=str(e),
+            )
+        
+        # Fallback to simple report if evidence generator fails
         # Truncate findings in fallback if too long
         fallback_findings = findings[:500] + "..." if len(findings) > 500 else findings
         return (
@@ -185,12 +209,13 @@ FINDINGS:
         )
 
 
-def create_writer_agent(model: Any | None = None) -> WriterAgent:
+def create_writer_agent(model: Any | None = None, oauth_token: str | None = None) -> WriterAgent:
     """
     Factory function to create a writer agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured WriterAgent instance
@@ -200,7 +225,7 @@ def create_writer_agent(model: Any | None = None) -> WriterAgent:
     """
     try:
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         return WriterAgent(model=model)
 
