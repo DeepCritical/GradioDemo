@@ -179,17 +179,3 @@ Runs Magentic orchestration.
 
 - [Architecture - Orchestrators](../architecture/orchestrators.md) - Architecture overview
 - [Graph Orchestration](../architecture/graph-orchestration.md) - Graph execution details
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -40,11 +40,9 @@ class MySearchTool:
 - Lazy initialization for optional dependencies (e.g., embeddings, Modal)
 - Check requirements before initialization:
 
-```python
-def check_magentic_requirements() -> None:
-    if not settings.has_openai_key:
-        raise ConfigurationError("Magentic requires OpenAI")
-```
+<!--codeinclude-->
+[Check Magentic Requirements](../src/utils/llm_factory.py) start_line:152 end_line:170
+<!--/codeinclude-->
 
 ## State Management
 
@@ -56,11 +54,9 @@ def check_magentic_requirements() -> None:
 
 Use `@lru_cache(maxsize=1)` for singletons:
 
-```python
-@lru_cache(maxsize=1)
-def get_embedding_service() -> EmbeddingService:
-    return EmbeddingService()
-```
+<!--codeinclude-->
+[Singleton Pattern Example](../src/services/statistical_analyzer.py) start_line:252 end_line:255
+<!--/codeinclude-->
 
 - Lazy initialization to avoid requiring dependencies at import time
 
@@ -68,17 +64,4 @@ def get_embedding_service() -> EmbeddingService:
 
 - [Code Style](code-style.md) - Code style guidelines
 - [Error Handling](error-handling.md) - Error handling guidelines
-
-
-
-
-
-
-
-
-
-
-
-
-
 

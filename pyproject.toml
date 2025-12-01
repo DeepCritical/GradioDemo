@@ -55,6 +55,7 @@ dev = [
     "mkdocs-mermaid2-plugin>=1.1.0",
     "mkdocs-codeinclude-plugin>=0.2.0",
     "mkdocs-minify-plugin>=0.8.0",
+    "pymdown-extensions>=10.17.2",
 ]
 magentic = [
     "agent-framework-core>=1.0.0b251120,<2.0.0",  # Microsoft Agent Framework (PyPI)
@@ -171,6 +172,11 @@ exclude_lines = [
 
 [dependency-groups]
 dev = [
+    "mkdocs>=1.6.1",
+    "mkdocs-codeinclude-plugin>=0.2.1",
+    "mkdocs-material>=9.7.0",
+    "mkdocs-mermaid2-plugin>=1.2.3",
+    "mkdocs-minify-plugin>=0.8.0",
     "structlog>=25.5.0",
     "ty>=0.0.1a28",
 ]

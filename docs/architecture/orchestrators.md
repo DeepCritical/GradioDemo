@@ -23,19 +23,10 @@ DeepCritical supports multiple orchestration patterns for research workflows.
 - Iterates until research complete or constraints met
 
 **Usage**:
-```python
-from src.orchestrator.research_flow import IterativeResearchFlow
 
-flow = IterativeResearchFlow(
-    search_handler=search_handler,
-    judge_handler=judge_handler,
-    use_graph=False
-)
-
-async for event in flow.run(query):
-    # Handle events
-    pass
-```
+<!--codeinclude-->
+[IterativeResearchFlow Initialization](../src/orchestrator/research_flow.py) start_line:56 end_line:77
+<!--/codeinclude-->
 
 ### DeepResearchFlow
 
@@ -55,19 +46,10 @@ async for event in flow.run(query):
 - Supports graph execution and agent chains
 
 **Usage**:
-```python
-from src.orchestrator.research_flow import DeepResearchFlow
 
-flow = DeepResearchFlow(
-    search_handler=search_handler,
-    judge_handler=judge_handler,
-    use_graph=True
-)
-
-async for event in flow.run(query):
-    # Handle events
-    pass
-```
+<!--codeinclude-->
+[DeepResearchFlow Initialization](../src/orchestrator/research_flow.py) start_line:674 end_line:697
+<!--/codeinclude-->
 
 ## Graph Orchestrator
 
@@ -103,16 +85,10 @@ async for event in flow.run(query):
 - **Auto-detect**: Chooses based on API key availability
 
 **Usage**:
-```python
-from src.orchestrator_factory import create_orchestrator
 
-orchestrator = create_orchestrator(
-    search_handler=search_handler,
-    judge_handler=judge_handler,
-    config={},
-    mode="advanced"  # or "simple" or None for auto-detect
-)
-```
+<!--codeinclude-->
+[Create Orchestrator](../src/orchestrator_factory.py) start_line:44 end_line:66
+<!--/codeinclude-->
 
 ## Magentic Orchestrator
 
@@ -159,13 +135,9 @@ orchestrator = create_orchestrator(
 
 All orchestrators must initialize workflow state:
 
-```python
-from src.middleware.state_machine import init_workflow_state
-from src.services.embeddings import get_embedding_service
-
-embedding_service = get_embedding_service()
-init_workflow_state(embedding_service)
-```
+<!--codeinclude-->
+[Initialize Workflow State](../src/middleware/state_machine.py) start_line:98 end_line:111
+<!--/codeinclude-->
 
 ## Event Streaming
 
@@ -181,12 +153,10 @@ All orchestrators yield `AgentEvent` objects:
 - `error`: Error occurred
 
 **Event Structure**:
-```python
-class AgentEvent:
-    type: str
-    iteration: int | None
-    data: dict[str, Any]
-```
+
+<!--codeinclude-->
+[AgentEvent Model](../src/utils/models.py) start_line:104 end_line:125
+<!--/codeinclude-->
 
 ## See Also
 

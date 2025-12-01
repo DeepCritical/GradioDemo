@@ -219,17 +219,3 @@ Searches multiple tools in parallel.
 
 - [Architecture - Tools](../architecture/tools.md) - Architecture overview
 - [Models API](models.md) - Data models used by tools
-
-
-
-
-
-
-
-
-
-
-
-
-
-

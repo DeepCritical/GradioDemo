@@ -186,16 +186,3 @@ Analyzes a hypothesis using statistical methods.
 - [Architecture - Services](../architecture/services.md) - Architecture overview
 - [Configuration](../configuration/index.md) - Service configuration
 
-
-
-
-
-
-
-
-
-
-
-
-
-

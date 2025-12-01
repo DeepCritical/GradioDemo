@@ -4,17 +4,31 @@ DeepCritical is developed by a team of researchers and developers working on AI-
 
 ## Team Members
 
-### The-Obstacle-Is-The-Way
+### ZJ
 
-- GitHub: [The-Obstacle-Is-The-Way](https://github.com/The-Obstacle-Is-The-Way)
+- 💼 [LinkedIn](https://www.linkedin.com/in//)
 
-### MarioAderman
+### Mario Aderman
 
-- GitHub: [MarioAderman](https://github.com/MarioAderman)
+- 🤗 [HuggingFace](https://huggingface.co/SeasonalFall84)
+- 💼 [LinkedIn](https://www.linkedin.com/in/mario-aderman/)
+- 𝕏 [X](https://x.com/marioaderman)
 
-### Josephrp
+### Joseph Pollack
 
-- GitHub: [Josephrp](https://github.com/Josephrp)
+- 🤗 [HuggingFace](https://huggingface.co/Tonic)
+- 💼 [LinkedIn](https://www.linkedin.com/in/josephpollack/)
+- 𝕏 [X](https://x.com/josephpollack)
+
+### Virat Chauran
+
+- 𝕏 [X](https://x.com/viratzzs/)
+- 💼 [LinkedIn](https://www.linkedin.com/in/viratchauhan/)
+- 🤗 [HuggingFace](https://huggingface.co/ViratChauhan)
+
+### Anna Bossler
+
+- 💼 [LinkedIn](https://www.linkedin.com/in/ana-bossler-07304717)
 
 ## About
 
@@ -28,17 +42,3 @@ We welcome contributions! See the [Contributing Guide](contributing/index.md) fo
 
 - [GitHub Repository](https://github.com/DeepCritical/GradioDemo)
 - [HuggingFace Space](https://huggingface.co/spaces/DataQuests/DeepCritical)
-
-
-
-
-
-
-
-
-
-
-
-
-
-

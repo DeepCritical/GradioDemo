@@ -49,17 +49,3 @@ async def test_real_pubmed_search():
 
 - [Code Style](code-style.md) - Code style guidelines
 - [Implementation Patterns](implementation-patterns.md) - Common patterns
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,6 +1,6 @@
-site_name: DeepCritical
-site_description: AI-Native Drug Repurposing Research Agent
-site_author: DeepCritical Team
+site_name: The DETERMINATOR
+site_description: Generalist Deep Research Agent that Stops at Nothing
+site_author: The DETERMINATOR Team
 site_url: https://deepcritical.github.io/GradioDemo/
 
 repo_name: DeepCritical/GradioDemo
@@ -49,6 +49,8 @@ plugins:
       minify_css: true
 
 markdown_extensions:
+  - dev.docs_plugins:
+      base_path: "."
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
@@ -65,6 +67,7 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_generator: !!python/name:pymdownx.emoji.to_svg
       emoji_index: !!python/name:pymdownx.emoji.twemoji
+  - pymdownx.snippets
   - admonition
   - pymdownx.details
   - pymdownx.superfences
@@ -85,11 +88,9 @@ nav:
     - getting-started/mcp-integration.md
     - getting-started/examples.md
   - Configuration:
-    - configuration/index.md
     - configuration/CONFIGURATION.md
   - Architecture:
     - "Graph Orchestration": architecture/graph_orchestration.md
-    - "Workflows": architecture/workflows.md
     - "Workflow Diagrams": architecture/workflow-diagrams.md
     - "Agents": architecture/agents.md
     - "Orchestrators": architecture/orchestrators.md
@@ -110,7 +111,7 @@ nav:
     - contributing/implementation-patterns.md
     - contributing/prompt-engineering.md
     - contributing/testing.md
-  - License: license.md
+  - License: LICENSE.md
   - Team: team.md
 
 extra:

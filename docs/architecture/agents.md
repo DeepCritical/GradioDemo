@@ -159,12 +159,9 @@ For text output (writer agents), agents return `str` directly.
 
 All agents have factory functions in `src/agent_factory/agents.py`:
 
-```python
-def create_knowledge_gap_agent(model: Any | None = None) -> KnowledgeGapAgent
-def create_tool_selector_agent(model: Any | None = None) -> ToolSelectorAgent
-def create_writer_agent(model: Any | None = None) -> WriterAgent
-# ... etc
-```
+<!--codeinclude-->
+[Factory Functions](../src/agent_factory/agents.py) start_line:77 end_line:97
+<!--/codeinclude-->
 
 Factory functions:
 - Use `get_model()` if no model provided
@@ -176,17 +173,3 @@ Factory functions:
 - [Orchestrators](orchestrators.md) - How agents are orchestrated
 - [API Reference - Agents](../api/agents.md) - API documentation
 - [Contributing - Code Style](../contributing/code-style.md) - Development guidelines
-
-
-
-
-
-
-
-
-
-
-
-
-
-

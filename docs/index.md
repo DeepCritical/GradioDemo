@@ -54,7 +54,7 @@ Learn more about the [Architecture](overview/architecture.md).
 - [Getting Started](getting-started/installation.md) - Installation and setup
 - [Configuration](configuration/index.md) - Configuration guide
 - [API Reference](api/agents.md) - API documentation
-- [Contributing](contributing.md) - Development guidelines
+- [Contributing](CONTRIBUTING.md) - Development guidelines
 
 ## Links
 

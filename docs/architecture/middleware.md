@@ -22,18 +22,16 @@ DeepCritical uses middleware for state management, budget tracking, and workflow
 - `async search_related(query: str, top_k: int = 5) -> list[Evidence]`: Semantic search
 
 **Initialization**:
-```python
-from src.middleware.state_machine import init_workflow_state
 
-init_workflow_state(embedding_service)
-```
+<!--codeinclude-->
+[Initialize Workflow State](../src/middleware/state_machine.py) start_line:98 end_line:110
+<!--/codeinclude-->
 
 **Access**:
-```python
-from src.middleware.state_machine import get_workflow_state
 
-state = get_workflow_state()  # Auto-initializes if missing
-```
+<!--codeinclude-->
+[Get Workflow State](../src/middleware/state_machine.py) start_line:112 end_line:125
+<!--/codeinclude-->
 
 ## Workflow Manager
 
@@ -126,17 +124,3 @@ All middleware components use `ContextVar` for thread-safe isolation:
 - [Orchestrators](orchestrators.md) - How middleware is used in orchestration
 - [API Reference - Orchestrators](../api/orchestrators.md) - API documentation
 - [Contributing - Code Style](../contributing/code-style.md) - Development guidelines
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -147,17 +147,3 @@ make test-cov     # Test with coverage
 - Review code examples in the codebase
 
 Thank you for contributing to DeepCritical!
-
-
-
-
-
-
-
-
-
-
-
-
-
-

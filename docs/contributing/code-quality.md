@@ -36,22 +36,9 @@ This document outlines code quality standards and documentation requirements.
 
 Example:
 
-```python
-async def search(self, query: str, max_results: int = 10) -> list[Evidence]:
-    """Search PubMed and return evidence.
-
-    Args:
-        query: The search query string
-        max_results: Maximum number of results to return
-
-    Returns:
-        List of Evidence objects
-
-    Raises:
-        SearchError: If the search fails
-        RateLimitError: If we hit rate limits
-    """
-```
+<!--codeinclude-->
+[Search Method Docstring Example](../src/tools/pubmed.py) start_line:51 end_line:70
+<!--/codeinclude-->
 
 ### Code Comments
 
@@ -65,17 +52,3 @@ async def search(self, query: str, max_results: int = 10) -> list[Evidence]:
 
 - [Code Style](code-style.md) - Code style guidelines
 - [Testing](testing.md) - Testing guidelines
-
-
-
-
-
-
-
-
-
-
-
-
-
-

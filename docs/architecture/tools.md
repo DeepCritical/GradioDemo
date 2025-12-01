@@ -6,17 +6,9 @@ DeepCritical implements a protocol-based search tool system for retrieving evide
 
 All tools implement the `SearchTool` protocol from `src/tools/base.py`:
 
-```python
-class SearchTool(Protocol):
-    @property
-    def name(self) -> str: ...
-    
-    async def search(
-        self, 
-        query: str, 
-        max_results: int = 10
-    ) -> list[Evidence]: ...
-```
+<!--codeinclude-->
+[SearchTool Protocol](../src/tools/base.py) start_line:8 end_line:31
+<!--/codeinclude-->
 
 ## Rate Limiting
 
@@ -159,17 +151,3 @@ search_handler = SearchHandler(
 - [Services](services.md) - RAG and embedding services
 - [API Reference - Tools](../api/tools.md) - API documentation
 - [Contributing - Implementation Patterns](../contributing/implementation-patterns.md) - Development guidelines
-
-
-
-
-
-
-
-
-
-
-
-
-
-

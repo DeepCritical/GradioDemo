@@ -25,17 +25,9 @@ The configuration system provides:
 
 The [`Settings`][settings-class] class extends `BaseSettings` from `pydantic_settings` and defines all application configuration:
 
-```13:21:src/utils/config.py
-class Settings(BaseSettings):
-    """Strongly-typed application settings."""
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
-    )
-```
+<!--codeinclude-->
+[Settings Class Definition](../src/utils/config.py) start_line:13 end_line:21
+<!--/codeinclude-->
 
 [View source](https://github.com/DeepCritical/GradioDemo/blob/main/src/utils/config.py#L13-L21)
 
@@ -43,10 +35,9 @@ class Settings(BaseSettings):
 
 A global `settings` instance is available for import:
 
-```234:235:src/utils/config.py
-# Singleton for easy import
-settings = get_settings()
-```
+<!--codeinclude-->
+[Singleton Instance](../src/utils/config.py) start_line:234 end_line:235
+<!--/codeinclude-->
 
 [View source](https://github.com/DeepCritical/GradioDemo/blob/main/src/utils/config.py#L234-L235)
 
@@ -87,9 +78,9 @@ OPENAI_MODEL=gpt-5.1
 
 The default model is defined in the `Settings` class:
 
-```29:29:src/utils/config.py
-    openai_model: str = Field(default="gpt-5.1", description="OpenAI model name")
-```
+<!--codeinclude-->
+[OpenAI Model Configuration](../src/utils/config.py) start_line:29 end_line:29
+<!--/codeinclude-->
 
 #### Anthropic Configuration
 
@@ -101,11 +92,9 @@ ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
 
 The default model is defined in the `Settings` class:
 
-```30:32:src/utils/config.py
-    anthropic_model: str = Field(
-        default="claude-sonnet-4-5-20250929", description="Anthropic model"
-    )
-```
+<!--codeinclude-->
+[Anthropic Model Configuration](../src/utils/config.py) start_line:30 end_line:32
+<!--/codeinclude-->
 
 #### HuggingFace Configuration
 
@@ -124,17 +113,13 @@ HUGGINGFACE_MODEL=meta-llama/Llama-3.1-8B-Instruct
 
 The HuggingFace token can be set via either environment variable:
 
-```33:35:src/utils/config.py
-    hf_token: str | None = Field(
-        default=None, alias="HF_TOKEN", description="HuggingFace API token"
-    )
-```
+<!--codeinclude-->
+[HuggingFace Token Configuration](../src/utils/config.py) start_line:33 end_line:35
+<!--/codeinclude-->
 
-```57:59:src/utils/config.py
-    huggingface_api_key: str | None = Field(
-        default=None, description="HuggingFace API token (HF_TOKEN or HUGGINGFACE_API_KEY)"
-    )
-```
+<!--codeinclude-->
+[HuggingFace API Key Configuration](../src/utils/config.py) start_line:57 end_line:59
+<!--/codeinclude-->
 
 ## Optional Configuration
 
@@ -158,12 +143,9 @@ HUGGINGFACE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 
 The embedding provider configuration:
 
-```47:50:src/utils/config.py
-    embedding_provider: Literal["openai", "local", "huggingface"] = Field(
-        default="local",
-        description="Embedding provider to use",
-    )
-```
+<!--codeinclude-->
+[Embedding Provider Configuration](../src/utils/config.py) start_line:47 end_line:50
+<!--/codeinclude-->
 
 **Note**: OpenAI embeddings require `OPENAI_API_KEY`. The local provider (default) uses sentence-transformers and requires no API key.
 
@@ -191,12 +173,9 @@ TAVILY_API_KEY=your_tavily_api_key_here
 
 The web search provider configuration:
 
-```71:74:src/utils/config.py
-    web_search_provider: Literal["serper", "searchxng", "brave", "tavily", "duckduckgo"] = Field(
-        default="duckduckgo",
-        description="Web search provider to use",
-    )
-```
+<!--codeinclude-->
+[Web Search Provider Configuration](../src/utils/config.py) start_line:71 end_line:74
+<!--/codeinclude-->
 
 **Note**: DuckDuckGo is the default and requires no API key, making it ideal for development and testing.
 
@@ -211,16 +190,9 @@ NCBI_API_KEY=your_ncbi_api_key_here
 
 The PubMed tool uses this configuration:
 
-```22:29:src/tools/pubmed.py
-    def __init__(self, api_key: str | None = None) -> None:
-        self.api_key = api_key or settings.ncbi_api_key
-        # Ignore placeholder values from .env.example
-        if self.api_key == "your-ncbi-key-here":
-            self.api_key = None
-
-        # Use shared rate limiter
-        self._limiter = get_pubmed_limiter(self.api_key)
-```
+<!--codeinclude-->
+[PubMed Tool Configuration](../src/tools/pubmed.py) start_line:22 end_line:29
+<!--/codeinclude-->
 
 ### Agent Configuration
 
@@ -239,14 +211,9 @@ USE_GRAPH_EXECUTION=false
 
 The agent configuration fields:
 
-```80:85:src/utils/config.py
-    # Agent Configuration
-    max_iterations: int = Field(default=10, ge=1, le=50)
-    search_timeout: int = Field(default=30, description="Seconds to wait for search")
-    use_graph_execution: bool = Field(
-        default=False, description="Use graph-based execution for research flows"
-    )
-```
+<!--codeinclude-->
+[Agent Configuration](../src/utils/config.py) start_line:80 end_line:85
+<!--/codeinclude-->
 
 ### Budget & Rate Limiting Configuration
 
@@ -265,27 +232,9 @@ DEFAULT_ITERATIONS_LIMIT=10
 
 The budget configuration with validation:
 
-```87:105:src/utils/config.py
-    # Budget & Rate Limiting Configuration
-    default_token_limit: int = Field(
-        default=100000,
-        ge=1000,
-        le=1000000,
-        description="Default token budget per research loop",
-    )
-    default_time_limit_minutes: int = Field(
-        default=10,
-        ge=1,
-        le=120,
-        description="Default time limit per research loop (minutes)",
-    )
-    default_iterations_limit: int = Field(
-        default=10,
-        ge=1,
-        le=50,
-        description="Default iterations limit per research loop",
-    )
-```
+<!--codeinclude-->
+[Budget Configuration](../src/utils/config.py) start_line:87 end_line:105
+<!--/codeinclude-->
 
 ### RAG Service Configuration
 
@@ -304,23 +253,9 @@ RAG_AUTO_INGEST=true
 
 The RAG configuration:
 
-```127:141:src/utils/config.py
-    # RAG Service Configuration
-    rag_collection_name: str = Field(
-        default="deepcritical_evidence",
-        description="ChromaDB collection name for RAG",
-    )
-    rag_similarity_top_k: int = Field(
-        default=5,
-        ge=1,
-        le=50,
-        description="Number of top results to retrieve from RAG",
-    )
-    rag_auto_ingest: bool = Field(
-        default=True,
-        description="Automatically ingest evidence into RAG",
-    )
-```
+<!--codeinclude-->
+[RAG Service Configuration](../src/utils/config.py) start_line:127 end_line:141
+<!--/codeinclude-->
 
 ### ChromaDB Configuration
 
@@ -342,21 +277,9 @@ CHROMA_DB_PORT=8000
 
 The ChromaDB configuration:
 
-```113:125:src/utils/config.py
-    chroma_db_path: str = Field(default="./chroma_db", description="ChromaDB storage path")
-    chroma_db_persist: bool = Field(
-        default=True,
-        description="Whether to persist ChromaDB to disk",
-    )
-    chroma_db_host: str | None = Field(
-        default=None,
-        description="ChromaDB server host (for remote ChromaDB)",
-    )
-    chroma_db_port: int | None = Field(
-        default=None,
-        description="ChromaDB server port (for remote ChromaDB)",
-    )
-```
+<!--codeinclude-->
+[ChromaDB Configuration](../src/utils/config.py) start_line:113 end_line:125
+<!--/codeinclude-->
 
 ### External Services
 
@@ -374,11 +297,9 @@ MODAL_TOKEN_SECRET=your_modal_token_secret_here
 
 The Modal configuration:
 
-```110:112:src/utils/config.py
-    # External Services
-    modal_token_id: str | None = Field(default=None, description="Modal token ID")
-    modal_token_secret: str | None = Field(default=None, description="Modal token secret")
-```
+<!--codeinclude-->
+[Modal Configuration](../src/utils/config.py) start_line:110 end_line:112
+<!--/codeinclude-->
 
 ### Logging Configuration
 
@@ -391,35 +312,15 @@ LOG_LEVEL=INFO
 
 The logging configuration:
 
-```107:108:src/utils/config.py
-    # Logging
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
-```
+<!--codeinclude-->
+[Logging Configuration](../src/utils/config.py) start_line:107 end_line:108
+<!--/codeinclude-->
 
 Logging is configured via the `configure_logging()` function:
 
-```212:231:src/utils/config.py
-def configure_logging(settings: Settings) -> None:
-    """Configure structured logging with the configured log level."""
-    # Set stdlib logging level from settings
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level),
-        format="%(message)s",
-    )
-
-    structlog.configure(
-        processors=[
-            structlog.stdlib.filter_by_level,
-            structlog.stdlib.add_logger_name,
-            structlog.stdlib.add_log_level,
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer(),
-        ],
-        wrapper_class=structlog.stdlib.BoundLogger,
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-    )
-```
+<!--codeinclude-->
+[Configure Logging Function](../src/utils/config.py) start_line:212 end_line:231
+<!--/codeinclude-->
 
 ## Configuration Properties
 
@@ -429,27 +330,9 @@ The `Settings` class provides helpful properties for checking configuration stat
 
 Check which API keys are available:
 
-```171:189:src/utils/config.py
-    @property
-    def has_openai_key(self) -> bool:
-        """Check if OpenAI API key is available."""
-        return bool(self.openai_api_key)
-
-    @property
-    def has_anthropic_key(self) -> bool:
-        """Check if Anthropic API key is available."""
-        return bool(self.anthropic_api_key)
-
-    @property
-    def has_huggingface_key(self) -> bool:
-        """Check if HuggingFace API key is available."""
-        return bool(self.huggingface_api_key or self.hf_token)
-
-    @property
-    def has_any_llm_key(self) -> bool:
-        """Check if any LLM API key is available."""
-        return self.has_openai_key or self.has_anthropic_key or self.has_huggingface_key
-```
+<!--codeinclude-->
+[API Key Availability Properties](../src/utils/config.py) start_line:171 end_line:189
+<!--/codeinclude-->
 
 **Usage:**
 
@@ -478,29 +361,13 @@ if settings.has_any_llm_key:
 
 Check if external services are configured:
 
-```143:146:src/utils/config.py
-    @property
-    def modal_available(self) -> bool:
-        """Check if Modal credentials are configured."""
-        return bool(self.modal_token_id and self.modal_token_secret)
-```
+<!--codeinclude-->
+[Modal Availability Property](../src/utils/config.py) start_line:143 end_line:146
+<!--/codeinclude-->
 
-```191:204:src/utils/config.py
-    @property
-    def web_search_available(self) -> bool:
-        """Check if web search is available (either no-key provider or API key present)."""
-        if self.web_search_provider == "duckduckgo":
-            return True  # No API key required
-        if self.web_search_provider == "serper":
-            return bool(self.serper_api_key)
-        if self.web_search_provider == "searchxng":
-            return bool(self.searchxng_host)
-        if self.web_search_provider == "brave":
-            return bool(self.brave_api_key)
-        if self.web_search_provider == "tavily":
-            return bool(self.tavily_api_key)
-        return False
-```
+<!--codeinclude-->
+[Web Search Availability Property](../src/utils/config.py) start_line:191 end_line:204
+<!--/codeinclude-->
 
 **Usage:**
 
@@ -521,34 +388,15 @@ if settings.web_search_available:
 
 Get the API key for the configured provider:
 
-```148:160:src/utils/config.py
-    def get_api_key(self) -> str:
-        """Get the API key for the configured provider."""
-        if self.llm_provider == "openai":
-            if not self.openai_api_key:
-                raise ConfigurationError("OPENAI_API_KEY not set")
-            return self.openai_api_key
-
-        if self.llm_provider == "anthropic":
-            if not self.anthropic_api_key:
-                raise ConfigurationError("ANTHROPIC_API_KEY not set")
-            return self.anthropic_api_key
-
-        raise ConfigurationError(f"Unknown LLM provider: {self.llm_provider}")
-```
+<!--codeinclude-->
+[Get API Key Method](../src/utils/config.py) start_line:148 end_line:160
+<!--/codeinclude-->
 
 For OpenAI-specific operations (e.g., Magentic mode):
 
-```162:169:src/utils/config.py
-    def get_openai_api_key(self) -> str:
-        """Get OpenAI API key (required for Magentic function calling)."""
-        if not self.openai_api_key:
-            raise ConfigurationError(
-                "OPENAI_API_KEY not set. Magentic mode requires OpenAI for function calling. "
-                "Use mode='simple' for other providers."
-            )
-        return self.openai_api_key
-```
+<!--codeinclude-->
+[Get OpenAI API Key Method](../src/utils/config.py) start_line:162 end_line:169
+<!--/codeinclude-->
 
 ## Configuration Usage in Codebase
 
@@ -558,53 +406,25 @@ The configuration system is used throughout the codebase:
 
 The LLM factory uses settings to create appropriate models:
 
-```129:144:src/utils/llm_factory.py
-    if settings.llm_provider == "huggingface":
-        model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
-        hf_provider = HuggingFaceProvider(api_key=settings.hf_token)
-        return HuggingFaceModel(model_name, provider=hf_provider)
-
-    if settings.llm_provider == "openai":
-        if not settings.openai_api_key:
-            raise ConfigurationError("OPENAI_API_KEY not set for pydantic-ai")
-        provider = OpenAIProvider(api_key=settings.openai_api_key)
-        return OpenAIModel(settings.openai_model, provider=provider)
-
-    if settings.llm_provider == "anthropic":
-        if not settings.anthropic_api_key:
-            raise ConfigurationError("ANTHROPIC_API_KEY not set for pydantic-ai")
-        anthropic_provider = AnthropicProvider(api_key=settings.anthropic_api_key)
-        return AnthropicModel(settings.anthropic_model, provider=anthropic_provider)
-```
+<!--codeinclude-->
+[LLM Factory Usage](../src/utils/llm_factory.py) start_line:129 end_line:144
+<!--/codeinclude-->
 
 ### Embedding Service
 
 The embedding service uses local embedding model configuration:
 
-```29:31:src/services/embeddings.py
-    def __init__(self, model_name: str | None = None):
-        self._model_name = model_name or settings.local_embedding_model
-        self._model = SentenceTransformer(self._model_name)
-```
+<!--codeinclude-->
+[Embedding Service Usage](../src/services/embeddings.py) start_line:29 end_line:31
+<!--/codeinclude-->
 
 ### Orchestrator Factory
 
 The orchestrator factory uses settings to determine mode:
 
-```69:80:src/orchestrator_factory.py
-def _determine_mode(explicit_mode: str | None) -> str:
-    """Determine which mode to use."""
-    if explicit_mode:
-        if explicit_mode in ("magentic", "advanced"):
-            return "advanced"
-        return "simple"
-
-    # Auto-detect: advanced if paid API key available
-    if settings.has_openai_key:
-        return "advanced"
-
-    return "simple"
-```
+<!--codeinclude-->
+[Orchestrator Factory Mode Detection](../src/orchestrator_factory.py) start_line:69 end_line:80
+<!--/codeinclude-->
 
 ## Environment Variables Reference
 
@@ -687,17 +507,15 @@ Settings are validated on load using Pydantic validation:
 
 The `max_iterations` field has range validation:
 
-```81:81:src/utils/config.py
-    max_iterations: int = Field(default=10, ge=1, le=50)
-```
+<!--codeinclude-->
+[Max Iterations Validation](../src/utils/config.py) start_line:81 end_line:81
+<!--/codeinclude-->
 
 The `llm_provider` field has literal validation:
 
-```26:28:src/utils/config.py
-    llm_provider: Literal["openai", "anthropic", "huggingface"] = Field(
-        default="openai", description="Which LLM provider to use"
-    )
-```
+<!--codeinclude-->
+[LLM Provider Literal Validation](../src/utils/config.py) start_line:26 end_line:28
+<!--/codeinclude-->
 
 ## Error Handling
 

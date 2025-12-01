@@ -8,13 +8,9 @@ This page documents the Pydantic models used throughout DeepCritical.
 
 **Purpose**: Represents evidence from search results.
 
-```python
-class Evidence(BaseModel):
-    citation: Citation
-    content: str
-    relevance_score: float = Field(ge=0.0, le=1.0)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-```
+<!--codeinclude-->
+[Evidence Model](../src/utils/models.py) start_line:33 end_line:44
+<!--/codeinclude-->
 
 **Fields**:
 - `citation`: Citation information (title, URL, date, authors)
@@ -28,13 +24,9 @@ class Evidence(BaseModel):
 
 **Purpose**: Citation information for evidence.
 
-```python
-class Citation(BaseModel):
-    title: str
-    url: str
-    date: str | None = None
-    authors: list[str] = Field(default_factory=list)
-```
+<!--codeinclude-->
+[Citation Model](../src/utils/models.py) start_line:12 end_line:30
+<!--/codeinclude-->
 
 **Fields**:
 - `title`: Article/trial title
@@ -48,11 +40,9 @@ class Citation(BaseModel):
 
 **Purpose**: Output from knowledge gap evaluation.
 
-```python
-class KnowledgeGapOutput(BaseModel):
-    research_complete: bool
-    outstanding_gaps: list[str] = Field(default_factory=list)
-```
+<!--codeinclude-->
+[KnowledgeGapOutput Model](../src/utils/models.py) start_line:494 end_line:504
+<!--/codeinclude-->
 
 **Fields**:
 - `research_complete`: Boolean indicating if research is complete
@@ -64,10 +54,9 @@ class KnowledgeGapOutput(BaseModel):
 
 **Purpose**: Plan for tool/agent selection.
 
-```python
-class AgentSelectionPlan(BaseModel):
-    tasks: list[AgentTask] = Field(default_factory=list)
-```
+<!--codeinclude-->
+[AgentSelectionPlan Model](../src/utils/models.py) start_line:521 end_line:526
+<!--/codeinclude-->
 
 **Fields**:
 - `tasks`: List of agent tasks to execute
@@ -78,12 +67,9 @@ class AgentSelectionPlan(BaseModel):
 
 **Purpose**: Individual agent task.
 
-```python
-class AgentTask(BaseModel):
-    agent_name: str
-    query: str
-    context: dict[str, Any] = Field(default_factory=dict)
-```
+<!--codeinclude-->
+[AgentTask Model](../src/utils/models.py) start_line:507 end_line:518
+<!--/codeinclude-->
 
 **Fields**:
 - `agent_name`: Name of agent to use
@@ -96,12 +82,9 @@ class AgentTask(BaseModel):
 
 **Purpose**: Draft structure for long-form reports.
 
-```python
-class ReportDraft(BaseModel):
-    title: str
-    sections: list[ReportSection] = Field(default_factory=list)
-    references: list[Citation] = Field(default_factory=list)
-```
+<!--codeinclude-->
+[ReportDraft Model](../src/utils/models.py) start_line:538 end_line:545
+<!--/codeinclude-->
 
 **Fields**:
 - `title`: Report title
@@ -114,12 +97,9 @@ class ReportDraft(BaseModel):
 
 **Purpose**: Individual section in a report draft.
 
-```python
-class ReportSection(BaseModel):
-    title: str
-    content: str
-    order: int
-```
+<!--codeinclude-->
+[ReportDraftSection Model](../src/utils/models.py) start_line:529 end_line:535
+<!--/codeinclude-->
 
 **Fields**:
 - `title`: Section title
@@ -132,14 +112,9 @@ class ReportSection(BaseModel):
 
 **Purpose**: Parsed and improved query.
 
-```python
-class ParsedQuery(BaseModel):
-    original_query: str
-    improved_query: str
-    research_mode: Literal["iterative", "deep"]
-    key_entities: list[str] = Field(default_factory=list)
-    research_questions: list[str] = Field(default_factory=list)
-```
+<!--codeinclude-->
+[ParsedQuery Model](../src/utils/models.py) start_line:557 end_line:572
+<!--/codeinclude-->
 
 **Fields**:
 - `original_query`: Original query string
@@ -154,10 +129,9 @@ class ParsedQuery(BaseModel):
 
 **Purpose**: Conversation history with iterations.
 
-```python
-class Conversation(BaseModel):
-    iterations: list[IterationData] = Field(default_factory=list)
-```
+<!--codeinclude-->
+[Conversation Model](../src/utils/models.py) start_line:331 end_line:337
+<!--/codeinclude-->
 
 **Fields**:
 - `iterations`: List of iteration data
@@ -168,15 +142,9 @@ class Conversation(BaseModel):
 
 **Purpose**: Data for a single iteration.
 
-```python
-class IterationData(BaseModel):
-    iteration: int
-    observations: str | None = None
-    knowledge_gaps: list[str] = Field(default_factory=list)
-    tool_calls: list[dict[str, Any]] = Field(default_factory=list)
-    findings: str | None = None
-    thoughts: str | None = None
-```
+<!--codeinclude-->
+[IterationData Model](../src/utils/models.py) start_line:315 end_line:328
+<!--/codeinclude-->
 
 **Fields**:
 - `iteration`: Iteration number
@@ -192,12 +160,9 @@ class IterationData(BaseModel):
 
 **Purpose**: Event emitted during research execution.
 
-```python
-class AgentEvent(BaseModel):
-    type: str
-    iteration: int | None = None
-    data: dict[str, Any] = Field(default_factory=dict)
-```
+<!--codeinclude-->
+[AgentEvent Model](../src/utils/models.py) start_line:104 end_line:125
+<!--/codeinclude-->
 
 **Fields**:
 - `type`: Event type (e.g., "started", "search_complete", "complete")
@@ -210,15 +175,9 @@ class AgentEvent(BaseModel):
 
 **Purpose**: Current budget status.
 
-```python
-class BudgetStatus(BaseModel):
-    tokens_used: int
-    tokens_limit: int
-    time_elapsed_seconds: float
-    time_limit_seconds: float
-    iterations: int
-    iterations_limit: int
-```
+<!--codeinclude-->
+[BudgetStatus Model](../src/middleware/budget_tracker.py) start_line:15 end_line:25
+<!--/codeinclude-->
 
 **Fields**:
 - `tokens_used`: Tokens used so far
@@ -232,17 +191,3 @@ class BudgetStatus(BaseModel):
 
 - [Architecture - Agents](../architecture/agents.md) - How models are used
 - [Configuration](../configuration/index.md) - Model configuration
-
-
-
-
-
-
-
-
-
-
-
-
-
-

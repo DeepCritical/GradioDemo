@@ -6,10 +6,9 @@ This document outlines error handling and logging conventions for DeepCritical.
 
 Use custom exception hierarchy (`src/utils/exceptions.py`):
 
-- `DeepCriticalError` (base)
-- `SearchError` → `RateLimitError`
-- `JudgeError`
-- `ConfigurationError`
+<!--codeinclude-->
+[Exception Hierarchy](../src/utils/exceptions.py) start_line:4 end_line:31
+<!--/codeinclude-->
 
 ## Error Handling Rules
 
@@ -53,17 +52,3 @@ except httpx.HTTPError as e:
 
 - [Code Style](code-style.md) - Code style guidelines
 - [Testing](testing.md) - Testing guidelines
-
-
-
-
-
-
-
-
-
-
-
-
-
-

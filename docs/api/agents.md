@@ -235,15 +235,9 @@ Parses and improves a user query.
 
 All agents have factory functions in `src.agent_factory.agents`:
 
-```python
-def create_knowledge_gap_agent(model: Any | None = None) -> KnowledgeGapAgent
-def create_tool_selector_agent(model: Any | None = None) -> ToolSelectorAgent
-def create_writer_agent(model: Any | None = None) -> WriterAgent
-def create_long_writer_agent(model: Any | None = None) -> LongWriterAgent
-def create_proofreader_agent(model: Any | None = None) -> ProofreaderAgent
-def create_thinking_agent(model: Any | None = None) -> ThinkingAgent
-def create_input_parser_agent(model: Any | None = None) -> InputParserAgent
-```
+<!--codeinclude-->
+[Factory Functions](../src/agent_factory/agents.py) start_line:30 end_line:50
+<!--/codeinclude-->
 
 **Parameters**:
 - `model`: Optional Pydantic AI model. If None, uses `get_model()` from settings.
@@ -254,17 +248,4 @@ def create_input_parser_agent(model: Any | None = None) -> InputParserAgent
 
 - [Architecture - Agents](../architecture/agents.md) - Architecture overview
 - [Models API](models.md) - Data models used by agents
-
-
-
-
-
-
-
-
-
-
-
-
-
 

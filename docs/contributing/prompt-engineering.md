@@ -53,17 +53,3 @@ This document outlines prompt engineering guidelines and citation validation rul
 
 - [Code Quality](code-quality.md) - Code quality guidelines
 - [Error Handling](error-handling.md) - Error handling guidelines
-
-
-
-
-
-
-
-
-
-
-
-
-
-

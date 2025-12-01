@@ -8,11 +8,9 @@ This document outlines the code style and conventions for DeepCritical.
 - Use `mypy --strict` compliance (no `Any` unless absolutely necessary)
 - Use `TYPE_CHECKING` imports for circular dependencies:
 
-```python
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from src.services.embeddings import EmbeddingService
-```
+<!--codeinclude-->
+[TYPE_CHECKING Import Pattern](../src/utils/citation_validator.py) start_line:8 end_line:11
+<!--/codeinclude-->
 
 ## Pydantic Models
 
@@ -45,17 +43,3 @@ result = await loop.run_in_executor(None, cpu_bound_function, args)
 
 - [Error Handling](error-handling.md) - Error handling guidelines
 - [Implementation Patterns](implementation-patterns.md) - Common patterns
-
-
-
-
-
-
-
-
-
-
-
-
-
-

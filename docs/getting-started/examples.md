@@ -100,13 +100,13 @@ from src.agent_factory.judges import create_judge_handler
 # Create orchestrator
 search_handler = SearchHandler()
 judge_handler = create_judge_handler()
-orchestrator = create_orchestrator(
-    search_handler=search_handler,
-    judge_handler=judge_handler,
-    config={},
-    mode="advanced"
-)
+```
 
+<!--codeinclude-->
+[Create Orchestrator](../src/orchestrator_factory.py) start_line:44 end_line:66
+<!--/codeinclude-->
+
+```python
 # Run research query
 query = "What are the latest treatments for Alzheimer's disease?"
 async for event in orchestrator.run(query):
@@ -134,13 +134,13 @@ Single-loop research with search-judge-synthesize cycles:
 
 ```python
 from src.orchestrator.research_flow import IterativeResearchFlow
+```
 
-flow = IterativeResearchFlow(
-    search_handler=search_handler,
-    judge_handler=judge_handler,
-    use_graph=False
-)
+<!--codeinclude-->
+[IterativeResearchFlow Initialization](../src/orchestrator/research_flow.py) start_line:56 end_line:77
+<!--/codeinclude-->
 
+```python
 async for event in flow.run(query):
     # Handle events
     pass
@@ -152,13 +152,13 @@ Multi-section parallel research:
 
 ```python
 from src.orchestrator.research_flow import DeepResearchFlow
+```
 
-flow = DeepResearchFlow(
-    search_handler=search_handler,
-    judge_handler=judge_handler,
-    use_graph=True
-)
+<!--codeinclude-->
+[DeepResearchFlow Initialization](../src/orchestrator/research_flow.py) start_line:674 end_line:697
+<!--/codeinclude-->
 
+```python
 async for event in flow.run(query):
     # Handle events
     pass

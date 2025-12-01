@@ -7,17 +7,12 @@ Thank you for your interest in contributing to DeepCritical! This guide will hel
 - [Git Workflow](#git-workflow)
 - [Getting Started](#getting-started)
 - [Development Commands](#development-commands)
-- [Code Style & Conventions](#code-style--conventions)
-- [Type Safety](#type-safety)
-- [Error Handling & Logging](#error-handling--logging)
-- [Testing Requirements](#testing-requirements)
-- [Implementation Patterns](#implementation-patterns)
-- [Code Quality & Documentation](#code-quality--documentation)
-- [Prompt Engineering & Citation Validation](#prompt-engineering--citation-validation)
 - [MCP Integration](#mcp-integration)
 - [Common Pitfalls](#common-pitfalls)
 - [Key Principles](#key-principles)
 - [Pull Request Process](#pull-request-process)
+
+> **Note**: Additional sections (Code Style, Error Handling, Testing, Implementation Patterns, Code Quality, and Prompt Engineering) are available as separate pages in the navigation sidebar.
 
 ## Git Workflow
 
@@ -86,11 +81,9 @@ make docs-serve  # Serve documentation locally
 - Use `mypy --strict` compliance (no `Any` unless absolutely necessary)
 - Use `TYPE_CHECKING` imports for circular dependencies:
 
-```python
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from src.services.embeddings import EmbeddingService
-```
+<!--codeinclude-->
+[TYPE_CHECKING Import Pattern](../src/utils/citation_validator.py) start_line:8 end_line:11
+<!--/codeinclude-->
 
 ### Pydantic Models
 
@@ -136,10 +129,9 @@ result = await loop.run_in_executor(None, cpu_bound_function, args)
 
 Use custom exception hierarchy (`src/utils/exceptions.py`):
 
-- `DeepCriticalError` (base)
-- `SearchError` → `RateLimitError`
-- `JudgeError`
-- `ConfigurationError`
+<!--codeinclude-->
+[Exception Hierarchy](../src/utils/exceptions.py) start_line:4 end_line:31
+<!--/codeinclude-->
 
 ### Error Handling Rules
 
@@ -264,11 +256,9 @@ class MySearchTool:
 - Lazy initialization for optional dependencies (e.g., embeddings, Modal)
 - Check requirements before initialization:
 
-```python
-def check_magentic_requirements() -> None:
-    if not settings.has_openai_key:
-        raise ConfigurationError("Magentic requires OpenAI")
-```
+<!--codeinclude-->
+[Check Magentic Requirements](../src/utils/llm_factory.py) start_line:152 end_line:170
+<!--/codeinclude-->
 
 ### State Management
 
@@ -280,11 +270,9 @@ def check_magentic_requirements() -> None:
 
 Use `@lru_cache(maxsize=1)` for singletons:
 
-```python
-@lru_cache(maxsize=1)
-def get_embedding_service() -> EmbeddingService:
-    return EmbeddingService()
-```
+<!--codeinclude-->
+[Singleton Pattern Example](../src/services/statistical_analyzer.py) start_line:252 end_line:255
+<!--/codeinclude-->
 
 - Lazy initialization to avoid requiring dependencies at import time
 
@@ -298,22 +286,9 @@ def get_embedding_service() -> EmbeddingService:
 
 Example:
 
-```python
-async def search(self, query: str, max_results: int = 10) -> list[Evidence]:
-    """Search PubMed and return evidence.
-
-    Args:
-        query: The search query string
-        max_results: Maximum number of results to return
-
-    Returns:
-        List of Evidence objects
-
-    Raises:
-        SearchError: If the search fails
-        RateLimitError: If we hit rate limits
-    """
-```
+<!--codeinclude-->
+[Search Method Docstring Example](../src/tools/pubmed.py) start_line:51 end_line:58
+<!--/codeinclude-->
 
 ### Code Comments
 
