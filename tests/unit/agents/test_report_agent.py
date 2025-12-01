@@ -51,15 +51,15 @@ def sample_hypotheses() -> list[MechanismHypothesis]:
 @pytest.fixture
 def mock_report() -> ResearchReport:
     return ResearchReport(
-        title="Drug Repurposing Analysis: Metformin for Alzheimer's",
+        title="Research Analysis: Metformin for Alzheimer's",
         executive_summary=(
             "This report analyzes metformin as a potential candidate for "
-            "repurposing in Alzheimer's disease treatment. It summarizes "
+            "Alzheimer's disease treatment. It summarizes "
             "findings from mechanistic studies showing AMPK activation effects "
             "and reviews clinical data. The evidence suggests a potential "
             "neuroprotective role, although clinical trials are still limited."
         ),
-        research_question="Can metformin be repurposed for Alzheimer's disease?",
+        research_question="What is the evidence for metformin in Alzheimer's disease treatment?",
         methodology=ReportSection(
             title="Methodology", content="Searched PubMed and web sources..."
         ),

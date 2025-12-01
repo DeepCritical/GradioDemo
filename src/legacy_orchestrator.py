@@ -374,7 +374,7 @@ class Orchestrator:
             ]
         )
 
-        return f"""## Drug Repurposing Analysis
+        return f"""## Research Analysis
 
 ### Question
 {query}

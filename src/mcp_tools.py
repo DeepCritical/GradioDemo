@@ -1,4 +1,4 @@
-"""MCP tool wrappers for DeepCritical search tools.
+"""MCP tool wrappers for The DETERMINATOR search tools.
 
 These functions expose our search tools via MCP protocol.
 Each function follows the MCP tool contract:
@@ -24,7 +24,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
     Returns titles, authors, abstracts, and citation information.
 
     Args:
-        query: Search query (e.g., "metformin alzheimer", "drug repurposing cancer")
+        query: Search query (e.g., "metformin alzheimer", "cancer treatment mechanisms")
         max_results: Maximum results to return (1-50, default 10)
 
     Returns:
@@ -113,7 +113,7 @@ async def search_all_sources(query: str, max_per_source: int = 5) -> str:
     """Search all biomedical sources simultaneously.
 
     Performs parallel search across PubMed, ClinicalTrials.gov, and Europe PMC.
-    This is the most comprehensive search option for drug repurposing research.
+    This is the most comprehensive search option for deep medical research inquiry.
 
     Args:
         query: Search query (e.g., "metformin alzheimer", "aspirin cancer prevention")
@@ -161,10 +161,10 @@ async def analyze_hypothesis(
     condition: str,
     evidence_summary: str,
 ) -> str:
-    """Perform statistical analysis of drug repurposing hypothesis using Modal.
+    """Perform statistical analysis of research hypothesis using Modal.
 
     Executes AI-generated Python code in a secure Modal sandbox to analyze
-    the statistical evidence for a drug repurposing hypothesis.
+    the statistical evidence for a research hypothesis.
 
     Args:
         drug: The drug being evaluated (e.g., "metformin")
@@ -223,3 +223,81 @@ async def analyze_hypothesis(
 
 **Executed in Modal Sandbox** - Isolated, secure, reproducible.
 """
+
+
+async def extract_text_from_image(
+    image_path: str, model: str | None = None, hf_token: str | None = None
+) -> str:
+    """Extract text from an image using OCR.
+
+    Uses the Multimodal-OCR3 Gradio Space to extract text from images.
+    Supports various image formats (PNG, JPG, etc.) and can extract text
+    from scanned documents, screenshots, and other image types.
+
+    Args:
+        image_path: Path to image file
+        model: Optional model selection (default: None, uses API default)
+
+    Returns:
+        Extracted text from the image
+    """
+    from src.services.image_ocr import get_image_ocr_service
+
+    from src.utils.config import settings
+
+    try:
+        ocr_service = get_image_ocr_service()
+        # Use provided token or fallback to env vars
+        token = hf_token or settings.hf_token or settings.huggingface_api_key
+        extracted_text = await ocr_service.extract_text(image_path, model=model, hf_token=token)
+
+        if not extracted_text:
+            return f"No text found in image: {image_path}"
+
+        return f"## Extracted Text from Image\n\n{extracted_text}"
+
+    except Exception as e:
+        return f"Error extracting text from image: {e}"
+
+
+async def transcribe_audio_file(
+    audio_path: str,
+    source_lang: str | None = None,
+    target_lang: str | None = None,
+    hf_token: str | None = None,
+) -> str:
+    """Transcribe audio file to text using speech-to-text.
+
+    Uses the NVIDIA Canary Gradio Space to transcribe audio files.
+    Supports various audio formats (WAV, MP3, etc.) and multiple languages.
+
+    Args:
+        audio_path: Path to audio file
+        source_lang: Source language (default: "English")
+        target_lang: Target language (default: "English")
+
+    Returns:
+        Transcribed text from the audio file
+    """
+    from src.services.stt_gradio import get_stt_service
+
+    from src.utils.config import settings
+
+    try:
+        stt_service = get_stt_service()
+        # Use provided token or fallback to env vars
+        token = hf_token or settings.hf_token or settings.huggingface_api_key
+        transcribed_text = await stt_service.transcribe_file(
+            audio_path,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            hf_token=token,
+        )
+
+        if not transcribed_text:
+            return f"No transcription found in audio: {audio_path}"
+
+        return f"## Audio Transcription\n\n{transcribed_text}"
+
+    except Exception as e:
+        return f"Error transcribing audio: {e}"

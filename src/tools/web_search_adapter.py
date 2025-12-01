@@ -1,9 +1,11 @@
 """Web search tool adapter for Pydantic AI agents.
 
-Adapts the folder/tools/web_search.py implementation to work with Pydantic AI.
+Uses the new web search factory to provide web search functionality.
 """
 
 import structlog
+
+from src.tools.web_search_factory import create_web_search_tool
 
 logger = structlog.get_logger()
 
@@ -22,45 +24,39 @@ async def web_search(query: str) -> str:
         Formatted string with search results including titles, descriptions, and URLs
     """
     try:
-        # Lazy import to avoid requiring folder/ dependencies at import time
-        # This will use the existing web_search tool from folder/tools
-        from folder.llm_config import create_default_config
-        from folder.tools.web_search import create_web_search_tool
+        # Get web search tool from factory
+        tool = create_web_search_tool()
 
-        config = create_default_config()
-        web_search_tool = create_web_search_tool(config)
+        if tool is None:
+            logger.warning("Web search tool not available", hint="Check configuration")
+            return "Web search tool not available. Please configure a web search provider."
 
-        # Call the tool function
-        # The tool returns List[ScrapeResult] or str
-        results = await web_search_tool(query)
+        # Call the tool - it returns list[Evidence]
+        evidence = await tool.search(query, max_results=5)
 
-        if isinstance(results, str):
-            # Error message returned
-            logger.warning("Web search returned error", error=results)
-            return results
-
-        if not results:
+        if not evidence:
             return f"No web search results found for: {query}"
 
         # Format results for agent consumption
-        formatted = [f"Found {len(results)} web search results:\n"]
-        for i, result in enumerate(results[:5], 1):  # Limit to 5 results
-            formatted.append(f"{i}. **{result.title}**")
-            if result.description:
-                formatted.append(f"   {result.description[:200]}...")
-            formatted.append(f"   URL: {result.url}")
-            if result.text:
-                formatted.append(f"   Content: {result.text[:300]}...")
+        formatted = [f"Found {len(evidence)} web search results:\n"]
+        for i, ev in enumerate(evidence, 1):
+            citation = ev.citation
+            formatted.append(f"{i}. **{citation.title}**")
+            if citation.url:
+                formatted.append(f"   URL: {citation.url}")
+            if ev.content:
+                formatted.append(f"   Content: {ev.content[:300]}...")
             formatted.append("")
 
         return "\n".join(formatted)
 
-    except ImportError as e:
-        logger.error("Web search tool not available", error=str(e))
-        return f"Web search tool not available: {e!s}"
     except Exception as e:
         logger.error("Web search failed", error=str(e), query=query)
         return f"Error performing web search: {e!s}"
+
+
+
+
 
 
 

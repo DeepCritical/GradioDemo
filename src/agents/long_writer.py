@@ -225,6 +225,36 @@ class LongWriterAgent:
             "Section writing failed after all attempts",
             error=str(last_exception) if last_exception else "Unknown error",
         )
+        
+        # Try to enhance fallback with evidence if available
+        try:
+            from src.middleware.state_machine import get_workflow_state
+            
+            state = get_workflow_state()
+            if state and state.evidence:
+                # Include evidence citations in fallback
+                evidence_refs: list[str] = []
+                for i, ev in enumerate(state.evidence[:10], 1):  # Limit to 10
+                    authors = ", ".join(ev.citation.authors[:2]) if ev.citation.authors else "Unknown"
+                    evidence_refs.append(
+                        f"[{i}] {authors}. *{ev.citation.title}*. {ev.citation.url}"
+                    )
+                
+                enhanced_draft = f"## {next_section_title}\n\n{next_section_draft}"
+                if evidence_refs:
+                    enhanced_draft += "\n\n### Sources\n\n" + "\n".join(evidence_refs)
+                
+                return LongWriterOutput(
+                    next_section_markdown=enhanced_draft,
+                    references=evidence_refs,
+                )
+        except Exception as e:
+            self.logger.warning(
+                "Failed to enhance fallback with evidence",
+                error=str(e),
+            )
+        
+        # Basic fallback
         return LongWriterOutput(
             next_section_markdown=f"## {next_section_title}\n\n{next_section_draft}",
             references=[],
@@ -407,12 +437,13 @@ class LongWriterAgent:
         return re.sub(r"^(#+)\s(.+)$", adjust_heading_level, section_markdown, flags=re.MULTILINE)
 
 
-def create_long_writer_agent(model: Any | None = None) -> LongWriterAgent:
+def create_long_writer_agent(model: Any | None = None, oauth_token: str | None = None) -> LongWriterAgent:
     """
     Factory function to create a long writer agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured LongWriterAgent instance
@@ -422,7 +453,7 @@ def create_long_writer_agent(model: Any | None = None) -> LongWriterAgent:
     """
     try:
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         return LongWriterAgent(model=model)
 

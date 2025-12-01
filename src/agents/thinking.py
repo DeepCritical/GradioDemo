@@ -124,12 +124,13 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             return f"Starting iteration {iteration}. Need to gather information about: {query}"
 
 
-def create_thinking_agent(model: Any | None = None) -> ThinkingAgent:
+def create_thinking_agent(model: Any | None = None, oauth_token: str | None = None) -> ThinkingAgent:
     """
     Factory function to create a thinking agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured ThinkingAgent instance
@@ -139,7 +140,7 @@ def create_thinking_agent(model: Any | None = None) -> ThinkingAgent:
     """
     try:
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         return ThinkingAgent(model=model)
 

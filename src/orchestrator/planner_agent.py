@@ -158,12 +158,13 @@ class PlannerAgent:
             )
 
 
-def create_planner_agent(model: Any | None = None) -> PlannerAgent:
+def create_planner_agent(model: Any | None = None, oauth_token: str | None = None) -> PlannerAgent:
     """
     Factory function to create a planner agent.
 
     Args:
         model: Optional Pydantic AI model. If None, uses settings default.
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Configured PlannerAgent instance
@@ -174,7 +175,7 @@ def create_planner_agent(model: Any | None = None) -> PlannerAgent:
     try:
         # Get model from settings if not provided
         if model is None:
-            model = get_model()
+            model = get_model(oauth_token=oauth_token)
 
         # Create and return planner agent
         return PlannerAgent(model=model)

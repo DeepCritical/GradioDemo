@@ -122,21 +122,24 @@ class MagenticOrchestrator:
 
         workflow = self._build_workflow()
 
-        task = f"""Research drug repurposing opportunities for: {query}
+        task = f"""Research query: {query}
 
 Workflow:
-1. SearchAgent: Find evidence from PubMed, ClinicalTrials.gov, and Europe PMC
-2. HypothesisAgent: Generate mechanistic hypotheses (Drug -> Target -> Pathway -> Effect)
-3. JudgeAgent: Evaluate if evidence is sufficient
-4. If insufficient -> SearchAgent refines search based on gaps
-5. If sufficient -> ReportAgent synthesizes final report
+1. SearchAgent: Find evidence from available sources (automatically selects: web search, PubMed, ClinicalTrials.gov, Europe PMC, or RAG based on query)
+2. HypothesisAgent: Generate research hypotheses and questions based on evidence
+3. JudgeAgent: Evaluate if evidence is sufficient to answer the query precisely
+4. If insufficient -> SearchAgent refines search based on identified gaps
+5. If sufficient -> ReportAgent synthesizes final comprehensive report
 
 Focus on:
-- Identifying specific molecular targets
-- Understanding mechanism of action
-- Finding clinical evidence supporting hypotheses
+- Finding precise answers to the research question
+- Identifying all relevant evidence from appropriate sources
+- Understanding mechanisms, relationships, and key findings
+- Synthesizing comprehensive findings with proper citations
 
-The final output should be a structured research report."""
+The DETERMINATOR stops at nothing until finding precise answers, only stopping at configured limits (budget, time, iterations).
+
+The final output should be a structured research report with comprehensive evidence synthesis."""
 
         iteration = 0
         try:

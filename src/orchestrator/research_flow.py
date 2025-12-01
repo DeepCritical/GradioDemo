@@ -25,6 +25,7 @@ from src.middleware.budget_tracker import BudgetTracker
 from src.middleware.state_machine import get_workflow_state, init_workflow_state
 from src.middleware.workflow_manager import WorkflowManager
 from src.services.llamaindex_rag import LlamaIndexRAGService, get_rag_service
+from src.services.report_file_service import ReportFileService, get_report_file_service
 from src.tools.tool_executor import execute_tool_tasks
 from src.utils.exceptions import ConfigurationError
 from src.utils.models import (
@@ -60,6 +61,7 @@ class IterativeResearchFlow:
         verbose: bool = True,
         use_graph: bool = False,
         judge_handler: Any | None = None,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize iterative research flow.
@@ -69,19 +71,21 @@ class IterativeResearchFlow:
             max_time_minutes: Maximum time in minutes
             verbose: Whether to log progress
             use_graph: Whether to use graph-based execution (True) or agent chains (False)
+            oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
         """
         self.max_iterations = max_iterations
         self.max_time_minutes = max_time_minutes
         self.verbose = verbose
         self.use_graph = use_graph
+        self.oauth_token = oauth_token
         self.logger = logger
 
         # Initialize agents (only needed for agent chain execution)
         if not use_graph:
-            self.knowledge_gap_agent = create_knowledge_gap_agent()
-            self.tool_selector_agent = create_tool_selector_agent()
-            self.thinking_agent = create_thinking_agent()
-            self.writer_agent = create_writer_agent()
+            self.knowledge_gap_agent = create_knowledge_gap_agent(oauth_token=self.oauth_token)
+            self.tool_selector_agent = create_tool_selector_agent(oauth_token=self.oauth_token)
+            self.thinking_agent = create_thinking_agent(oauth_token=self.oauth_token)
+            self.writer_agent = create_writer_agent(oauth_token=self.oauth_token)
             # Initialize judge handler (use provided or create new)
             self.judge_handler = judge_handler or create_judge_handler()
 
@@ -108,6 +112,24 @@ class IterativeResearchFlow:
 
         # Graph orchestrator (lazy initialization)
         self._graph_orchestrator: Any = None
+
+        # File service (lazy initialization)
+        self._file_service: ReportFileService | None = None
+
+    def _get_file_service(self) -> ReportFileService | None:
+        """
+        Get file service instance (lazy initialization).
+
+        Returns:
+            ReportFileService instance or None if disabled
+        """
+        if self._file_service is None:
+            try:
+                self._file_service = get_report_file_service()
+            except Exception as e:
+                self.logger.warning("Failed to initialize file service", error=str(e))
+                return None
+        return self._file_service
 
     async def run(
         self,
@@ -656,6 +678,19 @@ FINDINGS:
             tokens=estimated_tokens,
         )
 
+        # Save report to file if enabled
+        try:
+            file_service = self._get_file_service()
+            if file_service:
+                file_path = file_service.save_report(
+                    report_content=report,
+                    query=query,
+                )
+                self.logger.info("Report saved to file", file_path=file_path)
+        except Exception as e:
+            # Don't fail the entire operation if file saving fails
+            self.logger.warning("Failed to save report to file", error=str(e))
+
         # Note: Citation validation for markdown reports would require Evidence objects
         # Currently, findings are strings, not Evidence objects. For full validation,
         # consider using ResearchReport format or passing Evidence objects separately.
@@ -678,6 +713,7 @@ class DeepResearchFlow:
         verbose: bool = True,
         use_long_writer: bool = True,
         use_graph: bool = False,
+        oauth_token: str | None = None,
     ) -> None:
         """
         Initialize deep research flow.
@@ -688,19 +724,21 @@ class DeepResearchFlow:
             verbose: Whether to log progress
             use_long_writer: Whether to use long writer (True) or proofreader (False)
             use_graph: Whether to use graph-based execution (True) or agent chains (False)
+            oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
         """
         self.max_iterations = max_iterations
         self.max_time_minutes = max_time_minutes
         self.verbose = verbose
         self.use_long_writer = use_long_writer
         self.use_graph = use_graph
+        self.oauth_token = oauth_token
         self.logger = logger
 
         # Initialize agents (only needed for agent chain execution)
         if not use_graph:
-            self.planner_agent = create_planner_agent()
-            self.long_writer_agent = create_long_writer_agent()
-            self.proofreader_agent = create_proofreader_agent()
+            self.planner_agent = create_planner_agent(oauth_token=self.oauth_token)
+            self.long_writer_agent = create_long_writer_agent(oauth_token=self.oauth_token)
+            self.proofreader_agent = create_proofreader_agent(oauth_token=self.oauth_token)
             # Initialize judge handler for section loop completion
             self.judge_handler = create_judge_handler()
             # Initialize budget tracker for token tracking
@@ -718,6 +756,24 @@ class DeepResearchFlow:
 
         # Graph orchestrator (lazy initialization)
         self._graph_orchestrator: Any = None
+
+        # File service (lazy initialization)
+        self._file_service: ReportFileService | None = None
+
+    def _get_file_service(self) -> ReportFileService | None:
+        """
+        Get file service instance (lazy initialization).
+
+        Returns:
+            ReportFileService instance or None if disabled
+        """
+        if self._file_service is None:
+            try:
+                self._file_service = get_report_file_service()
+            except Exception as e:
+                self.logger.warning("Failed to initialize file service", error=str(e))
+                return None
+        return self._file_service
 
     async def run(self, query: str) -> str:
         """
@@ -993,6 +1049,19 @@ class DeepResearchFlow:
                 tokens=estimated_tokens,
                 agent="long_writer" if self.use_long_writer else "proofreader",
             )
+
+        # Save report to file if enabled
+        try:
+            file_service = self._get_file_service()
+            if file_service:
+                file_path = file_service.save_report(
+                    report_content=final_report,
+                    query=query,
+                )
+                self.logger.info("Report saved to file", file_path=file_path)
+        except Exception as e:
+            # Don't fail the entire operation if file saving fails
+            self.logger.warning("Failed to save report to file", error=str(e))
 
         self.logger.info("Final report created", length=len(final_report))
 

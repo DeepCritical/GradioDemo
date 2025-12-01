@@ -1,10 +1,12 @@
-"""Gradio UI for DeepCritical agent with MCP server support."""
+"""Gradio UI for The DETERMINATOR agent with MCP server support."""
 
 import os
 from collections.abc import AsyncGenerator
 from typing import Any
 
 import gradio as gr
+import numpy as np
+from gradio.components.multimodal_textbox import MultimodalPostprocess
 
 # Try to import HuggingFace support (may not be available in all pydantic-ai versions)
 # According to https://ai.pydantic.dev/models/huggingface/, HuggingFace support requires
@@ -26,6 +28,9 @@ except ImportError:
 
 from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
 from src.orchestrator_factory import create_orchestrator
+from src.services.audio_processing import get_audio_service
+from src.services.multimodal_processing import get_multimodal_service
+import structlog
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
 from src.tools.pubmed import PubMedTool
@@ -34,6 +39,8 @@ from src.tools.neo4j_search import Neo4jSearchTool
 from src.utils.config import settings
 from src.utils.models import AgentEvent, OrchestratorConfig
 
+logger = structlog.get_logger()
+
 
 def configure_orchestrator(
     use_mock: bool = False,
@@ -41,16 +48,20 @@ def configure_orchestrator(
     oauth_token: str | None = None,
     hf_model: str | None = None,
     hf_provider: str | None = None,
+    graph_mode: str | None = None,
+    use_graph: bool = True,
 ) -> tuple[Any, str]:
     """
     Create an orchestrator instance.
 
     Args:
         use_mock: If True, use MockJudgeHandler (no API key needed)
-        mode: Orchestrator mode ("simple" or "advanced")
+        mode: Orchestrator mode ("simple", "advanced", "iterative", "deep", or "auto")
         oauth_token: Optional OAuth token from HuggingFace login
         hf_model: Selected HuggingFace model ID
         hf_provider: Selected inference provider
+        graph_mode: Graph research mode ("iterative", "deep", or "auto") - used when mode is graph-based
+        use_graph: Whether to use graph execution (True) or agent chains (False)
 
     Returns:
         Tuple of (Orchestrator instance, backend_name)
@@ -61,10 +72,24 @@ def configure_orchestrator(
         max_results_per_tool=10,
     )
 
-    # Create search tools
+    # Create search tools with RAG enabled
+    # Pass OAuth token to SearchHandler so it can be used by RAG service
+    tools = [Neo4jSearchTool(),PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()]
+
+    # Add web search tool if available
+    from src.tools.web_search_factory import create_web_search_tool
+
+    web_search_tool = create_web_search_tool()
+    if web_search_tool is not None:
+        tools.append(web_search_tool)
+        logger.info("Web search tool added to search handler", provider=web_search_tool.name)
+
     search_handler = SearchHandler(
-        tools=[Neo4jSearchTool(), PubMedTool(), ClinicalTrialsTool(), EuropePMCTool()],
+        tools=tools,
         timeout=config.search_timeout,
+        include_rag=True,
+        auto_ingest_to_rag=True,
+        oauth_token=oauth_token,
     )
 
     # Create judge (mock, real, or free tier)
@@ -97,13 +122,11 @@ def configure_orchestrator(
                 "HuggingFace models are not available in this version of pydantic-ai. "
                 "Please install with: uv add 'pydantic-ai[huggingface]' to use HuggingFace inference providers."
             )
-        # Inference API - uses HuggingFace Inference API via AsyncInferenceClient
+        # Inference API - uses HuggingFace Inference API
         # Per https://ai.pydantic.dev/models/huggingface/#configure-the-provider
-        # Create AsyncInferenceClient for inference API
-        # AsyncInferenceClient accepts 'token' parameter for API key
-        hf_client = AsyncInferenceClient(token=effective_api_key)  # type: ignore[misc]
-        # Pass client to HuggingFaceProvider for inference API usage
-        provider = HuggingFaceProvider(hf_client=hf_client)  # type: ignore[misc]
+        # HuggingFaceProvider accepts api_key parameter directly
+        # This is consistent with usage in src/utils/llm_factory.py and src/agent_factory/judges.py
+        provider = HuggingFaceProvider(api_key=effective_api_key)  # type: ignore[misc]
         model = HuggingFaceModel(model_name, provider=provider)  # type: ignore[misc]
         backend_info = "API (HuggingFace OAuth)" if oauth_token else "API (Env Config)"
 
@@ -112,25 +135,77 @@ def configure_orchestrator(
     # 3. Free Tier (HuggingFace Inference) - NO API KEY AVAILABLE
     else:
         # No API key available - use HFInferenceJudgeHandler with public models
-        # Don't use third-party providers (novita, groq, etc.) as they require their own API keys
-        # Use HuggingFace's own inference API with public/ungated models
-        # Pass empty provider to use HuggingFace's default (not third-party providers)
+        # HFInferenceJudgeHandler will use HF_TOKEN from env if available, otherwise public models
+        # Note: OAuth token should have been caught in effective_api_key check above
+        # If we reach here, we truly have no API key, so use public models
         judge_handler = HFInferenceJudgeHandler(
-            model_id=hf_model,
-            api_key=None,  # No API key - will use public models only
-            provider=None,  # Don't specify provider - use HuggingFace's default
+            model_id=hf_model if hf_model else None,
+            api_key=None,  # Will use HF_TOKEN from env if available, otherwise public models
         )
         model_display = hf_model.split("/")[-1] if hf_model else "Default (Public Models)"
         backend_info = f"Free Tier ({model_display} - Public Models Only)"
+
+    # Determine effective mode
+    # If mode is already iterative/deep/auto, use it directly
+    # If mode is "graph" or "simple", use graph_mode if provided
+    effective_mode = mode
+    if mode in ("graph", "simple") and graph_mode:
+        effective_mode = graph_mode
+    elif mode == "graph" and not graph_mode:
+        effective_mode = "auto"  # Default to auto if graph mode but no graph_mode specified
 
     orchestrator = create_orchestrator(
         search_handler=search_handler,
         judge_handler=judge_handler,
         config=config,
-        mode=mode,  # type: ignore
+        mode=effective_mode,  # type: ignore
+        oauth_token=oauth_token,
     )
 
     return orchestrator, backend_info
+
+
+def _is_file_path(text: str) -> bool:
+    """Check if text appears to be a file path.
+    
+    Args:
+        text: Text to check
+        
+    Returns:
+        True if text looks like a file path
+    """
+    import os
+    # Check for common file extensions
+    file_extensions = ['.md', '.pdf', '.txt', '.json', '.csv', '.xlsx', '.docx', '.html']
+    text_lower = text.lower().strip()
+    
+    # Check if it ends with a file extension
+    if any(text_lower.endswith(ext) for ext in file_extensions):
+        # Check if it's a valid path (absolute or relative)
+        if os.path.sep in text or '/' in text or '\\' in text:
+            return True
+        # Or if it's just a filename with extension
+        if '.' in text and len(text.split('.')) == 2:
+            return True
+    
+    # Check if it's an absolute path
+    if os.path.isabs(text):
+        return True
+    
+    return False
+
+
+def _get_file_name(file_path: str) -> str:
+    """Extract filename from file path.
+    
+    Args:
+        file_path: Full file path
+        
+    Returns:
+        Filename with extension
+    """
+    import os
+    return os.path.basename(file_path)
 
 
 def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
@@ -166,11 +241,76 @@ def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
 
     # For complete events, return main response without accordion
     if event.type == "complete":
+        # Check if event contains file information
+        content = event.message
+        files: list[str] | None = None
+        
+        # Check event.data for file paths
+        if event.data and isinstance(event.data, dict):
+            # Support both "files" (list) and "file" (single path) keys
+            if "files" in event.data:
+                files = event.data["files"]
+                if isinstance(files, str):
+                    files = [files]
+                elif not isinstance(files, list):
+                    files = None
+                else:
+                    # Filter to only valid file paths
+                    files = [f for f in files if isinstance(f, str) and _is_file_path(f)]
+            elif "file" in event.data:
+                file_path = event.data["file"]
+                if isinstance(file_path, str) and _is_file_path(file_path):
+                    files = [file_path]
+        
+        # Also check if message itself is a file path (less common, but possible)
+        if not files and isinstance(event.message, str) and _is_file_path(event.message):
+            files = [event.message]
+            # Keep message as text description
+            content = "Report generated. Download available below."
+        
         # Return as dict format for Gradio Chatbot compatibility
-        return {
+        result: dict[str, Any] = {
             "role": "assistant",
-            "content": event.message,
+            "content": content,
         }
+        
+        # Add files if present
+        # Gradio Chatbot supports file paths in content as markdown links
+        # The links will be clickable and downloadable
+        if files:
+            # Validate files exist before including them
+            import os
+            valid_files = [f for f in files if os.path.exists(f)]
+            
+            if valid_files:
+                # Format files for Gradio: include as markdown download links
+                # Gradio ChatInterface automatically renders file links as downloadable files
+                import os
+                file_links = []
+                for f in valid_files:
+                    file_name = _get_file_name(f)
+                    try:
+                        file_size = os.path.getsize(f)
+                        # Format file size (bytes to KB/MB)
+                        if file_size < 1024:
+                            size_str = f"{file_size} B"
+                        elif file_size < 1024 * 1024:
+                            size_str = f"{file_size / 1024:.1f} KB"
+                        else:
+                            size_str = f"{file_size / (1024 * 1024):.1f} MB"
+                        file_links.append(f"📎 [Download: {file_name} ({size_str})]({f})")
+                    except OSError:
+                        # If we can't get file size, just show the name
+                        file_links.append(f"📎 [Download: {file_name}]({f})")
+                
+                result["content"] = f"{content}\n\n" + "\n\n".join(file_links)
+                
+                # Also store in metadata for potential future use
+                if "metadata" not in result:
+                    result["metadata"] = {}
+                result["metadata"]["files"] = valid_files
+        
+        return result
 
     # Build metadata for accordion according to Gradio ChatMessage spec
     # Metadata keys: title (str), status ("pending"|"done"), log (str), duration (float)
@@ -408,19 +548,25 @@ async def handle_orchestrator_events(
 
 
 async def research_agent(
-    message: str,
+    message: str | MultimodalPostprocess,
     history: list[dict[str, Any]],
     mode: str = "simple",
     hf_model: str | None = None,
     hf_provider: str | None = None,
+    graph_mode: str = "auto",
+    use_graph: bool = True,
+    enable_image_input: bool = True,
+    enable_audio_input: bool = True,
+    tts_voice: str = "af_heart",
+    tts_speed: float = 1.0,
     oauth_token: gr.OAuthToken | None = None,
     oauth_profile: gr.OAuthProfile | None = None,
-) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+) -> AsyncGenerator[dict[str, Any] | tuple[dict[str, Any], tuple[int, np.ndarray] | None], None]:
     """
     Gradio chat function that runs the research agent.
 
     Args:
-        message: User's research question
+        message: User's research question (str or MultimodalPostprocess with text/files)
         history: Chat history (Gradio format)
         mode: Orchestrator mode ("simple" or "advanced")
         hf_model: Selected HuggingFace model ID (from dropdown)
@@ -429,8 +575,12 @@ async def research_agent(
         oauth_profile: Gradio OAuth profile (None if user not logged in)
 
     Yields:
-        ChatMessage objects with metadata for accordion display
+        ChatMessage objects with metadata for accordion display, optionally with audio output
     """
+    import structlog
+
+    logger = structlog.get_logger()
+
     # REQUIRE LOGIN BEFORE USE
     # Extract OAuth token and username using Gradio's OAuth types
     # According to Gradio docs: OAuthToken and OAuthProfile are None if user not logged in
@@ -439,7 +589,13 @@ async def research_agent(
 
     if oauth_token is not None:
         # OAuthToken has a .token attribute containing the access token
-        token_value = oauth_token.token if hasattr(oauth_token, "token") else None
+        if hasattr(oauth_token, "token"):
+            token_value = oauth_token.token
+        elif isinstance(oauth_token, str):
+            # Handle case where oauth_token is already a string (shouldn't happen but defensive)
+            token_value = oauth_token
+        else:
+            token_value = None
 
     if oauth_profile is not None:
         # OAuthProfile has .username, .name, .profile_image attributes
@@ -468,14 +624,47 @@ async def research_agent(
                 "before using this application.\n\n"
                 "The login button is required to access the AI models and research tools."
             ),
-        }
+        }, None
         return
 
-    if not message.strip():
+    # Process multimodal input (text + images + audio)
+    processed_text = ""
+    audio_input_data: tuple[int, np.ndarray] | None = None
+
+    if isinstance(message, dict):
+        # MultimodalPostprocess format: {"text": str, "files": list[FileData], "audio": tuple | None}
+        processed_text = message.get("text", "") or ""
+        files = message.get("files", [])
+        # Check for audio input in message (Gradio may include it as a separate field)
+        audio_input_data = message.get("audio") or None
+
+        # Process multimodal input (images, audio files, audio input)
+        # Process if we have files (and image input enabled) or audio input (and audio input enabled)
+        # Use UI settings from function parameters
+        if (files and enable_image_input) or (audio_input_data is not None and enable_audio_input):
+            try:
+                multimodal_service = get_multimodal_service()
+                # Prepend audio/image text to original text (prepend_multimodal=True)
+                # Filter files and audio based on UI settings
+                processed_text = await multimodal_service.process_multimodal_input(
+                    processed_text,
+                    files=files if enable_image_input else [],
+                    audio_input=audio_input_data if enable_audio_input else None,
+                    hf_token=token_value,
+                    prepend_multimodal=True,  # Prepend audio/image text to text input
+                )
+            except Exception as e:
+                logger.warning("multimodal_processing_failed", error=str(e))
+                # Continue with text-only input
+    else:
+        # Plain string message
+        processed_text = str(message) if message else ""
+
+    if not processed_text.strip():
         yield {
             "role": "assistant",
-            "content": "Please enter a research question.",
-        }
+            "content": "Please enter a research question or provide an image/audio input.",
+        }, None
         return
 
     # Check available keys (use token_value instead of oauth_token)
@@ -504,6 +693,8 @@ async def research_agent(
             oauth_token=token_value,  # Use extracted token value
             hf_model=model_id,  # None will use defaults in configure_orchestrator
             hf_provider=provider_name,  # None will use defaults in configure_orchestrator
+            graph_mode=graph_mode if graph_mode else None,
+            use_graph=use_graph,
         )
 
         yield {
@@ -511,9 +702,41 @@ async def research_agent(
             "content": f"🧠 **Backend**: {backend_name}\n\n",
         }
 
-        # Handle orchestrator events
-        async for msg in handle_orchestrator_events(orchestrator, message):
-            yield msg
+        # Handle orchestrator events and generate audio output
+        audio_output_data: tuple[int, np.ndarray] | None = None
+        final_message = ""
+
+        async for msg in handle_orchestrator_events(orchestrator, processed_text):
+            # Track final message for TTS
+            if isinstance(msg, dict) and msg.get("role") == "assistant":
+                content = msg.get("content", "")
+                metadata = msg.get("metadata", {})
+                # This is the main response (not an accordion) if no title in metadata
+                if content and not metadata.get("title"):
+                    final_message = content
+
+            # Yield without audio for intermediate messages
+            yield msg, None
+
+        # Generate audio output for final response
+        if final_message and settings.enable_audio_output:
+            try:
+                audio_service = get_audio_service()
+                # Use UI-configured voice and speed, fallback to settings defaults
+                audio_output_data = await audio_service.generate_audio_output(
+                    final_message,
+                    voice=tts_voice or settings.tts_voice,
+                    speed=tts_speed if tts_speed else settings.tts_speed,
+                )
+            except Exception as e:
+                logger.warning("audio_synthesis_failed", error=str(e))
+                # Continue without audio output
+
+        # If we have audio output, we need to yield it with the final message
+        # Note: The final message was already yielded above, so we yield None, audio_output_data
+        # This will update the audio output component
+        if audio_output_data is not None:
+            yield None, audio_output_data
 
     except Exception as e:
         # Return error message without metadata to avoid issues during example caching
@@ -524,7 +747,7 @@ async def research_agent(
         yield {
             "role": "assistant",
             "content": f"Error: {error_msg}. Please check your configuration and try again.",
-        }
+        }, None
 
 
 def create_demo() -> gr.Blocks:
@@ -534,7 +757,7 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
-    with gr.Blocks(title="🧬 DeepCritical", fill_height=True) as demo:
+    with gr.Blocks(title="🔬 The DETERMINATOR", fill_height=True) as demo:
         # Add sidebar with login button and information
         # Reference: Working implementation pattern from Gradio docs
         with gr.Sidebar():
@@ -543,90 +766,269 @@ def create_demo() -> gr.Blocks:
                 "**Sign in with Hugging Face** to access AI models and research tools.\n\n"
                 "This application requires authentication to use the inference API."
             )
-            login_button = gr.LoginButton("Sign in with Hugging Face")
+            gr.LoginButton("Sign in with Hugging Face")
             gr.Markdown("---")
-            gr.Markdown("### ℹ️ About")
+            gr.Markdown("### ℹ️ About")  # noqa: RUF001
             gr.Markdown(
-                "AI-Powered Drug Repurposing Agent that searches:\n"
-                "- PubMed\n"
-                "- ClinicalTrials.gov\n"
-                "- Europe PMC"
+                "**The DETERMINATOR** - Generalist Deep Research Agent\n\n"
+                "A powerful research agent that stops at nothing until finding precise answers to complex questions.\n\n"
+                "**Available Sources**:\n"
+                "- Web Search (general knowledge)\n"
+                "- PubMed (biomedical literature)\n"
+                "- ClinicalTrials.gov (clinical trials)\n"
+                "- Europe PMC (preprints & papers)\n"
+                "- RAG (semantic search)\n\n"
+                "**Automatic Detection**: Automatically determines if medical knowledge sources are needed for your query.\n\n"
+                "⚠️ **Research tool only** - Synthesizes evidence but cannot provide medical advice."
+            )
+            gr.Markdown("---")
+            
+            # Settings Section - Organized in Accordions
+            gr.Markdown("## ⚙️ Settings")
+            
+            # Research Configuration Accordion
+            with gr.Accordion("🔬 Research Configuration", open=True):
+                mode_radio = gr.Radio(
+                    choices=["simple", "advanced", "iterative", "deep", "auto"],
+                    value="simple",
+                    label="Orchestrator Mode",
+                    info=(
+                        "Simple: Linear search-judge loop | "
+                        "Advanced: Multi-agent (OpenAI) | "
+                        "Iterative: Knowledge-gap driven | "
+                        "Deep: Parallel sections | "
+                        "Auto: Smart routing"
+                    ),
+                )
+                
+                graph_mode_radio = gr.Radio(
+                    choices=["iterative", "deep", "auto"],
+                    value="auto",
+                    label="Graph Research Mode",
+                    info="Iterative: Single loop | Deep: Parallel sections | Auto: Detect from query",
+                )
+                
+                use_graph_checkbox = gr.Checkbox(
+                    value=True,
+                    label="Use Graph Execution",
+                    info="Enable graph-based workflow execution",
+                )
+                
+                # Model and Provider selection
+                gr.Markdown("### 🤖 Model & Provider")
+                
+                # Popular models list
+                popular_models = [
+                    "",  # Empty = use default
+                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    "zai-org/GLM-4.5-Air",
+                    "meta-llama/Llama-3.1-8B-Instruct",
+                    "meta-llama/Llama-3.1-70B-Instruct",
+                    "mistralai/Mistral-7B-Instruct-v0.2",
+                    "google/gemma-2-9b-it",
+                ]
+                
+                hf_model_dropdown = gr.Dropdown(
+                    choices=popular_models,
+                    value="",  # Empty string - will be converted to None in research_agent
+                    label="Reasoning Model",
+                    info="Select a HuggingFace model (leave empty for default)",
+                    allow_custom_value=True,  # Allow users to type custom model IDs
+                )
+
+                # Provider list from README
+                providers = [
+                    "",  # Empty string = auto-select
+                    "nebius",
+                    "together",
+                    "scaleway",
+                    "hyperbolic",
+                    "novita",
+                    "nscale",
+                    "sambanova",
+                    "ovh",
+                    "fireworks",
+                ]
+                
+                hf_provider_dropdown = gr.Dropdown(
+                    choices=providers,
+                    value="",  # Empty string - will be converted to None in research_agent
+                    label="Inference Provider",
+                    info="Select inference provider (leave empty for auto-select)",
+                )
+            
+            # Multimodal Input Configuration Accordion
+            with gr.Accordion("📷 Multimodal Input", open=False):
+                enable_image_input_checkbox = gr.Checkbox(
+                    value=settings.enable_image_input,
+                    label="Enable Image Input (OCR)",
+                    info="Extract text from uploaded images using OCR",
+                )
+                
+                enable_audio_input_checkbox = gr.Checkbox(
+                    value=settings.enable_audio_input,
+                    label="Enable Audio Input (STT)",
+                    info="Transcribe audio recordings using speech-to-text",
+                )
+            
+            # Audio/TTS Configuration Accordion
+            with gr.Accordion("🔊 Audio Output", open=False):
+                enable_audio_output_checkbox = gr.Checkbox(
+                    value=settings.enable_audio_output,
+                    label="Enable Audio Output",
+                    info="Generate audio responses using TTS",
+                )
+                
+                tts_voice_dropdown = gr.Dropdown(
+                    choices=[
+                        "af_heart",
+                        "af_bella",
+                        "af_nicole",
+                        "af_aoede",
+                        "af_kore",
+                        "af_sarah",
+                        "af_nova",
+                        "af_sky",
+                        "af_alloy",
+                        "af_jessica",
+                        "af_river",
+                        "am_michael",
+                        "am_fenrir",
+                        "am_puck",
+                        "am_echo",
+                        "am_eric",
+                        "am_liam",
+                        "am_onyx",
+                        "am_santa",
+                        "am_adam",
+                    ],
+                    value=settings.tts_voice,
+                    label="TTS Voice",
+                    info="Select TTS voice (American English voices: af_*, am_*)",
+                )
+                
+                tts_speed_slider = gr.Slider(
+                    minimum=0.5,
+                    maximum=2.0,
+                    value=settings.tts_speed,
+                    step=0.1,
+                    label="TTS Speech Speed",
+                    info="Adjust TTS speech speed (0.5x to 2.0x)",
+                )
+                
+                tts_gpu_dropdown = gr.Dropdown(
+                    choices=["T4", "A10", "A100", "L4", "L40S"],
+                    value=settings.tts_gpu or "T4",
+                    label="TTS GPU Type",
+                    info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
+                    visible=settings.modal_available,
+                    interactive=False,  # GPU type set at function definition time, requires restart
+                )
+                
+                # Audio output component (for TTS response) - moved to sidebar
+                audio_output = gr.Audio(
+                    label="🔊 Audio Response",
+                    visible=settings.enable_audio_output,
+                )
+        
+        # Update TTS component visibility based on enable_audio_output_checkbox
+        # This must be after audio_output is defined
+        def update_tts_visibility(enabled: bool) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+            """Update visibility of TTS components based on enable checkbox."""
+            return (
+                gr.update(visible=enabled),
+                gr.update(visible=enabled),
+                gr.update(visible=enabled),
             )
         
-        # Create settings components (hidden - used only for additional_inputs)
-        # Model/provider selection removed to avoid dropdown value mismatch errors
-        # Settings will use defaults from configure_orchestrator
-        with gr.Row(visible=False):
-            mode_radio = gr.Radio(
-                choices=["simple", "advanced"],
-                value="simple",
-                label="Orchestrator Mode",
-                info="Simple: Linear | Advanced: Multi-Agent (HuggingFace Inference)",
-            )
+        enable_audio_output_checkbox.change(
+            fn=update_tts_visibility,
+            inputs=[enable_audio_output_checkbox],
+            outputs=[tts_voice_dropdown, tts_speed_slider, audio_output],
+        )
 
-            # Hidden text components for model/provider (not dropdowns to avoid value mismatch)
-            # These will be empty by default and use defaults in configure_orchestrator
-            hf_model_dropdown = gr.Textbox(
-                value="",  # Empty string - will be converted to None in research_agent
-                label="🤖 Reasoning Model",
-                visible=False,  # Hidden from UI
-            )
-
-            hf_provider_dropdown = gr.Textbox(
-                value="",  # Empty string - will be converted to None in research_agent
-                label="⚡ Inference Provider",
-                visible=False,  # Hidden from UI
-            )
-
-        # Chat interface with model/provider selection
+        # Chat interface with multimodal support
         # Examples are provided but will NOT run at startup (cache_examples=False)
         # Users must log in first before using examples or submitting queries
         gr.ChatInterface(
             fn=research_agent,
-            title="🧬 DeepCritical",
+            multimodal=True,  # Enable multimodal input (text + images + audio)
+            title="🔬 The DETERMINATOR",
             description=(
-                "*AI-Powered Drug Repurposing Agent — searches PubMed, "
-                "ClinicalTrials.gov & Europe PMC*\n\n"
+                "*Generalist Deep Research Agent — stops at nothing until finding precise answers to complex questions*\n\n"
                 "---\n"
-                "*Research tool only — not for medical advice.*  \n"
+                "**The DETERMINATOR** uses iterative search-and-judge loops to comprehensively investigate any research question. "
+                "It automatically determines if medical knowledge sources (PubMed, ClinicalTrials.gov) are needed and adapts its search strategy accordingly.\n\n"
+                "**Key Features**:\n"
+                "- 🔍 Multi-source search (Web, PubMed, ClinicalTrials.gov, Europe PMC, RAG)\n"
+                "- 🧠 Automatic medical knowledge detection\n"
+                "- 🔄 Iterative refinement until precise answers are found\n"
+                "- ⏹️ Stops only at configured limits (budget, time, iterations)\n"
+                "- 📊 Evidence synthesis with citations\n\n"
                 "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
+                "**📷🎤 Multimodal Input Support**:\n"
+                "- **Images**: Click the 📷 image icon in the textbox to upload images (OCR)\n"
+                "- **Audio**: Click the 🎤 microphone icon in the textbox to record audio (STT)\n"
+                "- **Files**: Drag & drop or click to upload image/audio files\n"
+                "- **Text**: Type your research questions directly\n\n"
+                "💡 **Tip**: Look for the 📷 and 🎤 icons in the text input box below!\n\n"
+                "Configure multimodal inputs in the sidebar settings.\n\n"
                 "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
             ),
             examples=[
                 # When additional_inputs are provided, examples must be lists of lists
-                # Each inner list: [message, mode, hf_model, hf_provider]
+                # Each inner list: [message, mode, hf_model, hf_provider, graph_mode, multimodal_enabled]
                 # Using actual model IDs and provider names from inference_models.py
                 # Note: Provider is optional - if empty, HF will auto-select
                 # These examples will NOT run at startup - users must click them after logging in
+                # All examples require deep iterative search and information retrieval across multiple sources
                 [
-                    "What drugs could be repurposed for Alzheimer's disease?",
-                    "simple",
-                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
-                    "",
-                ],
-                [
-                    "Is metformin effective for treating cancer?",
-                    "simple",
-                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
-                    "",
-                ],
-                [
-                    "What medications show promise for Long COVID treatment?",
-                    "simple",
+                    # Medical research example (only one medical example)
+                    "Create a comprehensive report on Long COVID treatments including clinical trials, mechanisms, and safety.",
+                    "deep",
                     "zai-org/GLM-4.5-Air",
                     "nebius",
+                    "deep",
+                    True,
+                ],
+                [
+                    # Technical/Engineering example requiring deep research
+                    "Analyze the current state of quantum computing architectures: compare different qubit technologies, error correction methods, and scalability challenges across major platforms including IBM, Google, and IonQ.",
+                    "deep",
+                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                    "",
+                    "deep",
+                    True,
+                ],
+                [
+                    # Business/Scientific example requiring iterative search
+                    "Investigate the economic and environmental impact of renewable energy transition: analyze cost trends, grid integration challenges, policy frameworks, and market dynamics across solar, wind, and battery storage technologies, in china",
+                    "deep",
+                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    "",
+                    "deep",
+                    True,
                 ],
             ],
             cache_examples=False,  # CRITICAL: Disable example caching to prevent examples from running at startup
             # Examples will only run when user explicitly clicks them (after login)
-            additional_inputs_accordion=gr.Accordion(label="⚙️ Settings", open=True, visible=True),
+            # Note: additional_inputs_accordion is not a valid parameter in Gradio 6.0 ChatInterface
+            # Components will be displayed in the order provided
             additional_inputs=[
                 mode_radio,
                 hf_model_dropdown,
                 hf_provider_dropdown,
+                graph_mode_radio,
+                use_graph_checkbox,
+                enable_image_input_checkbox,
+                enable_audio_input_checkbox,
+                tts_voice_dropdown,
+                tts_speed_slider,
                 # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters
                 # when user is logged in - they should NOT be added to additional_inputs
             ],
+            additional_outputs=[audio_output],  # Add audio output for TTS
         )
 
     return demo  # type: ignore[no-any-return]
@@ -639,7 +1041,7 @@ def main() -> None:
         # server_name="0.0.0.0",
         # server_port=7860,
         # share=False,
-        mcp_server=False,
+        mcp_server=True,  # Enable MCP server for Claude Desktop integration
         ssr_mode=False,  # Fix for intermittent loading/hydration issues in HF Spaces
     )
 

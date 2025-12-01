@@ -28,11 +28,25 @@ def _get_magentic_orchestrator_class() -> Any:
         ) from e
 
 
+def _get_graph_orchestrator_factory() -> Any:
+    """Import create_graph_orchestrator lazily to avoid circular dependencies."""
+    try:
+        from src.orchestrator.graph_orchestrator import create_graph_orchestrator
+
+        return create_graph_orchestrator
+    except ImportError as e:
+        logger.error("Failed to import create_graph_orchestrator", error=str(e))
+        raise ValueError(
+            "Graph orchestrators require Pydantic Graph. Please check dependencies."
+        ) from e
+
+
 def create_orchestrator(
     search_handler: SearchHandlerProtocol | None = None,
     judge_handler: JudgeHandlerProtocol | None = None,
     config: OrchestratorConfig | None = None,
-    mode: Literal["simple", "magentic", "advanced"] | None = None,
+    mode: Literal["simple", "magentic", "advanced", "iterative", "deep", "auto"] | None = None,
+    oauth_token: str | None = None,
 ) -> Any:
     """
     Create an orchestrator instance.
@@ -41,7 +55,13 @@ def create_orchestrator(
         search_handler: The search handler (required for simple mode)
         judge_handler: The judge handler (required for simple mode)
         config: Optional configuration
-        mode: "simple", "magentic", "advanced" or None (auto-detect)
+        mode: Orchestrator mode - "simple", "advanced", "iterative", "deep", "auto", or None (auto-detect)
+            - "simple": Linear search-judge loop (Free Tier)
+            - "advanced": Multi-agent coordination (Requires OpenAI)
+            - "iterative": Knowledge-gap-driven research (Free Tier)
+            - "deep": Parallel section-based research (Free Tier)
+            - "auto": Intelligent mode detection (Free Tier)
+        oauth_token: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
     Returns:
         Orchestrator instance
@@ -53,6 +73,19 @@ def create_orchestrator(
         orchestrator_cls = _get_magentic_orchestrator_class()
         return orchestrator_cls(
             max_rounds=config.max_iterations if config else 10,
+        )
+
+    # Graph-based orchestrators (iterative, deep, auto)
+    if effective_mode in ("iterative", "deep", "auto"):
+        create_graph_orchestrator = _get_graph_orchestrator_factory()
+        return create_graph_orchestrator(
+            mode=effective_mode,  # type: ignore[arg-type]
+            max_iterations=config.max_iterations if config else 5,
+            max_time_minutes=10,
+            use_graph=True,
+            search_handler=search_handler,
+            judge_handler=judge_handler,
+            oauth_token=oauth_token,
         )
 
     # Simple mode requires handlers
@@ -71,9 +104,11 @@ def _determine_mode(explicit_mode: str | None) -> str:
     if explicit_mode:
         if explicit_mode in ("magentic", "advanced"):
             return "advanced"
+        if explicit_mode in ("iterative", "deep", "auto"):
+            return explicit_mode
         return "simple"
 
-    # Auto-detect: advanced if paid API key available
+    # Auto-detect: advanced if paid API key available, otherwise simple
     if settings.has_openai_key:
         return "advanced"
 

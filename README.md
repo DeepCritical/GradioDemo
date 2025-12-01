@@ -1,5 +1,5 @@
 ---
-title: Critical Deep Resarch
+title: The DETERMINATOR
 emoji: 🐉
 colorFrom: red
 colorTo: yellow
@@ -16,11 +16,19 @@ license: mit
 tags:
   - mcp-in-action-track-enterprise
   - mcp-hackathon
-  - drug-repurposing
+  - deep-research
   - biomedical-ai
   - pydantic-ai
   - llamaindex
   - modal
+  - building-mcp-track-enterprise
+  - building-mcp-track-consumer
+  - mcp-in-action-track-enterprise
+  - mcp-in-action-track-consumer
+  - building-mcp-track-modal
+  - building-mcp-track-blaxel
+  - building-mcp-track-llama-index
+  - building-mcp-track-HUGGINGFACE 
 ---
 
 > [!IMPORTANT]
@@ -35,30 +43,90 @@ tags:
 [![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
 [![Documentation](https://img.shields.io/badge/Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](deepcritical.github.io/GradioDemo/)
 [![Demo](https://img.shields.io/badge/Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
+[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white&label=Watch%20Demo&labelColor=FF0000&color=FF0000)](https://www.youtube.com/watch?v=https://youtu.be/Mb0M83BqgOw)
 [![codecov](https://codecov.io/gh/DeepCritical/GradioDemo/graph/badge.svg?token=B1f05RCGpz)](https://codecov.io/gh/DeepCritical/GradioDemo)
 [![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 
 
 
 </div>
 
-# DeepCritical
+# The DETERMINATOR
 
 ## About
 
-The [Deep Critical Gradio Hackathon Team](### Team) met online in the Alzheimer's Critical Literature Review Group in the Hugging Science initiative. We're building the agent framework we want to use for ai assisted research to [turn the vast amounts of clinical data into cures](https://github.com/DeepCritical/GradioDemo).
+The DETERMINATOR is a powerful generalist deep research agent system that stops at nothing until finding precise answers to complex questions. It uses iterative search-and-judge loops to comprehensively investigate any research question from any domain.
 
-For this hackathon we're proposing a simple yet powerful Deep Research Agent that iteratively looks for the answer until it finds it using general purpose websearch and special purpose retrievers for technical retrievers. 
 
-## Deep Critical In the Medial 
+> For this hackathon we're proposing a simple yet powerful Deep Research Agent that iteratively looks for the answer until it finds it using general purpose websearch and special purpose retrievers for technical retrievers.
+
+## Who We Are & Motivation
+
+We're a group from the `DeepCritical` Group that met in the `hugging-science` discord.
+
+We're enthusiastic about strongly typed and robust pythonic agentic frameworks , currently building ai-assisted multi-agent systems for research automations , like critical literature reviews , clinical data retrival , and bio informatics and computational medicine applications . 
+
+Starting from Magentic Design Patterns for agentic systems , we discovered we could get better results with iterative graphs , orchestrators and planners with magentic agentics as single tools inside iterations.
+
+## Do You Like This App ? 
+
+Please join us @ https://hf.co/spaces/DataQuests/DeepCritical where we will keep maintaining it !
+
+## The DETERMINATOR is Lightweight and POWERFUL
+
+- very accessible (multimodal inputs , audio and text out)
+- fully local embeddings 
+- configurable providers (local/hosted) for websearch
+- all data stays local
+- fully configurable models and huggingface providers with login
+- easily extensible and hackable
+- uses Gradio a lot (clients, mcp , third party huggingface tools)
+- Modal for text-to-speech (remote gpu for "local model")
+- Braxel for statistical analysis (code execution sandbox)
+- Open Source Models from around the 🌐World
+- Using Google Gemma , Qwen , Zai , Llama , Mistral Reasoning Models
+- Nebius , Together , Scaleway , Hyperbolic, Novita , nscale ,  Sambanova , ovh , fireworks, all supported and configurable.
+- 💖 made with love
+
+
+## What Can It Do ? 
+
+- long running tasks (potentially millions of tokens over hours and hours)
+- data processing and rendering
+- statistical analyses 
+- literature reviews 
+- websearch
+- synthetize complex information
+- find hard to find information
+
+## Deep Critical In the Media 
 
 - Social Medial Posts about Deep Critical :
-  - 
+  - 𝕏 [![X](https://x.com/marioaderman/status/1995247432444133471)]
+  - 💼 [![LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7400984658496081920/)]
+  - 𝕏 [![X](https://x.com/viratzzs/status/1995258812165664942)]
+  
+  -💼 [![LinkedIn](https://www.linkedin.com/in/ana-bossler-07304717?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=ios_app)
   -
   -
-  -
-  -
-  -
-  -
+
+> [!IMPORTANT]
+> **IF YOU ARE A JUDGE**
+> 
+> This project was produced with passion by a group of volunteers please check out or documentation and readmes and please do keep reading below for our story
+>
+> - 📚 **Documentation**: See our [technical documentation](https://deepcritical.github.io/GradioDemo/) for detailed information
+> - 📖 **Complete README**: Check out the Github [full README](.github/README.md) for setup, configuration, and contribution guidelines
+> - 🏆 **Hackathon Submission**: Keep reading below for more information about our MCP Hackathon submission
+
+
+**Key Features**:
+- **Generalist**: Handles queries from any domain (medical, technical, business, scientific, etc.)
+- **Automatic Medical Detection**: Automatically determines if medical knowledge sources (PubMed, ClinicalTrials.gov) are needed
+- **Multi-Source Search**: Web search, PubMed, ClinicalTrials.gov, Europe PMC, RAG
+- **Stops at Nothing**: Only stops at configured limits (budget, time, iterations), otherwise continues until finding precise answers
+- **Evidence Synthesis**: Comprehensive reports with proper citations
+
+**Important**: The DETERMINATOR is a research tool that synthesizes evidence. It cannot provide medical advice or answer medical questions directly.
 
 ## Important information
 
@@ -91,30 +159,44 @@ For this hackathon we're proposing a simple yet powerful Deep Research Agent tha
 - [x] **Specialized Research Teams of Agents**: 
 
 ### Team
+- **ZJ**
+    - 💼 [LinkedIn](https://www.linkedin.com/in/josephpollack/)
+- **Mario Aderman**
+    - 🤗 [HuggingFace](https://huggingface.co/SeasonalFall84)
+    - 💼 [LinkedIn](https://www.linkedin.com/in/mario-aderman/)
+    - 𝕏 [X](https://x.com/marioaderman)
+- **Joseph Pollack**
+    - 🤗 [HuggingFace](https://huggingface.co/Tonic)
+    - 💼 [LinkedIn](https://www.linkedin.com/in/josephpollack/)
+    - 𝕏 [X](https://x.com/josephpollack)
+- **Virat Chauran**
+    - 𝕏 [X](https://x.com/viratzzs/)
+    - 💼 [LinkedIn](https://www.linkedin.com/in/viratchauhan/)
+    - 🤗 [HuggingFace](https://huggingface.co/ViratChauhan)
+- **Anna Bossler**
+    -  💼 [LinkedIn](https://www.linkedin.com/in/ana-bossler-07304717)
 
-- ZJ
-- MarioAderman
-- Josephrp
 
 ## Acknowledgements
 
-- McSwaggins
-- Magentic
-- Huggingface
-- Gradio
-- DeepCritical
-- Sponsors
+- [DeepBoner](https://hf.co/spaces/mcp-1st-birthday/deepboner)
+- Magentic Paper
+- [Huggingface](https://hf.co)
+- [Gradio](https://gradio.app)
+- [DeepCritical](https://github.com/DeepCritical)
+- [Modal](https://modal.com)
 - Microsoft
 - Pydantic
 - Llama-index
 - Anthhropic/MCP
-- List of Tools Makers
+- All our Tool Providers
 
 
 ## Links
 
-[![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=🐙%20GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
-[![Documentation](https://img.shields.io/badge/📚%20Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](deepcritical.github.io/GradioDemo/)
-[![Demo](https://img.shields.io/badge/🚀%20Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
+[![GitHub](https://img.shields.io/github/stars/DeepCritical/GradioDemo?style=for-the-badge&logo=github&logoColor=white&label=GitHub&labelColor=181717&color=181717)](https://github.com/DeepCritical/GradioDemo)
+[![Documentation](https://img.shields.io/badge/Docs-0080FF?style=for-the-badge&logo=readthedocs&logoColor=white&labelColor=0080FF&color=0080FF)](deepcritical.github.io/GradioDemo/)
+[![Demo](https://img.shields.io/badge/Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=white&labelColor=FFD21E&color=FFD21E)](https://huggingface.co/spaces/DataQuests/DeepCritical)
+[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white&label=Watch%20Demo&labelColor=FF0000&color=FF0000)](https://www.youtube.com/watch?v=https://youtu.be/Mb0M83BqgOw)
 [![codecov](https://codecov.io/gh/DeepCritical/GradioDemo/graph/badge.svg?token=B1f05RCGpz)](https://codecov.io/gh/DeepCritical/GradioDemo)
 [![Join us on Discord](https://img.shields.io/discord/1109943800132010065?label=Discord&logo=discord&style=flat-square)](https://discord.gg/qdfnvSPcqP) 

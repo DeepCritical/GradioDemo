@@ -1,6 +1,6 @@
 # Examples
 
-This page provides examples of using DeepCritical for various research tasks.
+This page provides examples of using The DETERMINATOR for various research tasks.
 
 ## Basic Research Query
 
@@ -11,7 +11,7 @@ This page provides examples of using DeepCritical for various research tasks.
 What are the latest treatments for Alzheimer's disease?
 ```
 
-**What DeepCritical Does**:
+**What The DETERMINATOR Does**:
 1. Searches PubMed for recent papers
 2. Searches ClinicalTrials.gov for active trials
 3. Evaluates evidence quality
@@ -24,7 +24,7 @@ What are the latest treatments for Alzheimer's disease?
 What clinical trials are investigating metformin for cancer prevention?
 ```
 
-**What DeepCritical Does**:
+**What The DETERMINATOR Does**:
 1. Searches ClinicalTrials.gov for relevant trials
 2. Searches PubMed for supporting literature
 3. Provides trial details and status
@@ -40,7 +40,7 @@ Review the evidence for using metformin as an anti-aging intervention,
 including clinical trials, mechanisms of action, and safety profile.
 ```
 
-**What DeepCritical Does**:
+**What The DETERMINATOR Does**:
 1. Uses deep research mode (multi-section)
 2. Searches multiple sources in parallel
 3. Generates sections on:
@@ -56,7 +56,7 @@ including clinical trials, mechanisms of action, and safety profile.
 Test the hypothesis that regular exercise reduces Alzheimer's disease risk.
 ```
 
-**What DeepCritical Does**:
+**What The DETERMINATOR Does**:
 1. Generates testable hypotheses
 2. Searches for supporting/contradicting evidence
 3. Performs statistical analysis (if Modal configured)
@@ -191,7 +191,7 @@ USE_GRAPH_EXECUTION=true
 ## Next Steps
 
 - Read the [Configuration Guide](../configuration/index.md) for all options
-- Explore the [Architecture Documentation](../architecture/graph-orchestration.md)
+- Explore the [Architecture Documentation](../architecture/graph_orchestration.md)
 - Check out the [API Reference](../api/agents.md) for programmatic usage
 
 
@@ -207,3 +207,12 @@ USE_GRAPH_EXECUTION=true
 
 
 
+
+<<<<<<< Updated upstream
+
+
+
+
+
+=======
+>>>>>>> Stashed changes

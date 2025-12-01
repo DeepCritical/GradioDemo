@@ -664,7 +664,5 @@ No separate Judge Agent needed - manager does it all!
 ## See Also
 
 - [Orchestrators](orchestrators.md) - Overview of all orchestrator patterns
-- [Graph Orchestration](graph-orchestration.md) - Graph-based execution overview
-- [Graph Orchestration (Detailed)](graph_orchestration.md) - Detailed graph architecture
-- [Workflows](workflows.md) - Workflow patterns summary
+- [Graph Orchestration](graph_orchestration.md) - Graph-based execution overview
 - [API Reference - Orchestrators](../api/orchestrators.md) - API documentation

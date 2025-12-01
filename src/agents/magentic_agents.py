@@ -29,7 +29,7 @@ def create_search_agent(chat_client: Any | None = None) -> ChatAgent:
         name="SearchAgent",
         description=(
             "Searches biomedical databases (PubMed, ClinicalTrials.gov, Europe PMC) "
-            "for drug repurposing evidence"
+            "for research evidence"
         ),
         instructions="""You are a biomedical search specialist. When asked to find evidence:
 
@@ -100,7 +100,7 @@ def create_hypothesis_agent(chat_client: Any | None = None) -> ChatAgent:
 
     return ChatAgent(
         name="HypothesisAgent",
-        description="Generates mechanistic hypotheses for drug repurposing",
+        description="Generates mechanistic hypotheses for research investigation",
         instructions="""You are a biomedical hypothesis generator. Based on evidence:
 
 1. Identify the key molecular targets involved

@@ -1,10 +1,10 @@
 # MCP Integration
 
-DeepCritical exposes a Model Context Protocol (MCP) server, allowing you to use its search tools directly from Claude Desktop or other MCP clients.
+The DETERMINATOR exposes a Model Context Protocol (MCP) server, allowing you to use its search tools directly from Claude Desktop or other MCP clients.
 
 ## What is MCP?
 
-The Model Context Protocol (MCP) is a standard for connecting AI assistants to external tools and data sources. DeepCritical implements an MCP server that exposes its search capabilities as MCP tools.
+The Model Context Protocol (MCP) is a standard for connecting AI assistants to external tools and data sources. The DETERMINATOR implements an MCP server that exposes its search capabilities as MCP tools.
 
 ## MCP Server URL
 
@@ -33,14 +33,14 @@ http://localhost:7860/gradio_api/mcp/
 ~/.config/Claude/claude_desktop_config.json
 ```
 
-### 2. Add DeepCritical Server
+### 2. Add The DETERMINATOR Server
 
 Edit `claude_desktop_config.json` and add:
 
 ```json
 {
   "mcpServers": {
-    "deepcritical": {
+    "determinator": {
       "url": "http://localhost:7860/gradio_api/mcp/"
     }
   }
@@ -53,7 +53,7 @@ Close and restart Claude Desktop for changes to take effect.
 
 ### 4. Verify Connection
 
-In Claude Desktop, you should see DeepCritical tools available:
+In Claude Desktop, you should see The DETERMINATOR tools available:
 - `search_pubmed`
 - `search_clinical_trials`
 - `search_biorxiv`
@@ -198,7 +198,8 @@ You can configure multiple DeepCritical instances:
 
 - Learn about [Configuration](../configuration/index.md) for advanced settings
 - Explore [Examples](examples.md) for use cases
-- Read the [Architecture Documentation](../architecture/graph-orchestration.md)
+- Read the [Architecture Documentation](../architecture/graph_orchestration.md)
+
 
 
 

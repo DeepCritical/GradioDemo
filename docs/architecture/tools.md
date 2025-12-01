@@ -160,16 +160,3 @@ search_handler = SearchHandler(
 - [API Reference - Tools](../api/tools.md) - API documentation
 - [Contributing - Implementation Patterns](../contributing/implementation-patterns.md) - Development guidelines
 
-
-
-
-
-
-
-
-
-
-
-
-
-

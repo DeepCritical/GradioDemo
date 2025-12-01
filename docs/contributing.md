@@ -1,6 +1,6 @@
-# Contributing to DeepCritical
+# Contributing to The DETERMINATOR
 
-Thank you for your interest in contributing to DeepCritical! This guide will help you get started.
+Thank you for your interest in contributing to The DETERMINATOR! This guide will help you get started.
 
 ## Table of Contents
 

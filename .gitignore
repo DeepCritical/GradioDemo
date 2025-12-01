@@ -1,4 +1,5 @@
 folder/
+site/
 .cursor/
 .ruff_cache/
 # Python
@@ -73,6 +74,7 @@ htmlcov/
 # Database files
 chroma_db/
 *.sqlite3
+
 
 # Trigger rebuild Wed Nov 26 17:51:41 EST 2025
 .env

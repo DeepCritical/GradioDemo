@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, description="OpenAI API key")
     anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
     llm_provider: Literal["openai", "anthropic", "huggingface"] = Field(
-        default="openai", description="Which LLM provider to use"
+        default="huggingface", description="Which LLM provider to use"
     )
     openai_model: str = Field(default="gpt-5.1", description="OpenAI model name")
     anthropic_model: str = Field(
@@ -138,6 +138,72 @@ class Settings(BaseSettings):
     rag_auto_ingest: bool = Field(
         default=True,
         description="Automatically ingest evidence into RAG",
+    )
+
+    # Audio/TTS Configuration
+    enable_audio_input: bool = Field(
+        default=True,
+        description="Enable audio input (speech-to-text) in multimodal interface",
+    )
+    enable_audio_output: bool = Field(
+        default=True,
+        description="Enable audio output (text-to-speech) for responses",
+    )
+    enable_image_input: bool = Field(
+        default=True,
+        description="Enable image input (OCR) in multimodal interface",
+    )
+    tts_voice: str = Field(
+        default="af_heart",
+        description="TTS voice ID for Kokoro TTS (e.g., af_heart, am_michael)",
+    )
+    tts_speed: float = Field(
+        default=1.0,
+        ge=0.5,
+        le=2.0,
+        description="TTS speech speed multiplier (0.5x to 2.0x)",
+    )
+    tts_gpu: str | None = Field(
+        default=None,
+        description="Modal GPU type for TTS (T4, A10, A100, L4, L40S). None uses default T4.",
+    )
+
+    # STT (Speech-to-Text) Configuration
+    stt_api_url: str | None = Field(
+        default="https://nvidia-canary-1b-v2.hf.space",
+        description="Gradio Space URL for STT service (default: nvidia/canary-1b-v2)",
+    )
+    stt_source_lang: str = Field(
+        default="English",
+        description="Source language for STT (full name like 'English', 'Spanish', etc.)",
+    )
+    stt_target_lang: str = Field(
+        default="English",
+        description="Target language for STT (full name like 'English', 'Spanish', etc.)",
+    )
+
+    # Image OCR Configuration
+    ocr_api_url: str | None = Field(
+        default="https://prithivmlmods-multimodal-ocr3.hf.space",
+        description="Gradio Space URL for OCR service (default: prithivMLmods/Multimodal-OCR3)",
+    )
+
+    # Report File Output Configuration
+    save_reports_to_file: bool = Field(
+        default=True,
+        description="Save generated reports to files (enables file downloads in Gradio)",
+    )
+    report_output_directory: str | None = Field(
+        default=None,
+        description="Directory to save report files. If None, uses system temp directory.",
+    )
+    report_file_format: Literal["md", "md_html", "md_pdf"] = Field(
+        default="md",
+        description="File format(s) to save reports in. 'md' saves only markdown, others save multiple formats.",
+    )
+    report_filename_template: str = Field(
+        default="report_{timestamp}_{query_hash}.md",
+        description="Template for report filenames. Supports {timestamp}, {query_hash}, {date} placeholders.",
     )
 
     @property
