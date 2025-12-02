@@ -101,9 +101,22 @@ def deploy_to_hf_space() -> None:
     hf_username = os.getenv("HF_USERNAME")  # Can be username or organization name
     space_name = os.getenv("HF_SPACE_NAME")
     
-    if not all([hf_token, hf_username, space_name]):
+    # Check which variables are missing and provide helpful error message
+    missing = []
+    if not hf_token:
+        missing.append("HF_TOKEN (should be in repository secrets)")
+    if not hf_username:
+        missing.append("HF_USERNAME (should be in repository variables)")
+    if not space_name:
+        missing.append("HF_SPACE_NAME (should be in repository variables)")
+    
+    if missing:
         raise ValueError(
-            "Missing required environment variables: HF_TOKEN, HF_USERNAME, HF_SPACE_NAME"
+            f"Missing required environment variables: {', '.join(missing)}\n"
+            f"Please configure:\n"
+            f"  - HF_TOKEN in Settings > Secrets and variables > Actions > Secrets\n"
+            f"  - HF_USERNAME in Settings > Secrets and variables > Actions > Variables\n"
+            f"  - HF_SPACE_NAME in Settings > Secrets and variables > Actions > Variables"
         )
     
     # HF_USERNAME can be either a username or organization name

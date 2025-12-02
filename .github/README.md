@@ -3,8 +3,7 @@
 > **You are reading the Github README!**
 > 
 > - 📚 **Documentation**: See our [technical documentation](https://deepcritical.github.io/GradioDemo/) for detailed information
-> - 📖 **Demo README**: Check out the [Demo README](..README.md) for  for more information about our MCP Hackathon submission
-> - 🏆 **Hackathon Submission**: Keep reading below for more information about our MCP Hackathon submission
+> - 📖 **Demo README**: Check out the [Demo README](..README.md) for more information > - 🏆 **Demo**: Kindly consider using our [Free Demo](https://hf.co/DataQuests/GradioDemo)
 
 
 <div align="center">

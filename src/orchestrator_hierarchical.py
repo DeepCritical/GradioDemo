@@ -2,8 +2,14 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import structlog
+
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
 
 from src.agents.judge_agent_llm import LLMSubIterationJudge
 from src.agents.magentic_agents import create_search_agent
@@ -38,8 +44,14 @@ class HierarchicalOrchestrator:
         self.judge = LLMSubIterationJudge()
         self.middleware = SubIterationMiddleware(self.team, self.judge, max_iterations=5)
 
-    async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
-        logger.info("Starting hierarchical orchestrator", query=query)
+    async def run(
+        self, query: str, message_history: list[ModelMessage] | None = None
+    ) -> AsyncGenerator[AgentEvent, None]:
+        logger.info(
+            "Starting hierarchical orchestrator",
+            query=query,
+            has_history=bool(message_history),
+        )
 
         try:
             service = get_embedding_service()
@@ -58,6 +70,8 @@ class HierarchicalOrchestrator:
         async def event_callback(event: AgentEvent) -> None:
             await queue.put(event)
 
+        # Note: middleware.run() may not support message_history yet
+        # Pass query for now, message_history can be added to middleware later if needed
         task_future = asyncio.create_task(self.middleware.run(query, event_callback))
 
         while not task_future.done():

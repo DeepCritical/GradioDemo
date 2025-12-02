@@ -48,6 +48,82 @@ class TestGraphExecutionContext:
         context = GraphExecutionContext(WorkflowState(), BudgetTracker())
         assert not context.has_visited("node1")
         context.mark_visited("node1")
+
+    def test_message_history_initialization(self):
+        """Test message history initialization in context."""
+        from src.middleware.budget_tracker import BudgetTracker
+        from src.middleware.state_machine import WorkflowState
+
+        context = GraphExecutionContext(WorkflowState(), BudgetTracker())
+        assert context.message_history == []
+
+    def test_message_history_with_initial_history(self):
+        """Test context with initial message history."""
+        from src.middleware.budget_tracker import BudgetTracker
+        from src.middleware.state_machine import WorkflowState
+
+        try:
+            from pydantic_ai import ModelRequest
+            from pydantic_ai.messages import UserPromptPart
+
+            messages = [
+                ModelRequest(parts=[UserPromptPart(content="Test message")])
+            ]
+            context = GraphExecutionContext(
+                WorkflowState(), BudgetTracker(), message_history=messages
+            )
+            assert len(context.message_history) == 1
+        except ImportError:
+            pytest.skip("pydantic_ai not available")
+
+    def test_add_message(self):
+        """Test adding messages to context."""
+        from src.middleware.budget_tracker import BudgetTracker
+        from src.middleware.state_machine import WorkflowState
+
+        try:
+            from pydantic_ai import ModelRequest, ModelResponse
+            from pydantic_ai.messages import TextPart, UserPromptPart
+
+            context = GraphExecutionContext(WorkflowState(), BudgetTracker())
+            message1 = ModelRequest(parts=[UserPromptPart(content="Question")])
+            message2 = ModelResponse(parts=[TextPart(content="Answer")])
+            
+            context.add_message(message1)
+            context.add_message(message2)
+            
+            assert len(context.message_history) == 2
+        except ImportError:
+            pytest.skip("pydantic_ai not available")
+
+    def test_get_message_history(self):
+        """Test getting message history with limits."""
+        from src.middleware.budget_tracker import BudgetTracker
+        from src.middleware.state_machine import WorkflowState
+
+        try:
+            from pydantic_ai import ModelRequest
+            from pydantic_ai.messages import UserPromptPart
+
+            messages = [
+                ModelRequest(parts=[UserPromptPart(content=f"Message {i}")])
+                for i in range(10)
+            ]
+            context = GraphExecutionContext(
+                WorkflowState(), BudgetTracker(), message_history=messages
+            )
+            
+            # Get all
+            all_messages = context.get_message_history()
+            assert len(all_messages) == 10
+            
+            # Get limited
+            limited = context.get_message_history(max_messages=5)
+            assert len(limited) == 5
+            # Should be most recent
+            assert limited[0].parts[0].content == "Message 5"
+        except ImportError:
+            pytest.skip("pydantic_ai not available")
         assert context.has_visited("node1")
 
 
