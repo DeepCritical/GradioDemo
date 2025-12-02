@@ -2,10 +2,11 @@
 
 import os
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Set
 
-from huggingface_hub import HfApi, Repository
+from huggingface_hub import HfApi
 
 
 def get_excluded_dirs() -> Set[str]:
@@ -115,32 +116,44 @@ def deploy_to_hf_space() -> None:
     # Initialize HF API
     api = HfApi(token=hf_token)
     
-    # Clone or create repository
+    # Create Space if it doesn't exist
     try:
-        repo = Repository(
-            local_dir=local_dir,
-            clone_from=repo_id,
-            token=hf_token,
-            repo_type="space",
-        )
-        print(f"✅ Cloned existing Space: {repo_id}")
-    except Exception as e:
-        print(f"⚠️  Could not clone Space (may not exist yet): {e}")
+        api.repo_info(repo_id=repo_id, repo_type="space", token=hf_token)
+        print(f"✅ Space exists: {repo_id}")
+    except Exception:
+        print(f"⚠️  Space does not exist, creating: {repo_id}")
         # Create new repository
+        # Note: For organizations, repo_id should be "org/space-name"
+        # For users, repo_id should be "username/space-name"
         api.create_repo(
-            repo_id=space_name,
+            repo_id=repo_id,  # Full repo_id including owner
             repo_type="space",
             space_sdk="gradio",
             token=hf_token,
             exist_ok=True,
         )
-        repo = Repository(
-            local_dir=local_dir,
-            clone_from=repo_id,
-            token=hf_token,
-            repo_type="space",
-        )
         print(f"✅ Created new Space: {repo_id}")
+    
+    # Clone repository using git
+    space_url = f"https://{hf_token}@huggingface.co/spaces/{repo_id}"
+    
+    if Path(local_dir).exists():
+        print(f"🧹 Removing existing {local_dir} directory...")
+        shutil.rmtree(local_dir)
+    
+    print(f"📥 Cloning Space repository...")
+    try:
+        result = subprocess.run(
+            ["git", "clone", space_url, local_dir],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        print(f"✅ Cloned Space repository")
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr if e.stderr else e.stdout if e.stdout else "Unknown error"
+        print(f"❌ Failed to clone Space repository: {error_msg}")
+        raise RuntimeError(f"Git clone failed: {error_msg}") from e
     
     # Get exclusion sets
     excluded_dirs = get_excluded_dirs()
@@ -198,34 +211,68 @@ def deploy_to_hf_space() -> None:
     
     print(f"✅ Copied {files_copied} files and {dirs_copied} directories")
     
-    # Commit and push changes
+    # Commit and push changes using git
     print("💾 Committing changes...")
-    repo.git_add(auto_lfs_track=True)
     
-    # Check if there are changes to commit
+    # Change to the Space directory
+    original_cwd = os.getcwd()
+    os.chdir(local_dir)
+    
     try:
-        # Try to check if repo is clean (may not be available in all versions)
-        if hasattr(repo, "is_repo_clean") and repo.is_repo_clean():
+        # Configure git user (required for commit)
+        subprocess.run(
+            ["git", "config", "user.name", "github-actions[bot]"],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"],
+            check=True,
+            capture_output=True,
+        )
+        
+        # Add all files
+        subprocess.run(
+            ["git", "add", "."],
+            check=True,
+            capture_output=True,
+        )
+        
+        # Check if there are changes to commit
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+        )
+        
+        if result.stdout.strip():
+            # There are changes, commit and push
+            subprocess.run(
+                ["git", "commit", "-m", "Deploy to Hugging Face Space [skip ci]"],
+                check=True,
+                capture_output=True,
+            )
+            print("📤 Pushing to Hugging Face Space...")
+            subprocess.run(
+                ["git", "push"],
+                check=True,
+                capture_output=True,
+            )
+            print("✅ Deployment complete!")
+        else:
+            print("ℹ️  No changes to commit (repository is up to date)")
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr if e.stderr else (e.stdout if e.stdout else str(e))
+        if isinstance(error_msg, bytes):
+            error_msg = error_msg.decode("utf-8", errors="replace")
+        if "nothing to commit" in error_msg.lower():
             print("ℹ️  No changes to commit (repository is up to date)")
         else:
-            repo.git_commit("Deploy to Hugging Face Space [skip ci]")
-            print("📤 Pushing to Hugging Face Space...")
-            repo.git_push()
-            print("✅ Deployment complete!")
-    except Exception as e:
-        # If check fails, try to commit anyway (will fail gracefully if no changes)
-        try:
-            repo.git_commit("Deploy to Hugging Face Space [skip ci]")
-            print("📤 Pushing to Hugging Face Space...")
-            repo.git_push()
-            print("✅ Deployment complete!")
-        except Exception as commit_error:
-            # If commit fails, likely no changes
-            if "nothing to commit" in str(commit_error).lower():
-                print("ℹ️  No changes to commit (repository is up to date)")
-            else:
-                print(f"⚠️  Warning during commit: {commit_error}")
-                raise
+            print(f"⚠️  Error during git operations: {error_msg}")
+            raise RuntimeError(f"Git operation failed: {error_msg}") from e
+    finally:
+        # Return to original directory
+        os.chdir(original_cwd)
     
     print(f"🎉 Successfully deployed to: https://huggingface.co/spaces/{repo_id}")
 
