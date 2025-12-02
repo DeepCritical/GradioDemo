@@ -56,8 +56,10 @@ Searches PubMed for articles.
 **Returns**: List of `Evidence` objects with PubMed articles.
 
 **Raises**:
-- `SearchError`: If search fails
-- `RateLimitError`: If rate limit is exceeded
+- `SearchError`: If search fails (timeout, HTTP error, XML parsing error)
+- `RateLimitError`: If rate limit is exceeded (429 status code)
+
+**Note**: Uses NCBI E-utilities (ESearch → EFetch). Rate limit: 0.34s between requests. Handles single vs. multiple articles.
 
 ## ClinicalTrialsTool
 
@@ -96,10 +98,10 @@ Searches ClinicalTrials.gov for trials.
 
 **Returns**: List of `Evidence` objects with clinical trials.
 
-**Note**: Only returns interventional studies with status: COMPLETED, ACTIVE_NOT_RECRUITING, RECRUITING, ENROLLING_BY_INVITATION
+**Note**: Only returns interventional studies with status: COMPLETED, ACTIVE_NOT_RECRUITING, RECRUITING, ENROLLING_BY_INVITATION. Uses `requests` library (NOT httpx - WAF blocks httpx). Runs in thread pool for async compatibility.
 
 **Raises**:
-- `SearchError`: If search fails
+- `SearchError`: If search fails (HTTP error, request exception)
 
 ## EuropePMCTool
 
@@ -138,16 +140,30 @@ Searches Europe PMC for articles and preprints.
 
 **Returns**: List of `Evidence` objects with articles/preprints.
 
-**Note**: Includes both preprints (marked with `[PREPRINT - Not peer-reviewed]`) and peer-reviewed articles.
+**Note**: Includes both preprints (marked with `[PREPRINT - Not peer-reviewed]`) and peer-reviewed articles. Handles preprint markers. Builds URLs from DOI or PMID.
 
 **Raises**:
-- `SearchError`: If search fails
+- `SearchError`: If search fails (HTTP error, connection error)
 
 ## RAGTool
 
 **Module**: `src.tools.rag_tool`
 
 **Purpose**: Semantic search within collected evidence.
+
+### Initialization
+
+```python
+def __init__(
+    self,
+    rag_service: LlamaIndexRAGService | None = None,
+    oauth_token: str | None = None
+) -> None
+```
+
+**Parameters**:
+- `rag_service`: Optional RAG service instance. If None, will be lazy-initialized.
+- `oauth_token`: Optional OAuth token from HuggingFace login (for RAG LLM)
 
 ### Properties
 
@@ -180,7 +196,10 @@ Searches collected evidence using semantic similarity.
 
 **Returns**: List of `Evidence` objects from collected evidence.
 
-**Note**: Requires evidence to be ingested into RAG service first.
+**Raises**:
+- `ConfigurationError`: If RAG service is unavailable
+
+**Note**: Requires evidence to be ingested into RAG service first. Wraps `LlamaIndexRAGService`. Returns Evidence from RAG results.
 
 ## SearchHandler
 
@@ -188,32 +207,51 @@ Searches collected evidence using semantic similarity.
 
 **Purpose**: Orchestrates parallel searches across multiple tools.
 
-### Methods
-
-#### `search`
+### Initialization
 
 ```python
-async def search(
+def __init__(
     self,
-    query: str,
-    tools: list[SearchTool] | None = None,
-    max_results_per_tool: int = 10
-) -> SearchResult
+    tools: list[SearchTool],
+    timeout: float = 30.0,
+    include_rag: bool = False,
+    auto_ingest_to_rag: bool = True,
+    oauth_token: str | None = None
+) -> None
 ```
+
+**Parameters**:
+- `tools`: List of search tools to use
+- `timeout`: Timeout for each search in seconds (default: 30.0)
+- `include_rag`: Whether to include RAG tool in searches (default: False)
+- `auto_ingest_to_rag`: Whether to automatically ingest results into RAG (default: True)
+- `oauth_token`: Optional OAuth token from HuggingFace login (for RAG LLM)
+
+### Methods
+
+#### `execute`
+
+<!--codeinclude-->
+[SearchHandler.execute](../src/tools/search_handler.py) start_line:86 end_line:86
+<!--/codeinclude-->
 
 Searches multiple tools in parallel.
 
 **Parameters**:
 - `query`: Search query string
-- `tools`: List of tools to use (default: all available tools)
 - `max_results_per_tool`: Maximum results per tool (default: 10)
 
 **Returns**: `SearchResult` with:
+- `query`: The search query
 - `evidence`: Aggregated list of evidence
-- `tool_results`: Results per tool
-- `total_count`: Total number of results
+- `sources_searched`: List of source names searched
+- `total_found`: Total number of results
+- `errors`: List of error messages from failed tools
 
-**Note**: Uses `asyncio.gather()` for parallel execution. Handles tool failures gracefully.
+**Raises**:
+- `SearchError`: If search times out
+
+**Note**: Uses `asyncio.gather()` for parallel execution. Handles tool failures gracefully (returns errors in `SearchResult.errors`). Automatically ingests evidence into RAG if enabled.
 
 ## See Also
 

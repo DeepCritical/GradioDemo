@@ -12,27 +12,19 @@ This page documents the API for DeepCritical agents.
 
 #### `evaluate`
 
-```python
-async def evaluate(
-    self,
-    query: str,
-    background_context: str,
-    conversation_history: Conversation,
-    iteration: int,
-    time_elapsed_minutes: float,
-    max_time_minutes: float
-) -> KnowledgeGapOutput
-```
+<!--codeinclude-->
+[KnowledgeGapAgent.evaluate](../src/agents/knowledge_gap.py) start_line:66 end_line:74
+<!--/codeinclude-->
 
 Evaluates research completeness and identifies outstanding knowledge gaps.
 
 **Parameters**:
 - `query`: Research query string
-- `background_context`: Background context for the query
-- `conversation_history`: Conversation history with previous iterations
-- `iteration`: Current iteration number
-- `time_elapsed_minutes`: Elapsed time in minutes
-- `max_time_minutes`: Maximum time limit in minutes
+- `background_context`: Background context for the query (default: "")
+- `conversation_history`: History of actions, findings, and thoughts as string (default: "")
+- `iteration`: Current iteration number (default: 0)
+- `time_elapsed_minutes`: Elapsed time in minutes (default: 0.0)
+- `max_time_minutes`: Maximum time limit in minutes (default: 10)
 
 **Returns**: `KnowledgeGapOutput` with:
 - `research_complete`: Boolean indicating if research is complete
@@ -48,21 +40,17 @@ Evaluates research completeness and identifies outstanding knowledge gaps.
 
 #### `select_tools`
 
-```python
-async def select_tools(
-    self,
-    query: str,
-    knowledge_gaps: list[str],
-    available_tools: list[str]
-) -> AgentSelectionPlan
-```
+<!--codeinclude-->
+[ToolSelectorAgent.select_tools](../src/agents/tool_selector.py) start_line:78 end_line:84
+<!--/codeinclude-->
 
-Selects tools for addressing knowledge gaps.
+Selects tools for addressing a knowledge gap.
 
 **Parameters**:
+- `gap`: The knowledge gap to address
 - `query`: Research query string
-- `knowledge_gaps`: List of knowledge gaps to address
-- `available_tools`: List of available tool names
+- `background_context`: Optional background context (default: "")
+- `conversation_history`: History of actions, findings, and thoughts as string (default: "")
 
 **Returns**: `AgentSelectionPlan` with list of `AgentTask` objects.
 
@@ -76,23 +64,17 @@ Selects tools for addressing knowledge gaps.
 
 #### `write_report`
 
-```python
-async def write_report(
-    self,
-    query: str,
-    findings: str,
-    output_length: str = "medium",
-    output_instructions: str | None = None
-) -> str
-```
+<!--codeinclude-->
+[WriterAgent.write_report](../src/agents/writer.py) start_line:67 end_line:73
+<!--/codeinclude-->
 
 Generates a markdown report from research findings.
 
 **Parameters**:
 - `query`: Research query string
 - `findings`: Research findings to include in report
-- `output_length`: Desired output length ("short", "medium", "long")
-- `output_instructions`: Additional instructions for report generation
+- `output_length`: Optional description of desired output length (default: "")
+- `output_instructions`: Optional additional instructions for report generation (default: "")
 
 **Returns**: Markdown string with numbered citations.
 
@@ -106,36 +88,25 @@ Generates a markdown report from research findings.
 
 #### `write_next_section`
 
-```python
-async def write_next_section(
-    self,
-    query: str,
-    draft: ReportDraft,
-    section_title: str,
-    section_content: str
-) -> LongWriterOutput
-```
+<!--codeinclude-->
+[LongWriterAgent.write_next_section](../src/agents/long_writer.py) start_line:94 end_line:100
+<!--/codeinclude-->
 
 Writes the next section of a long-form report.
 
 **Parameters**:
-- `query`: Research query string
-- `draft`: Current report draft
-- `section_title`: Title of the section to write
-- `section_content`: Content/guidance for the section
+- `original_query`: The original research query
+- `report_draft`: Current report draft as string (all sections written so far)
+- `next_section_title`: Title of the section to write
+- `next_section_draft`: Draft content for the next section
 
-**Returns**: `LongWriterOutput` with updated draft.
+**Returns**: `LongWriterOutput` with formatted section and references.
 
 #### `write_report`
 
-```python
-async def write_report(
-    self,
-    query: str,
-    report_title: str,
-    report_draft: ReportDraft
-) -> str
-```
+<!--codeinclude-->
+[LongWriterAgent.write_report](../src/agents/long_writer.py) start_line:263 end_line:268
+<!--/codeinclude-->
 
 Generates final report from draft.
 
@@ -156,14 +127,9 @@ Generates final report from draft.
 
 #### `proofread`
 
-```python
-async def proofread(
-    self,
-    query: str,
-    report_title: str,
-    report_draft: ReportDraft
-) -> str
-```
+<!--codeinclude-->
+[ProofreaderAgent.proofread](../src/agents/proofreader.py) start_line:72 end_line:76
+<!--/codeinclude-->
 
 Proofreads and polishes a report draft.
 
@@ -184,21 +150,17 @@ Proofreads and polishes a report draft.
 
 #### `generate_observations`
 
-```python
-async def generate_observations(
-    self,
-    query: str,
-    background_context: str,
-    conversation_history: Conversation
-) -> str
-```
+<!--codeinclude-->
+[ThinkingAgent.generate_observations](../src/agents/thinking.py) start_line:70 end_line:76
+<!--/codeinclude-->
 
 Generates observations from conversation history.
 
 **Parameters**:
 - `query`: Research query string
-- `background_context`: Background context
-- `conversation_history`: Conversation history
+- `background_context`: Optional background context (default: "")
+- `conversation_history`: History of actions, findings, and thoughts as string (default: "")
+- `iteration`: Current iteration number (default: 1)
 
 **Returns**: Observation string.
 
@@ -210,14 +172,11 @@ Generates observations from conversation history.
 
 ### Methods
 
-#### `parse_query`
+#### `parse`
 
-```python
-async def parse_query(
-    self,
-    query: str
-) -> ParsedQuery
-```
+<!--codeinclude-->
+[InputParserAgent.parse](../src/agents/input_parser.py) start_line:82 end_line:82
+<!--/codeinclude-->
 
 Parses and improves a user query.
 
@@ -241,6 +200,7 @@ All agents have factory functions in `src.agent_factory.agents`:
 
 **Parameters**:
 - `model`: Optional Pydantic AI model. If None, uses `get_model()` from settings.
+- `oauth_token`: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
 **Returns**: Agent instance.
 

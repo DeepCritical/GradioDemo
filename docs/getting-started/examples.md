@@ -25,6 +25,7 @@ What clinical trials are investigating metformin for cancer prevention?
 ```
 
 **What The DETERMINATOR Does**:
+
 1. Searches ClinicalTrials.gov for relevant trials
 2. Searches PubMed for supporting literature
 3. Provides trial details and status
@@ -35,6 +36,7 @@ What clinical trials are investigating metformin for cancer prevention?
 ### Example 3: Comprehensive Review
 
 **Query**:
+
 ```
 Review the evidence for using metformin as an anti-aging intervention, 
 including clinical trials, mechanisms of action, and safety profile.
@@ -194,25 +196,3 @@ USE_GRAPH_EXECUTION=true
 - Explore the [Architecture Documentation](../architecture/graph_orchestration.md)
 - Check out the [API Reference](../api/agents.md) for programmatic usage
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<<<<<<< Updated upstream
-
-
-
-
-
-=======
->>>>>>> Stashed changes

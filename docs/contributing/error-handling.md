@@ -1,6 +1,6 @@
 # Error Handling & Logging
 
-This document outlines error handling and logging conventions for DeepCritical.
+This document outlines error handling and logging conventions for The DETERMINATOR.
 
 ## Exception Hierarchy
 

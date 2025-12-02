@@ -134,10 +134,11 @@ The graph orchestrator (`src/orchestrator/graph_orchestrator.py`) implements a f
 - **Research Flows**: Iterative and deep research patterns (`src/orchestrator/research_flow.py`)
 - **Graph Builder**: Graph construction utilities (`src/agent_factory/graph_builder.py`)
 - **Agents**: Pydantic AI agents (`src/agents/`, `src/agent_factory/agents.py`)
-- **Search Tools**: PubMed, ClinicalTrials.gov, Europe PMC, RAG (`src/tools/`)
+- **Search Tools**: Neo4j knowledge graph, PubMed, ClinicalTrials.gov, Europe PMC, Web search, RAG (`src/tools/`)
 - **Judge Handler**: LLM-based evidence assessment (`src/agent_factory/judges.py`)
 - **Embeddings**: Semantic search & deduplication (`src/services/embeddings.py`)
 - **Statistical Analyzer**: Modal sandbox execution (`src/services/statistical_analyzer.py`)
+- **Multimodal Processing**: Image OCR and audio STT/TTS services (`src/services/multimodal_processing.py`, `src/services/audio_processing.py`)
 - **Middleware**: State management, budget tracking, workflow coordination (`src/middleware/`)
 - **MCP Tools**: Claude Desktop integration (`src/mcp_tools.py`)
 - **Gradio UI**: Web interface with MCP server and streaming (`src/app.py`)
@@ -169,29 +170,25 @@ The system supports complex research workflows through:
 
 - **Orchestrator Factory** (`src/orchestrator_factory.py`):
   - Auto-detects mode: "advanced" if OpenAI key available, else "simple"
-  - Supports explicit mode selection: "simple", "magentic", "advanced"
+  - Supports explicit mode selection: "simple", "magentic" (alias for "advanced"), "advanced", "iterative", "deep", "auto"
   - Lazy imports for optional dependencies
 
-- **Research Modes**:
-  - `iterative`: Single research loop
-  - `deep`: Multi-section parallel research
-  - `auto`: Auto-detect based on query complexity
+- **Orchestrator Modes** (selected in UI or via factory):
+  - `simple`: Legacy linear search-judge loop (Free Tier)
+  - `advanced` or `magentic`: Multi-agent coordination using Microsoft Agent Framework (requires OpenAI API key)
+  - `iterative`: Knowledge-gap-driven research with single loop (Free Tier)
+  - `deep`: Parallel section-based research with planning (Free Tier)
+  - `auto`: Intelligent mode detection based on query complexity (Free Tier)
+
+- **Graph Research Modes** (used within graph orchestrator, separate from orchestrator mode):
+  - `iterative`: Single research loop pattern
+  - `deep`: Multi-section parallel research pattern
+  - `auto`: Auto-detect pattern based on query complexity
 
 - **Execution Modes**:
   - `use_graph=True`: Graph-based execution (parallel, conditional routing)
   - `use_graph=False`: Agent chains (sequential, backward compatible)
 
-
-
-
-
-
-
-
-
-
-
-
-
+**Note**: The UI provides separate controls for orchestrator mode and graph research mode. When using graph-based orchestrators (iterative/deep/auto), the graph research mode determines the specific pattern used within the graph execution.
 
 

@@ -7,6 +7,7 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 ### Multi-Source Search
 
 - **General Web Search**: Search general knowledge sources for any domain
+- **Neo4j Knowledge Graph**: Search structured knowledge graph for papers and disease relationships
 - **PubMed**: Search peer-reviewed biomedical literature via NCBI E-utilities (automatically used when medical knowledge needed)
 - **ClinicalTrials.gov**: Search interventional clinical trials (automatically used when medical knowledge needed)
 - **Europe PMC**: Search preprints and peer-reviewed articles (includes bioRxiv/medRxiv)
@@ -21,9 +22,11 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 
 ### Authentication
 
-- **HuggingFace OAuth**: Sign in with HuggingFace account for automatic API token usage
-- **Manual API Keys**: Support for OpenAI, Anthropic, and HuggingFace API keys
-- **Free Tier Support**: Automatic fallback to HuggingFace Inference API
+- **REQUIRED**: Authentication is mandatory before using the application
+- **HuggingFace OAuth**: Sign in with HuggingFace account for automatic API token usage (recommended)
+- **Manual API Keys**: Support for HuggingFace API keys via environment variables (`HF_TOKEN` or `HUGGINGFACE_API_KEY`)
+- **Free Tier Support**: Automatic fallback to HuggingFace Inference API (public models) when no API key is available
+- **Authentication Check**: The application will display an error message if authentication is not provided
 
 ### Secure Code Execution
 
@@ -44,8 +47,24 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 - **Parallel Research Loops**: Run multiple research tasks concurrently
 - **Iterative Research**: Single-loop research with search-judge-synthesize cycles that continues until precise answers are found
 - **Deep Research**: Multi-section parallel research with planning and synthesis
-- **Magentic Orchestration**: Multi-agent coordination using Microsoft Agent Framework
+- **Magentic Orchestration**: Multi-agent coordination using Microsoft Agent Framework (alias: "advanced" mode)
 - **Stops at Nothing**: Only stops at configured limits (budget, time, iterations), otherwise continues until finding precise answers
+
+**Orchestrator Modes**:
+- `simple`: Legacy linear search-judge loop
+- `advanced` (or `magentic`): Multi-agent coordination (requires OpenAI API key)
+- `iterative`: Knowledge-gap-driven research with single loop
+- `deep`: Parallel section-based research with planning
+- `auto`: Intelligent mode detection based on query complexity
+
+**Graph Research Modes** (used within graph orchestrator):
+- `iterative`: Single research loop pattern
+- `deep`: Multi-section parallel research pattern
+- `auto`: Auto-detect pattern based on query complexity
+
+**Execution Modes**:
+- `use_graph=True`: Graph-based execution with parallel and conditional routing
+- `use_graph=False`: Agent chains with sequential execution (backward compatible)
 
 ### Real-Time Streaming
 
@@ -66,6 +85,16 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 - **Evidence Deduplication**: Automatic URL-based deduplication
 - **Conversation History**: Track iteration history and agent interactions
 - **State Synchronization**: Share evidence across parallel loops
+
+### Multimodal Input & Output
+
+- **Image Input (OCR)**: Upload images and extract text using optical character recognition
+- **Audio Input (STT)**: Record or upload audio files and transcribe to text using speech-to-text
+- **Audio Output (TTS)**: Generate audio responses with text-to-speech synthesis
+- **Configurable Settings**: Enable/disable multimodal features via sidebar settings
+- **Voice Selection**: Choose from multiple TTS voices (American English: af_*, am_*)
+- **Speech Speed Control**: Adjust TTS speech speed (0.5x to 2.0x)
+- **Multimodal Processing Service**: Integrated service for processing images and audio files
 
 ## Advanced Features
 
@@ -108,10 +137,12 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 
 ### Gradio Interface
 
-- **Real-Time Chat**: Interactive chat interface
+- **Real-Time Chat**: Interactive chat interface with multimodal support
 - **Streaming Updates**: Live progress updates
 - **Accordion UI**: Organized display of pending/done operations
 - **OAuth Integration**: Seamless HuggingFace authentication
+- **Multimodal Input**: Support for text, images, and audio input in the same interface
+- **Sidebar Settings**: Configuration accordions for research, multimodal, and audio settings
 
 ### MCP Server
 
@@ -135,18 +166,4 @@ The DETERMINATOR provides a comprehensive set of features for AI-assisted resear
 - **Code Examples**: Extensive code examples
 - **Architecture Diagrams**: Visual architecture documentation
 - **API Reference**: Complete API documentation
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
