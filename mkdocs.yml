@@ -59,6 +59,8 @@ plugins:
   - codeinclude
   - git-revision-date-localized:
       enable_creation_date: true
+      enable_git_follow: false  # Disable follow to avoid timestamp ordering issues
+      strict: false  # Bypass warnings about timestamp ordering issues
       type: timeago  # Shows "2 days ago" format
       fallback_to_build_date: true
   - minify:
