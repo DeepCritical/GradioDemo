@@ -37,7 +37,13 @@ from src.tools.pubmed import PubMedTool
 from src.tools.search_handler import SearchHandler
 from src.tools.neo4j_search import Neo4jSearchTool
 from src.utils.config import settings
+from src.utils.message_history import convert_gradio_to_message_history
 from src.utils.models import AgentEvent, OrchestratorConfig
+
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
 
 logger = structlog.get_logger()
 
@@ -469,6 +475,7 @@ async def yield_auth_messages(
 async def handle_orchestrator_events(
     orchestrator: Any,
     message: str,
+    conversation_history: list[ModelMessage] | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """
     Handle orchestrator events and yield ChatMessages.
@@ -476,6 +483,7 @@ async def handle_orchestrator_events(
     Args:
         orchestrator: The orchestrator instance
         message: The research question
+        conversation_history: Optional user conversation history
 
     Yields:
         ChatMessage objects from orchestrator events
@@ -483,7 +491,7 @@ async def handle_orchestrator_events(
     # Track pending accordions for real-time updates
     pending_accordions: dict[str, str] = {}  # title -> accumulated content
 
-    async for event in orchestrator.run(message):
+    async for event in orchestrator.run(message, message_history=conversation_history):
         # Convert event to ChatMessage with metadata
         chat_msg = event_to_chat_message(event)
 
@@ -702,11 +710,21 @@ async def research_agent(
             "content": f"🧠 **Backend**: {backend_name}\n\n",
         }
 
+        # Convert Gradio history to message history
+        message_history = convert_gradio_to_message_history(history) if history else None
+        if message_history:
+            logger.info(
+                "Using conversation history",
+                turns=len(message_history) // 2,  # Approximate turn count
+            )
+
         # Handle orchestrator events and generate audio output
         audio_output_data: tuple[int, np.ndarray] | None = None
         final_message = ""
 
-        async for msg in handle_orchestrator_events(orchestrator, processed_text):
+        async for msg in handle_orchestrator_events(
+            orchestrator, processed_text, conversation_history=message_history
+        ):
             # Track final message for TTS
             if isinstance(msg, dict) and msg.get("role") == "assistant":
                 content = msg.get("content", "")

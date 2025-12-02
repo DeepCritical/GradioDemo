@@ -30,9 +30,12 @@ jobs:
       
       - name: Deploy to Hugging Face Space
         env:
+          # Token from secrets (sensitive data)
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_USERNAME: ${{ secrets.HF_USERNAME }}
-          HF_SPACE_NAME: ${{ secrets.HF_SPACE_NAME }}
+          # Username/Organization from repository variables (non-sensitive)
+          HF_USERNAME: ${{ vars.HF_USERNAME }}
+          # Space name from repository variables (non-sensitive)
+          HF_SPACE_NAME: ${{ vars.HF_SPACE_NAME }}
         run: |
           python .github/scripts/deploy_to_hf_space.py
       
@@ -40,5 +43,5 @@ jobs:
         if: success()
         run: |
           echo "✅ Deployment completed successfully!"
-          echo "Space URL: https://huggingface.co/spaces/${{ secrets.HF_USERNAME }}/${{ secrets.HF_SPACE_NAME }}"
+          echo "Space URL: https://huggingface.co/spaces/${{ vars.HF_USERNAME }}/${{ vars.HF_SPACE_NAME }}"
 

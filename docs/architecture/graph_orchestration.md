@@ -4,6 +4,44 @@
 
 DeepCritical implements a graph-based orchestration system for research workflows using Pydantic AI agents as nodes. This enables better parallel execution, conditional routing, and state management compared to simple agent chains.
 
+## Conversation History
+
+DeepCritical supports multi-turn conversations through Pydantic AI's native message history format. The system maintains two types of history:
+
+1. **User Conversation History**: Multi-turn user interactions (from Gradio chat interface) stored as `list[ModelMessage]`
+2. **Research Iteration History**: Internal research process state (existing `Conversation` model)
+
+### Message History Flow
+
+```
+Gradio Chat History → convert_gradio_to_message_history() → GraphOrchestrator.run(message_history)
+    ↓
+GraphExecutionContext (stores message_history)
+    ↓
+Agent Nodes (receive message_history via agent.run())
+    ↓
+WorkflowState (persists user_message_history)
+```
+
+### Usage
+
+Message history is automatically converted from Gradio format and passed through the orchestrator:
+
+```python
+# In app.py - automatic conversion
+message_history = convert_gradio_to_message_history(history) if history else None
+async for event in orchestrator.run(query, message_history=message_history):
+    yield event
+```
+
+Agents receive message history through their `run()` methods:
+
+```python
+# In agent execution
+if message_history:
+    result = await agent.run(input_data, message_history=message_history)
+```
+
 ## Graph Patterns
 
 ### Iterative Research Graph

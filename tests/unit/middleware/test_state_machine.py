@@ -12,6 +12,14 @@ from src.middleware.state_machine import (
 )
 from src.utils.models import Citation, Conversation, Evidence, IterationData
 
+try:
+    from pydantic_ai import ModelRequest, ModelResponse
+    from pydantic_ai.messages import TextPart, UserPromptPart
+
+    _PYDANTIC_AI_AVAILABLE = True
+except ImportError:
+    _PYDANTIC_AI_AVAILABLE = False
+
 
 @pytest.mark.unit
 class TestWorkflowState:
@@ -142,6 +150,49 @@ class TestWorkflowState:
 
         assert len(results) == 1
         assert results[0].citation.authors == []
+
+    @pytest.mark.skipif(not _PYDANTIC_AI_AVAILABLE, reason="pydantic_ai not available")
+    def test_user_message_history_initialization(self) -> None:
+        """WorkflowState should initialize with empty user_message_history."""
+        state = WorkflowState()
+        assert state.user_message_history == []
+
+    @pytest.mark.skipif(not _PYDANTIC_AI_AVAILABLE, reason="pydantic_ai not available")
+    def test_add_user_message(self) -> None:
+        """add_user_message should add messages to history."""
+        state = WorkflowState()
+        message = ModelRequest(parts=[UserPromptPart(content="Test message")])
+        state.add_user_message(message)
+        assert len(state.user_message_history) == 1
+        assert state.user_message_history[0] == message
+
+    @pytest.mark.skipif(not _PYDANTIC_AI_AVAILABLE, reason="pydantic_ai not available")
+    def test_get_user_history(self) -> None:
+        """get_user_history should return message history."""
+        state = WorkflowState()
+        for i in range(5):
+            message = ModelRequest(parts=[UserPromptPart(content=f"Message {i}")])
+            state.add_user_message(message)
+        
+        # Get all history
+        all_history = state.get_user_history()
+        assert len(all_history) == 5
+        
+        # Get limited history
+        limited = state.get_user_history(max_messages=3)
+        assert len(limited) == 3
+        # Should be most recent messages
+        assert limited[0].parts[0].content == "Message 2"
+
+    @pytest.mark.skipif(not _PYDANTIC_AI_AVAILABLE, reason="pydantic_ai not available")
+    def test_init_workflow_state_with_message_history(self) -> None:
+        """init_workflow_state should accept message_history parameter."""
+        messages = [
+            ModelRequest(parts=[UserPromptPart(content="Question")]),
+            ModelResponse(parts=[TextPart(content="Answer")]),
+        ]
+        state = init_workflow_state(message_history=messages)
+        assert len(state.user_message_history) == 2
 
 
 @pytest.mark.unit
@@ -354,6 +405,9 @@ class TestContextVarIsolation:
         assert len(state2.evidence) == 1
         assert state1.evidence[0].citation.url == "https://example.com/1"
         assert state2.evidence[0].citation.url == "https://example.com/2"
+
+
+
 
 
 

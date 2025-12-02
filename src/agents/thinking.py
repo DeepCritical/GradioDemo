@@ -9,6 +9,11 @@ from typing import Any
 import structlog
 from pydantic_ai import Agent
 
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
+
 from src.agent_factory.judges import get_model
 from src.utils.exceptions import ConfigurationError
 
@@ -72,6 +77,7 @@ class ThinkingAgent:
         query: str,
         background_context: str = "",
         conversation_history: str = "",
+        message_history: list[ModelMessage] | None = None,
         iteration: int = 1,
     ) -> str:
         """
@@ -80,7 +86,8 @@ class ThinkingAgent:
         Args:
             query: The original research query
             background_context: Optional background context
-            conversation_history: History of actions, findings, and thoughts
+            conversation_history: History of actions, findings, and thoughts (backward compat)
+            message_history: Optional user conversation history (Pydantic AI format)
             iteration: Current iteration number
 
         Returns:
@@ -110,8 +117,11 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
 """
 
         try:
-            # Run the agent
-            result = await self.agent.run(user_message)
+            # Run the agent with message_history if provided
+            if message_history:
+                result = await self.agent.run(user_message, message_history=message_history)
+            else:
+                result = await self.agent.run(user_message)
             observations = result.output
 
             self.logger.info("Observations generated", length=len(observations))

@@ -10,6 +10,11 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import structlog
 
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
+
 from src.agent_factory.agents import (
     create_input_parser_agent,
     create_knowledge_gap_agent,
@@ -44,12 +49,18 @@ logger = structlog.get_logger()
 class GraphExecutionContext:
     """Context for managing graph execution state."""
 
-    def __init__(self, state: WorkflowState, budget_tracker: BudgetTracker) -> None:
+    def __init__(
+        self,
+        state: WorkflowState,
+        budget_tracker: BudgetTracker,
+        message_history: list[ModelMessage] | None = None,
+    ) -> None:
         """Initialize execution context.
 
         Args:
             state: Current workflow state
             budget_tracker: Budget tracker instance
+            message_history: Optional user conversation history
         """
         self.current_node: str = ""
         self.visited_nodes: set[str] = set()
@@ -57,6 +68,7 @@ class GraphExecutionContext:
         self.state = state
         self.budget_tracker = budget_tracker
         self.iteration_count = 0
+        self.message_history: list[ModelMessage] = message_history or []
 
     def set_node_result(self, node_id: str, result: Any) -> None:
         """Store result from node execution.
@@ -107,6 +119,31 @@ class GraphExecutionContext:
             data: Data to pass to updater
         """
         self.state = updater(self.state, data)
+
+    def add_message(self, message: ModelMessage) -> None:
+        """Add a message to the history.
+
+        Args:
+            message: Message to add
+        """
+        self.message_history.append(message)
+
+    def get_message_history(self, max_messages: int | None = None) -> list[ModelMessage]:
+        """Get message history, optionally truncated.
+
+        Args:
+            max_messages: Maximum messages to return (None for all)
+
+        Returns:
+            List of messages
+        """
+        if max_messages is None:
+            return self.message_history.copy()
+        return (
+            self.message_history[-max_messages:]
+            if len(self.message_history) > max_messages
+            else self.message_history.copy()
+        )
 
 
 class GraphOrchestrator:
@@ -174,12 +211,15 @@ class GraphOrchestrator:
                 return None
         return self._file_service
 
-    async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
+    async def run(
+        self, query: str, message_history: list[ModelMessage] | None = None
+    ) -> AsyncGenerator[AgentEvent, None]:
         """
         Run the research workflow.
 
         Args:
             query: The user's research query
+            message_history: Optional user conversation history
 
         Yields:
             AgentEvent objects for real-time UI updates
@@ -189,6 +229,7 @@ class GraphOrchestrator:
             query=query[:100],
             mode=self.mode,
             use_graph=self.use_graph,
+            has_history=bool(message_history),
         )
 
         yield AgentEvent(
@@ -205,10 +246,10 @@ class GraphOrchestrator:
 
             # Use graph execution if enabled, otherwise fall back to agent chains
             if self.use_graph:
-                async for event in self._run_with_graph(query, research_mode):
+                async for event in self._run_with_graph(query, research_mode, message_history):
                     yield event
             else:
-                async for event in self._run_with_chains(query, research_mode):
+                async for event in self._run_with_chains(query, research_mode, message_history):
                     yield event
 
         except Exception as e:
@@ -220,13 +261,17 @@ class GraphOrchestrator:
             )
 
     async def _run_with_graph(
-        self, query: str, research_mode: Literal["iterative", "deep"]
+        self,
+        query: str,
+        research_mode: Literal["iterative", "deep"],
+        message_history: list[ModelMessage] | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         """Run workflow using graph execution.
 
         Args:
             query: The research query
             research_mode: The research mode
+            message_history: Optional user conversation history
 
         Yields:
             AgentEvent objects
@@ -235,7 +280,10 @@ class GraphOrchestrator:
         from src.services.embeddings import get_embedding_service
 
         embedding_service = get_embedding_service()
-        state = init_workflow_state(embedding_service=embedding_service)
+        state = init_workflow_state(
+            embedding_service=embedding_service,
+            message_history=message_history,
+        )
         budget_tracker = BudgetTracker()
         budget_tracker.create_budget(
             loop_id="graph_execution",
@@ -245,7 +293,11 @@ class GraphOrchestrator:
         )
         budget_tracker.start_timer("graph_execution")
 
-        context = GraphExecutionContext(state, budget_tracker)
+        context = GraphExecutionContext(
+            state,
+            budget_tracker,
+            message_history=message_history or [],
+        )
 
         # Build graph
         self._graph = await self._build_graph(research_mode)
@@ -255,13 +307,17 @@ class GraphOrchestrator:
             yield event
 
     async def _run_with_chains(
-        self, query: str, research_mode: Literal["iterative", "deep"]
+        self,
+        query: str,
+        research_mode: Literal["iterative", "deep"],
+        message_history: list[ModelMessage] | None = None,
     ) -> AsyncGenerator[AgentEvent, None]:
         """Run workflow using agent chains (backward compatibility).
 
         Args:
             query: The research query
             research_mode: The research mode
+            message_history: Optional user conversation history
 
         Yields:
             AgentEvent objects
@@ -282,7 +338,7 @@ class GraphOrchestrator:
                 )
 
             try:
-                final_report = await self._iterative_flow.run(query)
+                final_report = await self._iterative_flow.run(query, message_history=message_history)
             except Exception as e:
                 self.logger.error("Iterative flow failed", error=str(e), exc_info=True)
                 # Yield error event - outer handler will also catch and yield error event
@@ -318,7 +374,7 @@ class GraphOrchestrator:
                 )
 
             try:
-                final_report = await self._deep_flow.run(query)
+                final_report = await self._deep_flow.run(query, message_history=message_history)
             except Exception as e:
                 self.logger.error("Deep flow failed", error=str(e), exc_info=True)
                 # Yield error event before re-raising so test can capture it
@@ -862,9 +918,26 @@ class GraphOrchestrator:
         if node.input_transformer:
             input_data = node.input_transformer(input_data)
 
+        # Get message history from context (limit to most recent 10 messages for token efficiency)
+        message_history = context.get_message_history(max_messages=10)
+
         # Execute agent with error handling
         try:
-            result = await node.agent.run(input_data)
+            # Pass message_history if available (Pydantic AI agents support this)
+            if message_history:
+                result = await node.agent.run(input_data, message_history=message_history)
+            else:
+                result = await node.agent.run(input_data)
+            
+            # Accumulate new messages from agent result if available
+            if hasattr(result, "new_messages"):
+                try:
+                    new_messages = result.new_messages()
+                    for msg in new_messages:
+                        context.add_message(msg)
+                except Exception as e:
+                    # Don't fail if message accumulation fails
+                    self.logger.debug("Failed to accumulate messages from agent result", error=str(e))
         except Exception as e:
             # Handle validation errors and API errors for planner node
             if node.node_id == "planner":
