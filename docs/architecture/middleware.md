@@ -18,8 +18,8 @@ DeepCritical uses middleware for state management, budget tracking, and workflow
 - `embedding_service: Any`: Embedding service for semantic search
 
 **Methods**:
-- `add_evidence(evidence: Evidence)`: Adds evidence with URL-based deduplication
-- `async search_related(query: str, top_k: int = 5) -> list[Evidence]`: Semantic search
+- `add_evidence(new_evidence: list[Evidence]) -> int`: Adds evidence with URL-based deduplication. Returns the number of new items added (excluding duplicates).
+- `async search_related(query: str, n_results: int = 5) -> list[Evidence]`: Semantic search for related evidence using embedding service
 
 **Initialization**:
 
@@ -30,7 +30,7 @@ DeepCritical uses middleware for state management, budget tracking, and workflow
 **Access**:
 
 <!--codeinclude-->
-[Get Workflow State](../src/middleware/state_machine.py) start_line:112 end_line:125
+[Get Workflow State](../src/middleware/state_machine.py) start_line:115 end_line:129
 <!--/codeinclude-->
 
 ## Workflow Manager
@@ -40,10 +40,10 @@ DeepCritical uses middleware for state management, budget tracking, and workflow
 **Purpose**: Coordinates parallel research loops
 
 **Methods**:
-- `add_loop(loop: ResearchLoop)`: Add a research loop to manage
-- `async run_loops_parallel() -> list[ResearchLoop]`: Run all loops in parallel
-- `update_loop_status(loop_id: str, status: str)`: Update loop status
-- `sync_loop_evidence_to_state()`: Synchronize evidence from loops to global state
+- `async add_loop(loop_id: str, query: str) -> ResearchLoop`: Add a new research loop to manage
+- `async run_loops_parallel(loop_configs: list[dict], loop_func: Callable, judge_handler: Any | None = None, budget_tracker: Any | None = None) -> list[Any]`: Run multiple research loops in parallel. Takes configuration dicts and a loop function.
+- `async update_loop_status(loop_id: str, status: LoopStatus, error: str | None = None)`: Update loop status
+- `async sync_loop_evidence_to_state(loop_id: str)`: Synchronize evidence from a specific loop to global state
 
 **Features**:
 - Uses `asyncio.gather()` for parallel execution
@@ -56,9 +56,22 @@ DeepCritical uses middleware for state management, budget tracking, and workflow
 from src.middleware.workflow_manager import WorkflowManager
 
 manager = WorkflowManager()
-manager.add_loop(loop1)
-manager.add_loop(loop2)
-completed_loops = await manager.run_loops_parallel()
+await manager.add_loop("loop1", "Research query 1")
+await manager.add_loop("loop2", "Research query 2")
+
+async def run_research(config: dict) -> str:
+    loop_id = config["loop_id"]
+    query = config["query"]
+    # ... research logic ...
+    return "report"
+
+results = await manager.run_loops_parallel(
+    loop_configs=[
+        {"loop_id": "loop1", "query": "Research query 1"},
+        {"loop_id": "loop2", "query": "Research query 2"},
+    ],
+    loop_func=run_research,
+)
 ```
 
 ## Budget Tracker
@@ -73,13 +86,13 @@ completed_loops = await manager.run_loops_parallel()
 - **Iterations**: Number of iterations
 
 **Methods**:
-- `create_budget(token_limit, time_limit_seconds, iterations_limit) -> BudgetStatus`
-- `add_tokens(tokens: int)`: Add token usage
-- `start_timer()`: Start time tracking
-- `update_timer()`: Update elapsed time
-- `increment_iteration()`: Increment iteration count
-- `check_budget() -> BudgetStatus`: Check current budget status
-- `can_continue() -> bool`: Check if research can continue
+- `create_budget(loop_id: str, tokens_limit: int = 100000, time_limit_seconds: float = 600.0, iterations_limit: int = 10) -> BudgetStatus`: Create a budget for a specific loop
+- `add_tokens(loop_id: str, tokens: int)`: Add token usage to a loop's budget
+- `start_timer(loop_id: str)`: Start time tracking for a loop
+- `update_timer(loop_id: str)`: Update elapsed time for a loop
+- `increment_iteration(loop_id: str)`: Increment iteration count for a loop
+- `check_budget(loop_id: str) -> tuple[bool, str]`: Check if a loop's budget has been exceeded. Returns (exceeded: bool, reason: str)
+- `can_continue(loop_id: str) -> bool`: Check if a loop can continue based on budget
 
 **Token Estimation**:
 - `estimate_tokens(text: str) -> int`: ~4 chars per token
@@ -91,13 +104,20 @@ from src.middleware.budget_tracker import BudgetTracker
 
 tracker = BudgetTracker()
 budget = tracker.create_budget(
-    token_limit=100000,
+    loop_id="research_loop",
+    tokens_limit=100000,
     time_limit_seconds=600,
     iterations_limit=10
 )
-tracker.start_timer()
+tracker.start_timer("research_loop")
 # ... research operations ...
-if not tracker.can_continue():
+tracker.add_tokens("research_loop", 5000)
+tracker.update_timer("research_loop")
+exceeded, reason = tracker.check_budget("research_loop")
+if exceeded:
+    # Budget exceeded, stop research
+    pass
+if not tracker.can_continue("research_loop"):
     # Budget exceeded, stop research
     pass
 ```

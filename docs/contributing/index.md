@@ -1,6 +1,8 @@
-# Contributing to DeepCritical
+# Contributing to The DETERMINATOR
 
-Thank you for your interest in contributing to DeepCritical! This guide will help you get started.
+Thank you for your interest in contributing to The DETERMINATOR! This guide will help you get started.
+
+> **Note on Project Names**: "The DETERMINATOR" is the product name, "DeepCritical" is the organization/project name, and "determinator" is the Python package name.
 
 ## Git Workflow
 
@@ -10,44 +12,138 @@ Thank you for your interest in contributing to DeepCritical! This guide will hel
 - **NEVER** push directly to `main` or `dev` on HuggingFace
 - GitHub is source of truth; HuggingFace is for deployment
 
+## Repository Information
+
+- **GitHub Repository**: [`DeepCritical/GradioDemo`](https://github.com/DeepCritical/GradioDemo) (source of truth, PRs, code review)
+- **HuggingFace Space**: [`DataQuests/DeepCritical`](https://huggingface.co/spaces/DataQuests/DeepCritical) (deployment/demo)
+- **Package Name**: `determinator` (Python package name in `pyproject.toml`)
+
+### Dual Repository Setup
+
+This project uses a dual repository setup:
+
+- **GitHub (`DeepCritical/GradioDemo`)**: Source of truth for code, PRs, and code review
+- **HuggingFace (`DataQuests/DeepCritical`)**: Deployment target for the Gradio demo
+
+#### Remote Configuration
+
+When cloning, set up remotes as follows:
+
+```bash
+# Clone from GitHub
+git clone https://github.com/DeepCritical/GradioDemo.git
+cd GradioDemo
+
+# Add HuggingFace remote (optional, for deployment)
+git remote add huggingface-upstream https://huggingface.co/spaces/DataQuests/DeepCritical
+```
+
+**Important**: Never push directly to `main` or `dev` on HuggingFace. Always work through GitHub PRs. GitHub is the source of truth; HuggingFace is for deployment/demo only.
+
+## Package Manager
+
+This project uses [`uv`](https://github.com/astral-sh/uv) as the package manager. All commands should be prefixed with `uv run` to ensure they run in the correct environment.
+
+### Installation
+
+```bash
+# Install uv if you haven't already (recommended: standalone installer)
+# Unix/macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell):
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Alternative: pipx install uv
+# Or: pip install uv
+
+# Sync all dependencies including dev extras
+uv sync --all-extras
+
+# Install pre-commit hooks
+uv run pre-commit install
+```
+
 ## Development Commands
 
 ```bash
-make install      # Install dependencies + pre-commit
-make check        # Lint + typecheck + test (MUST PASS)
-make test         # Run unit tests
-make lint         # Run ruff
-make format       # Format with ruff
-make typecheck    # Run mypy
-make test-cov     # Test with coverage
+# Installation
+uv sync --all-extras              # Install all dependencies including dev
+uv run pre-commit install          # Install pre-commit hooks
+
+# Code Quality Checks (run all before committing)
+uv run ruff check src tests       # Lint with ruff
+uv run ruff format src tests      # Format with ruff
+uv run mypy src                   # Type checking
+uv run pytest --cov=src --cov-report=term-missing tests/unit/ -v -m "not openai" -p no:logfire  # Tests with coverage
+
+# Testing Commands
+uv run pytest tests/unit/ -v -m "not openai" -p no:logfire              # Run unit tests (excludes OpenAI tests)
+uv run pytest tests/ -v -m "huggingface" -p no:logfire                 # Run HuggingFace tests
+uv run pytest tests/ -v -p no:logfire                                  # Run all tests
+uv run pytest --cov=src --cov-report=term-missing tests/unit/ -v -m "not openai" -p no:logfire  # Tests with terminal coverage
+uv run pytest --cov=src --cov-report=html -p no:logfire                # Generate HTML coverage report (opens htmlcov/index.html)
+
+# Documentation Commands
+uv run mkdocs build                # Build documentation
+uv run mkdocs serve                # Serve documentation locally (http://127.0.0.1:8000)
 ```
+
+### Test Markers
+
+The project uses pytest markers to categorize tests. See [Testing Guidelines](testing.md) for details:
+
+- `unit`: Unit tests (mocked, fast)
+- `integration`: Integration tests (real APIs)
+- `slow`: Slow tests
+- `openai`: Tests requiring OpenAI API key
+- `huggingface`: Tests requiring HuggingFace API key
+- `embedding_provider`: Tests requiring API-based embedding providers
+- `local_embeddings`: Tests using local embeddings
+
+**Note**: The `-p no:logfire` flag disables the logfire plugin to avoid conflicts during testing.
 
 ## Getting Started
 
-1. **Fork the repository** on GitHub
+1. **Fork the repository** on GitHub: [`DeepCritical/GradioDemo`](https://github.com/DeepCritical/GradioDemo)
+
 2. **Clone your fork**:
+
    ```bash
    git clone https://github.com/yourusername/GradioDemo.git
    cd GradioDemo
    ```
+
 3. **Install dependencies**:
+
    ```bash
-   make install
+   uv sync --all-extras
+   uv run pre-commit install
    ```
+
 4. **Create a feature branch**:
+
    ```bash
    git checkout -b yourname-feature-name
    ```
+
 5. **Make your changes** following the guidelines below
+
 6. **Run checks**:
+
    ```bash
-   make check
+   uv run ruff check src tests
+   uv run mypy src
+   uv run pytest --cov=src --cov-report=term-missing tests/unit/ -v -m "not openai" -p no:logfire
    ```
+
 7. **Commit and push**:
+
    ```bash
    git commit -m "Description of changes"
    git push origin yourname-feature-name
    ```
+
 8. **Create a pull request** on GitHub
 
 ## Development Guidelines
@@ -132,7 +228,7 @@ make test-cov     # Test with coverage
 
 ## Pull Request Process
 
-1. Ensure all checks pass: `make check`
+1. Ensure all checks pass: `uv run ruff check src tests && uv run mypy src && uv run pytest --cov=src --cov-report=term-missing tests/unit/ -v -m "not openai" -p no:logfire`
 2. Update documentation if needed
 3. Add tests for new features
 4. Update CHANGELOG if applicable
@@ -140,10 +236,19 @@ make test-cov     # Test with coverage
 6. Address review feedback
 7. Wait for approval before merging
 
+## Project Structure
+
+- `src/`: Main source code
+- `tests/`: Test files (`unit/` and `integration/`)
+- `docs/`: Documentation source files (MkDocs)
+- `examples/`: Example usage scripts
+- `pyproject.toml`: Project configuration and dependencies
+- `.pre-commit-config.yaml`: Pre-commit hook configuration
+
 ## Questions?
 
-- Open an issue on GitHub
-- Check existing documentation
+- Open an issue on [GitHub](https://github.com/DeepCritical/GradioDemo)
+- Check existing [documentation](https://deepcritical.github.io/GradioDemo/)
 - Review code examples in the codebase
 
-Thank you for contributing to DeepCritical!
+Thank you for contributing to The DETERMINATOR!

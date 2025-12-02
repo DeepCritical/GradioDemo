@@ -1,6 +1,6 @@
 site_name: The DETERMINATOR
 site_description: Generalist Deep Research Agent that Stops at Nothing
-site_author: The DETERMINATOR Team
+site_author: The DeepCritical Team
 site_url: https://deepcritical.github.io/GradioDemo/
 
 repo_name: DeepCritical/GradioDemo
@@ -8,7 +8,7 @@ repo_url: https://github.com/DeepCritical/GradioDemo
 edit_uri: edit/dev/docs/
 
 # Ensure all files are included even if not in nav
-strict: false
+# strict: false
 
 theme:
   name: material
@@ -28,21 +28,41 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
+    # Navigation features
     - navigation.tabs
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.indexes 
+    - navigation.instant 
+    - navigation.tracking 
+    - navigation.smooth  
+    # Search features
     - search.suggest
     - search.highlight
+    # Content features
     - content.code.annotate
     - content.code.copy
+    - content.tabs.link 
+    - content.tooltips 
+    - toc.integrate 
   icon:
     repo: fontawesome/brands/github
+  language: en
 
 plugins:
-  - search
+  - search:
+      lang:
+        - en
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|&amp;'
+      prebuild_index: true  # Faster search initialization
+      indexing: full  # Full-text indexing for better results
   - mermaid2
   - codeinclude
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago  # Shows "2 days ago" format
+      fallback_to_build_date: true
   - minify:
       minify_html: true
       minify_js: true
@@ -53,6 +73,10 @@ markdown_extensions:
       base_path: "."
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span  # Allow line spans for highlighting
+      pygments_lang_class: true  # Add language class to code blocks
+      use_pygments: true
+      noclasses: false  # Use CSS classes for better theming
   - pymdownx.inlinehilite
   - pymdownx.superfences:
       custom_fences:
@@ -62,6 +86,7 @@ markdown_extensions:
       preserve_tabs: true
   - pymdownx.tabbed:
       alternate_style: true
+      combine_header_slug: true  # Better tab linking
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.emoji:
@@ -70,12 +95,18 @@ markdown_extensions:
   - pymdownx.snippets
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
   - attr_list
   - md_in_html
   - tables
+  - meta  # Frontmatter support for tags, categories, etc.
   - toc:
       permalink: true
+      permalink_title: "Anchor link to this section"
+      baselevel: 1
+      toc_depth: 3
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
 
 nav:
   - Home: index.md
@@ -88,7 +119,7 @@ nav:
     - getting-started/mcp-integration.md
     - getting-started/examples.md
   - Configuration:
-    - configuration/CONFIGURATION.md
+    - configuration/index.md
   - Architecture:
     - "Graph Orchestration": architecture/graph_orchestration.md
     - "Workflow Diagrams": architecture/workflow-diagrams.md
@@ -118,7 +149,18 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/DeepCritical/GradioDemo
+      name: GitHub
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/josephpollack
+      name: Twitter
     - icon: material/web
       link: https://huggingface.co/spaces/DataQuests/DeepCritical
+      name: Live Demo
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/n8ytYeh25n
+      name: Discord
+  generator:
+    enabled: false  # Hide generator meta tag
 
 copyright: Copyright &copy; 2024 DeepCritical Team
+

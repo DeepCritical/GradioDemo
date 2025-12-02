@@ -627,23 +627,10 @@ gantt
 ## Implementation Highlights
 
 **Simple 4-Agent Setup:**
-```python
-workflow = (
-    MagenticBuilder()
-    .participants(
-        hypothesis=HypothesisAgent(tools=[background_tool]),
-        search=SearchAgent(tools=[web_search, rag_tool]),
-        analysis=AnalysisAgent(tools=[code_execution]),
-        report=ReportAgent(tools=[code_execution, visualization])
-    )
-    .with_standard_manager(
-        chat_client=AnthropicClient(model="claude-sonnet-4"),
-        max_round_count=15,    # Prevent infinite loops
-        max_stall_count=3      # Detect stuck workflows
-    )
-    .build()
-)
-```
+
+<!--codeinclude-->
+[Magentic Workflow Builder](../src/orchestrator_magentic.py) start_line:72 end_line:99
+<!--/codeinclude-->
 
 **Manager handles quality assessment in its instructions:**
 - Checks hypothesis quality (testable, novel, clear)

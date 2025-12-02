@@ -1,6 +1,6 @@
 # Implementation Patterns
 
-This document outlines common implementation patterns used in DeepCritical.
+This document outlines common implementation patterns used in The DETERMINATOR.
 
 ## Search Tools
 

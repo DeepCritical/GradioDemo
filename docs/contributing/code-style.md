@@ -1,6 +1,44 @@
 # Code Style & Conventions
 
-This document outlines the code style and conventions for DeepCritical.
+This document outlines the code style and conventions for The DETERMINATOR.
+
+## Package Manager
+
+This project uses [`uv`](https://github.com/astral-sh/uv) as the package manager. All commands should be prefixed with `uv run` to ensure they run in the correct environment.
+
+### Installation
+
+```bash
+# Install uv if you haven't already (recommended: standalone installer)
+# Unix/macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell):
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Alternative: pipx install uv
+# Or: pip install uv
+
+# Sync all dependencies including dev extras
+uv sync --all-extras
+```
+
+### Running Commands
+
+All development commands should use `uv run` prefix:
+
+```bash
+# Instead of: pytest tests/
+uv run pytest tests/
+
+# Instead of: ruff check src
+uv run ruff check src
+
+# Instead of: mypy src
+uv run mypy src
+```
+
+This ensures commands run in the correct virtual environment managed by `uv`.
 
 ## Type Safety
 

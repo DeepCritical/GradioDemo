@@ -15,7 +15,7 @@ This page documents the Pydantic models used throughout DeepCritical.
 **Fields**:
 - `citation`: Citation information (title, URL, date, authors)
 - `content`: Evidence text content
-- `relevance_score`: Relevance score (0.0-1.0)
+- `relevance`: Relevance score (0.0-1.0)
 - `metadata`: Additional metadata dictionary
 
 ## Citation
@@ -29,9 +29,10 @@ This page documents the Pydantic models used throughout DeepCritical.
 <!--/codeinclude-->
 
 **Fields**:
+- `source`: Source name (e.g., "pubmed", "clinicaltrials", "europepmc", "web", "rag")
 - `title`: Article/trial title
 - `url`: Source URL
-- `date`: Publication date (optional)
+- `date`: Publication date (YYYY-MM-DD or "Unknown")
 - `authors`: List of authors (optional)
 
 ## KnowledgeGapOutput
@@ -72,9 +73,10 @@ This page documents the Pydantic models used throughout DeepCritical.
 <!--/codeinclude-->
 
 **Fields**:
-- `agent_name`: Name of agent to use
-- `query`: Task query
-- `context`: Additional context dictionary
+- `gap`: The knowledge gap being addressed (optional)
+- `agent`: Name of agent to use
+- `query`: The specific query for the agent
+- `entity_website`: The website of the entity being researched, if known (optional)
 
 ## ReportDraft
 
@@ -87,9 +89,7 @@ This page documents the Pydantic models used throughout DeepCritical.
 <!--/codeinclude-->
 
 **Fields**:
-- `title`: Report title
 - `sections`: List of report sections
-- `references`: List of citations
 
 ## ReportSection
 
@@ -102,9 +102,8 @@ This page documents the Pydantic models used throughout DeepCritical.
 <!--/codeinclude-->
 
 **Fields**:
-- `title`: Section title
-- `content`: Section content
-- `order`: Section order number
+- `section_title`: The title of the section
+- `section_content`: The content of the section
 
 ## ParsedQuery
 
@@ -134,7 +133,7 @@ This page documents the Pydantic models used throughout DeepCritical.
 <!--/codeinclude-->
 
 **Fields**:
-- `iterations`: List of iteration data
+- `history`: List of iteration data
 
 ## IterationData
 
@@ -147,12 +146,10 @@ This page documents the Pydantic models used throughout DeepCritical.
 <!--/codeinclude-->
 
 **Fields**:
-- `iteration`: Iteration number
-- `observations`: Generated observations
-- `knowledge_gaps`: Identified knowledge gaps
-- `tool_calls`: Tool calls made
-- `findings`: Findings from tools
-- `thoughts`: Agent thoughts
+- `gap`: The gap addressed in the iteration
+- `tool_calls`: The tool calls made
+- `findings`: The findings collected from tool calls
+- `thought`: The thinking done to reflect on the success of the iteration and next steps
 
 ## AgentEvent
 
@@ -180,12 +177,13 @@ This page documents the Pydantic models used throughout DeepCritical.
 <!--/codeinclude-->
 
 **Fields**:
-- `tokens_used`: Tokens used so far
-- `tokens_limit`: Token limit
-- `time_elapsed_seconds`: Elapsed time in seconds
-- `time_limit_seconds`: Time limit in seconds
-- `iterations`: Current iteration count
-- `iterations_limit`: Iteration limit
+- `tokens_used`: Total tokens used
+- `tokens_limit`: Token budget limit
+- `time_elapsed_seconds`: Time elapsed in seconds
+- `time_limit_seconds`: Time budget limit (default: 600.0 seconds / 10 minutes)
+- `iterations`: Number of iterations completed
+- `iterations_limit`: Maximum iterations (default: 10)
+- `iteration_tokens`: Tokens used per iteration (iteration number -> token count)
 
 ## See Also
 
