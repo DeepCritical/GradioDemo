@@ -55,8 +55,6 @@ plugins:
       lang:
         - en
       separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|&amp;'
-      prebuild_index: true  # Faster search initialization
-      indexing: full  # Full-text indexing for better results
   - mermaid2
   - codeinclude
   - git-revision-date-localized:

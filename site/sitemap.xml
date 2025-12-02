@@ -2,138 +2,126 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/</loc>
-         <lastmod>2025-12-01</lastmod>
-    </url>
-    <url>
-         <loc>https://deepcritical.github.io/GradioDemo/CONTRIBUTING/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/LICENSE/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
+    </url>
+    <url>
+         <loc>https://deepcritical.github.io/GradioDemo/MKDOCS_IMPROVEMENTS_ASSESSMENT/</loc>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/team/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/api/agents/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/api/models/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/api/orchestrators/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/api/services/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/api/tools/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/architecture/agents/</loc>
-         <lastmod>2025-12-01</lastmod>
-    </url>
-    <url>
-         <loc>https://deepcritical.github.io/GradioDemo/architecture/graph-orchestration/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/architecture/graph_orchestration/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/architecture/middleware/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/architecture/orchestrators/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/architecture/services/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/architecture/tools/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/architecture/workflow-diagrams/</loc>
-         <lastmod>2025-12-01</lastmod>
-    </url>
-    <url>
-         <loc>https://deepcritical.github.io/GradioDemo/architecture/workflows/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/configuration/</loc>
-         <lastmod>2025-12-01</lastmod>
-    </url>
-    <url>
-         <loc>https://deepcritical.github.io/GradioDemo/configuration/CONFIGURATION/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/contributing/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/contributing/code-quality/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/contributing/code-style/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/contributing/error-handling/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/contributing/implementation-patterns/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/contributing/prompt-engineering/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/contributing/testing/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/getting-started/examples/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/getting-started/installation/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/getting-started/mcp-integration/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/getting-started/quick-start/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/overview/architecture/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/overview/features/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
     <url>
          <loc>https://deepcritical.github.io/GradioDemo/overview/quick-start/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-02</lastmod>
     </url>
 </urlset>
