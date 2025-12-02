@@ -70,6 +70,7 @@ dev = [
     "mkdocs-material>=9.0.0",
     "mkdocs-mermaid2-plugin>=1.1.0",
     "mkdocs-codeinclude-plugin>=0.2.0",
+    "mkdocs-git-revision-date-localized-plugin>=1.2.0",
     "mkdocs-minify-plugin>=0.8.0",
     "pymdown-extensions>=10.17.2",
 ]
@@ -192,6 +193,7 @@ dev = [
     "mkdocs-codeinclude-plugin>=0.2.1",
     "mkdocs-material>=9.7.0",
     "mkdocs-mermaid2-plugin>=1.2.3",
+    "mkdocs-git-revision-date-localized-plugin>=1.2.0",
     "mkdocs-minify-plugin>=0.8.0",
     "structlog>=25.5.0",
     "ty>=0.0.1a28",
