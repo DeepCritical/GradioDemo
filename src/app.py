@@ -167,10 +167,10 @@ def configure_orchestrator(
 
 def _is_file_path(text: str) -> bool:
     """Check if text appears to be a file path.
-    
+
     Args:
         text: Text to check
-        
+
     Returns:
         True if text looks like a file path
     """
@@ -178,7 +178,7 @@ def _is_file_path(text: str) -> bool:
     # Check for common file extensions
     file_extensions = ['.md', '.pdf', '.txt', '.json', '.csv', '.xlsx', '.docx', '.html']
     text_lower = text.lower().strip()
-    
+
     # Check if it ends with a file extension
     if any(text_lower.endswith(ext) for ext in file_extensions):
         # Check if it's a valid path (absolute or relative)
@@ -187,25 +187,181 @@ def _is_file_path(text: str) -> bool:
         # Or if it's just a filename with extension
         if '.' in text and len(text.split('.')) == 2:
             return True
-    
+
     # Check if it's an absolute path
     if os.path.isabs(text):
         return True
-    
+
     return False
 
 
 def _get_file_name(file_path: str) -> str:
     """Extract filename from file path.
-    
+
     Args:
-        file_path: Full file path
-        
+        file_path: Path to extract filename from
+
     Returns:
-        Filename with extension
+        Filename without directory path
     """
     import os
     return os.path.basename(file_path)
+
+
+def _process_multimodal_input(message: MultimodalPostprocess | str | None) -> tuple[str, dict[str, Any]]:
+    """Process multimodal input into text and context metadata.
+
+    Args:
+        message: Multimodal message object from Gradio or plain string
+
+    Returns:
+        Tuple of (text_content, context_data) where context_data includes file info
+    """
+    context: dict[str, Any] = {"files": []}
+
+    if message is None:
+        return "", context
+
+    # If message is a plain string, return it directly
+    if isinstance(message, str):
+        return message, context
+
+    # Multimodal message structure:
+    # {
+    #   "text": "user text",
+    #   "files": [
+    #     {"path": "...", "type": "image", "size": 12345},
+    #     {"path": "...", "type": "audio", "size": 54321}
+    #   ]
+    # }
+    text_content = message.get("text", "") if isinstance(message, dict) else ""
+    files = message.get("files", []) if isinstance(message, dict) else []
+
+    # Process attached files
+    for file_info in files:
+        if not isinstance(file_info, dict):
+            continue
+
+        file_path = file_info.get("path")
+        if not file_path:
+            continue
+
+        # Only include files that exist
+        if not os.path.exists(file_path):
+            continue
+
+        file_name = _get_file_name(file_path)
+        file_type = file_info.get("type", "unknown")
+        file_size = os.path.getsize(file_path)
+
+        context["files"].append(
+            {
+                "path": file_path,
+                "name": file_name,
+                "type": file_type,
+                "size": file_size,
+            }
+        )
+
+    return text_content, context
+
+
+def _is_supported_file(file_path: str) -> bool:
+    """Check if file type is supported for processing.
+
+    Args:
+        file_path: Path to check
+
+    Returns:
+        True if file type is supported
+    """
+    supported_extensions = {
+        "image": {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff"},
+        "audio": {".wav", ".mp3", ".ogg", ".flac", ".m4a"},
+        "text": {".txt", ".md", ".pdf", ".doc", ".docx"},
+    }
+
+    file_ext = os.path.splitext(file_path)[1].lower()
+    return any(file_ext in exts for exts in supported_extensions.values())
+
+
+def _process_attached_files(files: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Process attached files and route to appropriate services.
+
+    Args:
+        files: List of file info dictionaries
+
+    Returns:
+        Tuple of (context_files, processed_results)
+    """
+    context_files = []
+    processed_results = []
+
+    for file_info in files:
+        file_path = file_info.get("path")
+        file_type = file_info.get("type", "unknown")
+
+        if not file_path or not os.path.exists(file_path):
+            continue
+
+        if not _is_supported_file(file_path):
+            logger.warning("unsupported_file_type", file_path=file_path, file_type=file_type)
+            continue
+
+        context_files.append(
+            {
+                "path": file_path,
+                "name": _get_file_name(file_path),
+                "type": file_type,
+                "size": os.path.getsize(file_path),
+            }
+        )
+
+        # Route to appropriate processing service
+        try:
+            if file_type == "image" and settings.enable_image_input:
+                multimodal_service = get_multimodal_service()
+                image_text = multimodal_service.extract_text_from_image(file_path)
+                if image_text:
+                    processed_results.append(
+                        {
+                            "type": "image_text",
+                            "file": file_path,
+                            "content": image_text,
+                        }
+                    )
+            elif file_type == "audio" and settings.enable_audio_input:
+                multimodal_service = get_multimodal_service()
+                audio_text = multimodal_service.transcribe_audio(file_path)
+                if audio_text:
+                    processed_results.append(
+                        {
+                            "type": "audio_text",
+                            "file": file_path,
+                            "content": audio_text,
+                        }
+                    )
+        except Exception as e:
+            logger.warning(
+                "file_processing_failed", file_path=file_path, file_type=file_type, error=str(e)
+            )
+
+    return context_files, processed_results
+
+
+def configure_audio_tts() -> tuple[str, float, str, str, str]:
+    """Get TTS configuration values with safe defaults.
+
+    Returns:
+        Tuple of (voice, speed, gpu, region, environment)
+    """
+    return (
+        getattr(settings, "tts_voice", "af_heart"),
+        getattr(settings, "tts_speed", 1.0),
+        getattr(settings, "tts_gpu", "T4"),
+        getattr(settings, "tts_region", "us-east-1"),
+        getattr(settings, "tts_environment", "prod"),
+    )
 
 
 def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
@@ -241,76 +397,11 @@ def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
 
     # For complete events, return main response without accordion
     if event.type == "complete":
-        # Check if event contains file information
-        content = event.message
-        files: list[str] | None = None
-        
-        # Check event.data for file paths
-        if event.data and isinstance(event.data, dict):
-            # Support both "files" (list) and "file" (single path) keys
-            if "files" in event.data:
-                files = event.data["files"]
-                if isinstance(files, str):
-                    files = [files]
-                elif not isinstance(files, list):
-                    files = None
-                else:
-                    # Filter to only valid file paths
-                    files = [f for f in files if isinstance(f, str) and _is_file_path(f)]
-            elif "file" in event.data:
-                file_path = event.data["file"]
-                if isinstance(file_path, str) and _is_file_path(file_path):
-                    files = [file_path]
-        
-        # Also check if message itself is a file path (less common, but possible)
-        if not files and isinstance(event.message, str) and _is_file_path(event.message):
-            files = [event.message]
-            # Keep message as text description
-            content = "Report generated. Download available below."
-        
         # Return as dict format for Gradio Chatbot compatibility
-        result: dict[str, Any] = {
+        return {
             "role": "assistant",
-            "content": content,
+            "content": event.message,
         }
-        
-        # Add files if present
-        # Gradio Chatbot supports file paths in content as markdown links
-        # The links will be clickable and downloadable
-        if files:
-            # Validate files exist before including them
-            import os
-            valid_files = [f for f in files if os.path.exists(f)]
-            
-            if valid_files:
-                # Format files for Gradio: include as markdown download links
-                # Gradio ChatInterface automatically renders file links as downloadable files
-                import os
-                file_links = []
-                for f in valid_files:
-                    file_name = _get_file_name(f)
-                    try:
-                        file_size = os.path.getsize(f)
-                        # Format file size (bytes to KB/MB)
-                        if file_size < 1024:
-                            size_str = f"{file_size} B"
-                        elif file_size < 1024 * 1024:
-                            size_str = f"{file_size / 1024:.1f} KB"
-                        else:
-                            size_str = f"{file_size / (1024 * 1024):.1f} MB"
-                        file_links.append(f"📎 [Download: {file_name} ({size_str})]({f})")
-                    except OSError:
-                        # If we can't get file size, just show the name
-                        file_links.append(f"📎 [Download: {file_name}]({f})")
-                
-                result["content"] = f"{content}\n\n" + "\n\n".join(file_links)
-                
-                # Also store in metadata for potential future use
-                if "metadata" not in result:
-                    result["metadata"] = {}
-                result["metadata"]["files"] = valid_files
-        
-        return result
 
     # Build metadata for accordion according to Gradio ChatMessage spec
     # Metadata keys: title (str), status ("pending"|"done"), log (str), duration (float)
@@ -435,13 +526,13 @@ async def yield_auth_messages(
             "content": f"👋 **Welcome, {oauth_username}!** Using your HuggingFace account.\n\n",
         }
 
-    # Advanced mode is not currently supported with HuggingFace inference
+    # Advanced mode is not supported without OpenAI (which requires manual setup)
     # For now, we only support simple mode with HuggingFace
     if mode == "advanced":
         yield {
             "role": "assistant",
             "content": (
-                "⚠️ **Note**: Advanced mode is not available with HuggingFace inference providers. "
+                "⚠️ **Warning**: Advanced mode requires OpenAI API key configuration. "
                 "Falling back to simple mode.\n\n"
             ),
         }
@@ -548,159 +639,105 @@ async def handle_orchestrator_events(
 
 
 async def research_agent(
-    message: str | MultimodalPostprocess,
+    message: str,
     history: list[dict[str, Any]],
     mode: str = "simple",
     hf_model: str | None = None,
     hf_provider: str | None = None,
-    graph_mode: str = "auto",
+    graph_mode: str | None = None,
     use_graph: bool = True,
-    enable_image_input: bool = True,
-    enable_audio_input: bool = True,
-    tts_voice: str = "af_heart",
-    tts_speed: float = 1.0,
-    oauth_token: gr.OAuthToken | None = None,
-    oauth_profile: gr.OAuthProfile | None = None,
-) -> AsyncGenerator[dict[str, Any] | tuple[dict[str, Any], tuple[int, np.ndarray] | None], None]:
+    request: gr.Request | None = None,
+    enable_image_input: bool = False,
+    enable_audio_input: bool = False,
+    tts_voice: str | None = None,
+    tts_speed: float | None = None,
+) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]] | tuple[Any, Any], None]:
     """
     Gradio chat function that runs the research agent.
 
     Args:
-        message: User's research question (str or MultimodalPostprocess with text/files)
+        message: User's research question
         history: Chat history (Gradio format)
         mode: Orchestrator mode ("simple" or "advanced")
         hf_model: Selected HuggingFace model ID (from dropdown)
         hf_provider: Selected inference provider (from dropdown)
-        oauth_token: Gradio OAuth token (None if user not logged in)
-        oauth_profile: Gradio OAuth profile (None if user not logged in)
+        graph_mode: Graph research mode ("iterative", "deep", or "auto")
+        use_graph: Whether to use graph execution (True) or agent chains (False)
+        request: Gradio request object containing OAuth information
+        enable_image_input: Whether to allow image input processing
+        enable_audio_input: Whether to allow audio input processing
+        tts_voice: Optional override for TTS voice
+        tts_speed: Optional override for TTS speed
 
     Yields:
         ChatMessage objects with metadata for accordion display, optionally with audio output
     """
-    import structlog
-
-    logger = structlog.get_logger()
-
-    # REQUIRE LOGIN BEFORE USE
-    # Extract OAuth token and username using Gradio's OAuth types
-    # According to Gradio docs: OAuthToken and OAuthProfile are None if user not logged in
-    token_value: str | None = None
-    username: str | None = None
-
-    if oauth_token is not None:
-        # OAuthToken has a .token attribute containing the access token
-        if hasattr(oauth_token, "token"):
-            token_value = oauth_token.token
-        elif isinstance(oauth_token, str):
-            # Handle case where oauth_token is already a string (shouldn't happen but defensive)
-            token_value = oauth_token
-        else:
-            token_value = None
-
-    if oauth_profile is not None:
-        # OAuthProfile has .username, .name, .profile_image attributes
-        username = (
-            oauth_profile.username
-            if hasattr(oauth_profile, "username") and oauth_profile.username
-            else (
-                oauth_profile.name
-                if hasattr(oauth_profile, "name") and oauth_profile.name
-                else None
-            )
-        )
-
-    # Check if user is logged in (OAuth token or env var)
-    # Fallback to env vars for local development or Spaces with HF_TOKEN secret
-    has_authentication = bool(
-        token_value or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
-    )
-
-    if not has_authentication:
+    if not message:
         yield {
             "role": "assistant",
-            "content": (
-                "🔐 **Authentication Required**\n\n"
-                "Please **sign in with HuggingFace** using the login button at the top of the page "
-                "before using this application.\n\n"
-                "The login button is required to access the AI models and research tools."
-            ),
+            "content": "Please enter a research question.",
         }, None
         return
 
-    # Process multimodal input (text + images + audio)
-    processed_text = ""
-    audio_input_data: tuple[int, np.ndarray] | None = None
+    # Extract OAuth token from request if available
+    oauth_token, oauth_username = extract_oauth_info(request)
 
-    if isinstance(message, dict):
-        # MultimodalPostprocess format: {"text": str, "files": list[FileData], "audio": tuple | None}
-        processed_text = message.get("text", "") or ""
-        files = message.get("files", [])
-        # Check for audio input in message (Gradio may include it as a separate field)
-        audio_input_data = message.get("audio") or None
-
-        # Process multimodal input (images, audio files, audio input)
-        # Process if we have files (and image input enabled) or audio input (and audio input enabled)
-        # Use UI settings from function parameters
-        if (files and enable_image_input) or (audio_input_data is not None and enable_audio_input):
-            try:
-                multimodal_service = get_multimodal_service()
-                # Prepend audio/image text to original text (prepend_multimodal=True)
-                # Filter files and audio based on UI settings
-                processed_text = await multimodal_service.process_multimodal_input(
-                    processed_text,
-                    files=files if enable_image_input else [],
-                    audio_input=audio_input_data if enable_audio_input else None,
-                    hf_token=token_value,
-                    prepend_multimodal=True,  # Prepend audio/image text to text input
-                )
-            except Exception as e:
-                logger.warning("multimodal_processing_failed", error=str(e))
-                # Continue with text-only input
-    else:
-        # Plain string message
-        processed_text = str(message) if message else ""
-
-    if not processed_text.strip():
-        yield {
-            "role": "assistant",
-            "content": "Please enter a research question or provide an image/audio input.",
-        }, None
-        return
-
-    # Check available keys (use token_value instead of oauth_token)
-    has_huggingface = bool(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY") or token_value)
+    # Check available keys
+    has_huggingface = bool(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY") or oauth_token)
 
     # Adjust mode if needed
     effective_mode = mode
     if mode == "advanced":
         effective_mode = "simple"
 
+    # Process multimodal input and context
+    processed_text = message
+    multimodal_context: dict[str, Any] = {}
+    files_results: list[dict[str, Any]] = []
+
+    if isinstance(message, dict):  # MultimodalPostprocess is a dict-like structure
+        processed_text, multimodal_context = _process_multimodal_input(message)
+        # Combine text from processed files into the main message
+        files_context, files_results = _process_attached_files(multimodal_context.get("files", []))
+        multimodal_context["files"] = files_context
+        for result in files_results:
+            if "content" in result:
+                processed_text += f"\n\n{result['type']} from {result['file']}:\n{result['content']}"
+
+    # Include multimodal context in the initial message
+    if multimodal_context:
+        processed_text += "\n\nAttached Files:\n"
+        for file_info in multimodal_context["files"]:
+            processed_text += f"- {file_info['name']} ({file_info['type']}, {file_info['size']} bytes)\n"
+
     # Yield authentication and mode status messages
-    async for msg in yield_auth_messages(username, token_value, has_huggingface, mode):
-        yield msg
+    async for msg in yield_auth_messages(oauth_username, oauth_token, has_huggingface, mode):
+        yield msg, None
 
     # Run the agent and stream events
     try:
         # use_mock=False - let configure_orchestrator decide based on available keys
         # It will use: OAuth token > Env vars > HF Inference (free tier)
-        # Convert empty strings from Textbox to None for defaults
-        model_id = hf_model if hf_model and hf_model.strip() else None
-        provider_name = hf_provider if hf_provider and hf_provider.strip() else None
-
+        # hf_model and hf_provider come from dropdown, so they're guaranteed to be valid
         orchestrator, backend_name = configure_orchestrator(
             use_mock=False,  # Never use mock in production - HF Inference is the free fallback
             mode=effective_mode,
-            oauth_token=token_value,  # Use extracted token value
-            hf_model=model_id,  # None will use defaults in configure_orchestrator
-            hf_provider=provider_name,  # None will use defaults in configure_orchestrator
+            oauth_token=oauth_token,
+            hf_model=hf_model if hf_model else None,  # Convert empty string to None
+            hf_provider=hf_provider if hf_provider else None,  # Convert empty string to None
             graph_mode=graph_mode if graph_mode else None,
             use_graph=use_graph,
         )
 
+        # Configure TTS defaults if not provided
+        tts_voice_default, tts_speed_default, _, _, _ = configure_audio_tts()
+        tts_voice = tts_voice or tts_voice_default
+        tts_speed = tts_speed if tts_speed is not None else tts_speed_default
+
         yield {
             "role": "assistant",
             "content": f"🧠 **Backend**: {backend_name}\n\n",
-        }
+        }, None
 
         # Handle orchestrator events and generate audio output
         audio_output_data: tuple[int, np.ndarray] | None = None
@@ -757,279 +794,425 @@ def create_demo() -> gr.Blocks:
     Returns:
         Configured Gradio Blocks interface with MCP server and OAuth enabled
     """
+    # DeepCritical-inspired theme stylesheet for the full interface. Adjust variables below to
+    # tweak brand colors without changing functional behavior.
+    brand_css = """
+    :root {
+        --brand-orange: #f28c28;
+        --brand-red: #c53d2b;
+        --brand-sand: #f7f3ed;
+        --brand-ink: #1f2329;
+    }
+
+    .gradio-container {
+        background: var(--brand-sand);
+        color: var(--brand-ink);
+    }
+
+    #hero-banner {
+        border: 1px solid #eadfd3;
+        background: linear-gradient(120deg, #ffffff, #fbf6ef 35%, #fff9f1 70%);
+        border-radius: 16px;
+        padding: 22px 24px;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.08);
+    }
+
+    #hero-nav {
+        background: #fff;
+        border: 1px solid #eadfd3;
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    #hero-nav h4 {
+        color: var(--brand-orange);
+        margin-bottom: 10px;
+    }
+
+    #hero-nav li {
+        margin-bottom: 4px;
+        color: #3a3f45;
+    }
+
+    #hero-text h1, #hero-text h2, #hero-text h3, #hero-text h4 {
+        color: #0f1216;
+        margin-bottom: 8px;
+    }
+
+    #hero-text p {
+        color: #383f47;
+        font-size: 16px;
+    }
+
+    #hero-login {
+        background: #fff;
+        border: 1px solid #eadfd3;
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+    }
+
+    #hero-login h4 {
+        color: #0f1216;
+        margin-bottom: 10px;
+    }
+
+    #hf-login button {
+        width: 100%;
+        background: linear-gradient(135deg, var(--brand-orange), var(--brand-red));
+        color: white;
+        font-weight: 700;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 10px 20px rgba(197, 61, 43, 0.25);
+        transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    #hf-login button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 26px rgba(242, 140, 40, 0.35);
+    }
+
+    #hf-login .sso-status {
+        color: #3a3f45;
+    }
+
+    #login-note {
+        color: #4d565f;
+        font-size: 14px;
+    }
+
+    #chat-panel .wrap {
+        background: #fff;
+        border: 1px solid #eadfd3;
+        border-radius: 14px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+    }
+
+    #chat-panel .message {
+        background: #fff8f1;
+        border: 1px solid rgba(242, 140, 40, 0.15);
+    }
+
+    #chat-panel .accordion {
+        background: #fff;
+    }
+
+    #chat-panel .prose :where(h1, h2, h3, h4, h5, h6) {
+        color: #0f1216;
+    }
+
+    #chat-panel .prose :where(p, li) {
+        color: #3a3f45;
+    }
+
+    #settings-panel .gr-accordion .label-wrap {
+        font-weight: 600;
+    }
+    """
+
     with gr.Blocks(title="🔬 The DETERMINATOR", fill_height=True) as demo:
-        # Add sidebar with login button and information
-        # Reference: Working implementation pattern from Gradio docs
-        with gr.Sidebar():
-            gr.Markdown("# 🔐 Authentication")
-            gr.Markdown(
-                "**Sign in with Hugging Face** to access AI models and research tools.\n\n"
-                "This application requires authentication to use the inference API."
-            )
-            gr.LoginButton("Sign in with Hugging Face")
-            gr.Markdown("---")
-            gr.Markdown("### ℹ️ About")  # noqa: RUF001
-            gr.Markdown(
-                "**The DETERMINATOR** - Generalist Deep Research Agent\n\n"
-                "A powerful research agent that stops at nothing until finding precise answers to complex questions.\n\n"
-                "**Available Sources**:\n"
-                "- Web Search (general knowledge)\n"
-                "- PubMed (biomedical literature)\n"
-                "- ClinicalTrials.gov (clinical trials)\n"
-                "- Europe PMC (preprints & papers)\n"
-                "- RAG (semantic search)\n\n"
-                "**Automatic Detection**: Automatically determines if medical knowledge sources are needed for your query.\n\n"
-                "⚠️ **Research tool only** - Synthesizes evidence but cannot provide medical advice."
-            )
-            gr.Markdown("---")
-            
-            # Settings Section - Organized in Accordions
-            gr.Markdown("## ⚙️ Settings")
-            
-            # Research Configuration Accordion
-            with gr.Accordion("🔬 Research Configuration", open=True):
-                mode_radio = gr.Radio(
-                    choices=["simple", "advanced", "iterative", "deep", "auto"],
-                    value="simple",
-                    label="Orchestrator Mode",
-                    info=(
-                        "Simple: Linear search-judge loop | "
-                        "Advanced: Multi-agent (OpenAI) | "
-                        "Iterative: Knowledge-gap driven | "
-                        "Deep: Parallel sections | "
-                        "Auto: Smart routing"
-                    ),
+        gr.HTML(f"<style>{brand_css}</style>")
+
+        is_space = bool(os.getenv("SPACE_ID"))
+
+        with gr.Row(elem_id="hero-banner"):
+            with gr.Column(scale=2, elem_id="hero-nav"):
+                gr.Markdown(
+                    """#### Available Tools:
+
+- Web Search: General knowledge
+- search_pubmed: Peer-reviewed biomedical literature
+- search_clinical_trials: ClinicalTrials.gov
+- search_europepmc: bioRxiv/medRxiv preprints
+- RAG: Semantic retrieval from ingested documents
+""",
                 )
-                
-                graph_mode_radio = gr.Radio(
-                    choices=["iterative", "deep", "auto"],
-                    value="auto",
-                    label="Graph Research Mode",
-                    info="Iterative: Single loop | Deep: Parallel sections | Auto: Detect from query",
+            with gr.Column(scale=3, elem_id="hero-text"):
+                gr.Markdown(
+                    """## 🧬 The DETERMINATOR Research Agent
+**Evidence-focused multimodal research with MCP integration.**
+
+Multi-Source Search: Web, PubMed, ClinicalTrials.gov, Europe PMC, RAG
+MCP Integration: Connect Claude Desktop to `/gradio_api/mcp/`
+Modal Sandbox: Secure TTS and multimodal processing
+LlamaIndex RAG: Semantic search and evidence synthesis
+""",
                 )
-                
-                use_graph_checkbox = gr.Checkbox(
-                    value=True,
-                    label="Use Graph Execution",
-                    info="Enable graph-based workflow execution",
-                )
-                
-                # Model and Provider selection
-                gr.Markdown("### 🤖 Model & Provider")
-                
-                # Popular models list
-                popular_models = [
-                    "",  # Empty = use default
-                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
-                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
-                    "zai-org/GLM-4.5-Air",
-                    "meta-llama/Llama-3.1-8B-Instruct",
-                    "meta-llama/Llama-3.1-70B-Instruct",
-                    "mistralai/Mistral-7B-Instruct-v0.2",
-                    "google/gemma-2-9b-it",
-                ]
-                
-                hf_model_dropdown = gr.Dropdown(
-                    choices=popular_models,
-                    value="",  # Empty string - will be converted to None in research_agent
-                    label="Reasoning Model",
-                    info="Select a HuggingFace model (leave empty for default)",
-                    allow_custom_value=True,  # Allow users to type custom model IDs
+            with gr.Column(scale=2, elem_id="hero-login"):
+                gr.Markdown("#### Sign in to unlock premium reasoning models")
+                if is_space:
+                    gr.LoginButton(
+                        elem_id="hf-login",
+                        value="Sign in with Hugging Face",
+                    )
+                    login_note = (
+                        "Connect your Hugging Face account to access faster providers, gated models, and richer summaries."
+                    )
+                else:
+                    gr.Button(
+                        value="Sign in with Hugging Face",
+                        elem_id="hf-login",
+                        interactive=False,
+                    )
+                    login_note = (
+                        "Sign-in is available on the deployed Hugging Face Space. Local previews use public model access."
+                    )
+                gr.Markdown(login_note, elem_id="login-note")
+
+        with gr.Row(elem_id="content-row"):
+            with gr.Column(scale=2, elem_id="settings-panel"):
+                gr.Markdown("### ⚙️ Research Settings")
+
+                with gr.Accordion("🔬 Research Configuration", open=True):
+                    mode_radio = gr.Radio(
+                        choices=["simple", "advanced", "iterative", "deep", "auto"],
+                        value="simple",
+                        label="Orchestrator Mode",
+                        info=(
+                            "Simple: Linear search-judge loop | "
+                            "Advanced: Multi-agent (OpenAI) | "
+                            "Iterative: Knowledge-gap driven | "
+                            "Deep: Parallel sections | "
+                            "Auto: Smart routing"
+                        ),
+                    )
+
+                    graph_mode_radio = gr.Radio(
+                        choices=["iterative", "deep", "auto"],
+                        value="auto",
+                        label="Graph Research Mode",
+                        info="Iterative: Single loop | Deep: Parallel sections | Auto: Detect from query",
+                    )
+
+                    use_graph_checkbox = gr.Checkbox(
+                        value=True,
+                        label="Use Graph Execution",
+                        info="Enable graph-based workflow execution",
+                    )
+
+                    gr.Markdown("### 🤖 Model & Provider")
+
+                    popular_models = [
+                        "",  # Empty = use default
+                        "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                        "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                        "zai-org/GLM-4.5-Air",
+                        "meta-llama/Llama-3.1-8B-Instruct",
+                        "meta-llama/Llama-3.1-70B-Instruct",
+                        "mistralai/Mistral-7B-Instruct-v0.2",
+                        "google/gemma-2-9b-it",
+                    ]
+
+                    hf_model_dropdown = gr.Dropdown(
+                        choices=popular_models,
+                        value="",  # Empty string - will be converted to None in research_agent
+                        label="Reasoning Model",
+                        info="Select a HuggingFace model (leave empty for default)",
+                        allow_custom_value=True,
+                    )
+
+                    providers = [
+                        "",  # Empty string = auto-select
+                        "nebius",
+                        "together",
+                        "scaleway",
+                        "hyperbolic",
+                        "novita",
+                        "nscale",
+                        "sambanova",
+                        "ovh",
+                        "fireworks",
+                    ]
+
+                    hf_provider_dropdown = gr.Dropdown(
+                        choices=providers,
+                        value="",  # Empty string - will be converted to None in research_agent
+                        label="Inference Provider",
+                        info="Select inference provider (leave empty for auto-select)",
+                    )
+
+                with gr.Accordion("📷 Multimodal Input", open=False):
+                    enable_image_input_checkbox = gr.Checkbox(
+                        value=settings.enable_image_input,
+                        label="Enable Image Input (OCR)",
+                        info="Extract text from uploaded images using OCR",
+                    )
+
+                    enable_audio_input_checkbox = gr.Checkbox(
+                        value=settings.enable_audio_input,
+                        label="Enable Audio Input (STT)",
+                        info="Transcribe audio recordings using speech-to-text",
+                    )
+
+                with gr.Accordion("🔊 Audio Output", open=False):
+                    tts_voice_default = getattr(settings, "tts_voice", "af_heart")
+                    tts_speed_default = getattr(settings, "tts_speed", 1.0)
+                    tts_gpu_default = getattr(settings, "tts_gpu", "T4")
+                    tts_region_default = getattr(settings, "tts_region", "us-east-1")
+                    tts_env_default = getattr(settings, "tts_environment", "prod")
+
+                    enable_audio_output_checkbox = gr.Checkbox(
+                        value=settings.enable_audio_output,
+                        label="Enable Audio Output",
+                        info="Generate audio responses using TTS",
+                    )
+
+                    tts_voice_dropdown = gr.Dropdown(
+                        choices=[
+                            "af_heart",
+                            "af_bella",
+                            "af_nicole",
+                            "af_aoede",
+                            "af_kore",
+                            "af_sarah",
+                            "af_nova",
+                            "af_sky",
+                            "af_alloy",
+                            "af_jessica",
+                            "af_river",
+                            "am_michael",
+                            "am_fenrir",
+                            "am_puck",
+                            "am_echo",
+                            "am_eric",
+                            "am_liam",
+                            "am_onyx",
+                            "am_santa",
+                            "am_adam",
+                        ],
+                        value=tts_voice_default,
+                        label="TTS Voice",
+                        info="Select TTS voice (American English voices: af_*, am_*)",
+                    )
+
+                    tts_speed_slider = gr.Slider(
+                        minimum=0.5,
+                        maximum=2.0,
+                        value=tts_speed_default,
+                        step=0.1,
+                        label="TTS Speech Speed",
+                        info="Adjust TTS speech speed (0.5x to 2.0x)",
+                    )
+
+                    tts_gpu_dropdown = gr.Dropdown(
+                        choices=["T4", "A10", "A100", "L4", "L40S"],
+                        value=tts_gpu_default,
+                        label="TTS GPU Type",
+                        info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
+                    )
+
+                    tts_region_dropdown = gr.Dropdown(
+                        choices=["us-east-1", "us-west-2", "eu-west-1", "eu-central-1", "ap-southeast-1"],
+                        value=tts_region_default,
+                        label="TTS Region",
+                        info="Modal region for TTS deployment",
+                    )
+
+                    tts_env_dropdown = gr.Dropdown(
+                        choices=["prod", "staging", "dev"],
+                        value=tts_env_default,
+                        label="TTS Environment",
+                        info="Modal environment for TTS deployment",
+                    )
+
+                gr.Markdown(
+                    "**Need help?**\n"
+                    "- Ensure you're logged in with Hugging Face.\n"
+                    "- Select a model and provider.\n"
+                    "- Configure multimodal inputs if needed.\n"
+                    "- Audio output requires Modal credentials (see README).",
                 )
 
-                # Provider list from README
-                providers = [
-                    "",  # Empty string = auto-select
-                    "nebius",
-                    "together",
-                    "scaleway",
-                    "hyperbolic",
-                    "novita",
-                    "nscale",
-                    "sambanova",
-                    "ovh",
-                    "fireworks",
-                ]
-                
-                hf_provider_dropdown = gr.Dropdown(
-                    choices=providers,
-                    value="",  # Empty string - will be converted to None in research_agent
-                    label="Inference Provider",
-                    info="Select inference provider (leave empty for auto-select)",
-                )
-            
-            # Multimodal Input Configuration Accordion
-            with gr.Accordion("📷 Multimodal Input", open=False):
-                enable_image_input_checkbox = gr.Checkbox(
-                    value=settings.enable_image_input,
-                    label="Enable Image Input (OCR)",
-                    info="Extract text from uploaded images using OCR",
-                )
-                
-                enable_audio_input_checkbox = gr.Checkbox(
-                    value=settings.enable_audio_input,
-                    label="Enable Audio Input (STT)",
-                    info="Transcribe audio recordings using speech-to-text",
-                )
-            
-            # Audio/TTS Configuration Accordion
-            with gr.Accordion("🔊 Audio Output", open=False):
-                enable_audio_output_checkbox = gr.Checkbox(
-                    value=settings.enable_audio_output,
-                    label="Enable Audio Output",
-                    info="Generate audio responses using TTS",
-                )
-                
-                tts_voice_dropdown = gr.Dropdown(
-                    choices=[
-                        "af_heart",
-                        "af_bella",
-                        "af_nicole",
-                        "af_aoede",
-                        "af_kore",
-                        "af_sarah",
-                        "af_nova",
-                        "af_sky",
-                        "af_alloy",
-                        "af_jessica",
-                        "af_river",
-                        "am_michael",
-                        "am_fenrir",
-                        "am_puck",
-                        "am_echo",
-                        "am_eric",
-                        "am_liam",
-                        "am_onyx",
-                        "am_santa",
-                        "am_adam",
-                    ],
-                    value=settings.tts_voice,
-                    label="TTS Voice",
-                    info="Select TTS voice (American English voices: af_*, am_*)",
-                )
-                
-                tts_speed_slider = gr.Slider(
-                    minimum=0.5,
-                    maximum=2.0,
-                    value=settings.tts_speed,
-                    step=0.1,
-                    label="TTS Speech Speed",
-                    info="Adjust TTS speech speed (0.5x to 2.0x)",
-                )
-                
-                tts_gpu_dropdown = gr.Dropdown(
-                    choices=["T4", "A10", "A100", "L4", "L40S"],
-                    value=settings.tts_gpu or "T4",
-                    label="TTS GPU Type",
-                    info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
-                    visible=settings.modal_available,
-                    interactive=False,  # GPU type set at function definition time, requires restart
-                )
-                
-                # Audio output component (for TTS response) - moved to sidebar
+            with gr.Column(scale=3, elem_id="chat-panel"):
                 audio_output = gr.Audio(
+                    type="numpy",
                     label="🔊 Audio Response",
-                    visible=settings.enable_audio_output,
+                    visible=getattr(settings, "enable_audio_output", False),
                 )
-        
-        # Update TTS component visibility based on enable_audio_output_checkbox
-        # This must be after audio_output is defined
-        def update_tts_visibility(enabled: bool) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-            """Update visibility of TTS components based on enable checkbox."""
-            return (
-                gr.update(visible=enabled),
-                gr.update(visible=enabled),
-                gr.update(visible=enabled),
-            )
-        
-        enable_audio_output_checkbox.change(
-            fn=update_tts_visibility,
-            inputs=[enable_audio_output_checkbox],
-            outputs=[tts_voice_dropdown, tts_speed_slider, audio_output],
-        )
 
-        # Chat interface with multimodal support
-        # Examples are provided but will NOT run at startup (cache_examples=False)
-        # Users must log in first before using examples or submitting queries
-        gr.ChatInterface(
-            fn=research_agent,
-            multimodal=True,  # Enable multimodal input (text + images + audio)
-            title="🔬 The DETERMINATOR",
-            description=(
-                "*Generalist Deep Research Agent — stops at nothing until finding precise answers to complex questions*\n\n"
-                "---\n"
-                "**The DETERMINATOR** uses iterative search-and-judge loops to comprehensively investigate any research question. "
-                "It automatically determines if medical knowledge sources (PubMed, ClinicalTrials.gov) are needed and adapts its search strategy accordingly.\n\n"
-                "**Key Features**:\n"
-                "- 🔍 Multi-source search (Web, PubMed, ClinicalTrials.gov, Europe PMC, RAG)\n"
-                "- 🧠 Automatic medical knowledge detection\n"
-                "- 🔄 Iterative refinement until precise answers are found\n"
-                "- ⏹️ Stops only at configured limits (budget, time, iterations)\n"
-                "- 📊 Evidence synthesis with citations\n\n"
-                "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
-                "**📷🎤 Multimodal Input Support**:\n"
-                "- **Images**: Click the 📷 image icon in the textbox to upload images (OCR)\n"
-                "- **Audio**: Click the 🎤 microphone icon in the textbox to record audio (STT)\n"
-                "- **Files**: Drag & drop or click to upload image/audio files\n"
-                "- **Text**: Type your research questions directly\n\n"
-                "💡 **Tip**: Look for the 📷 and 🎤 icons in the text input box below!\n\n"
-                "Configure multimodal inputs in the sidebar settings.\n\n"
-                "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
-            ),
-            examples=[
-                # When additional_inputs are provided, examples must be lists of lists
-                # Each inner list: [message, mode, hf_model, hf_provider, graph_mode, multimodal_enabled]
-                # Using actual model IDs and provider names from inference_models.py
-                # Note: Provider is optional - if empty, HF will auto-select
-                # These examples will NOT run at startup - users must click them after logging in
-                # All examples require deep iterative search and information retrieval across multiple sources
-                [
-                    # Medical research example (only one medical example)
-                    "Create a comprehensive report on Long COVID treatments including clinical trials, mechanisms, and safety.",
-                    "deep",
-                    "zai-org/GLM-4.5-Air",
-                    "nebius",
-                    "deep",
-                    True,
-                ],
-                [
-                    # Technical/Engineering example requiring deep research
-                    "Analyze the current state of quantum computing architectures: compare different qubit technologies, error correction methods, and scalability challenges across major platforms including IBM, Google, and IonQ.",
-                    "deep",
-                    "Qwen/Qwen3-Next-80B-A3B-Thinking",
-                    "",
-                    "deep",
-                    True,
-                ],
-                [
-                    # Business/Scientific example requiring iterative search
-                    "Investigate the economic and environmental impact of renewable energy transition: analyze cost trends, grid integration challenges, policy frameworks, and market dynamics across solar, wind, and battery storage technologies, in china",
-                    "deep",
-                    "Qwen/Qwen3-235B-A22B-Instruct-2507",
-                    "",
-                    "deep",
-                    True,
-                ],
-            ],
-            cache_examples=False,  # CRITICAL: Disable example caching to prevent examples from running at startup
-            # Examples will only run when user explicitly clicks them (after login)
-            # Note: additional_inputs_accordion is not a valid parameter in Gradio 6.0 ChatInterface
-            # Components will be displayed in the order provided
-            additional_inputs=[
-                mode_radio,
-                hf_model_dropdown,
-                hf_provider_dropdown,
-                graph_mode_radio,
-                use_graph_checkbox,
-                enable_image_input_checkbox,
-                enable_audio_input_checkbox,
-                tts_voice_dropdown,
-                tts_speed_slider,
-                # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters
-                # when user is logged in - they should NOT be added to additional_inputs
-            ],
-            additional_outputs=[audio_output],  # Add audio output for TTS
-        )
+                def update_tts_visibility(enabled: bool) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+                    """Update visibility of TTS components based on enable checkbox."""
+
+                    return (
+                        gr.update(visible=enabled),
+                        gr.update(visible=enabled),
+                        gr.update(visible=enabled),
+                    )
+
+                enable_audio_output_checkbox.change(
+                    fn=update_tts_visibility,
+                    inputs=[enable_audio_output_checkbox],
+                    outputs=[tts_voice_dropdown, tts_speed_slider, audio_output],
+                )
+
+                gr.ChatInterface(
+                    fn=research_agent,
+                    multimodal=True,
+                    title="🔬 The DETERMINATOR",
+                    description=(
+                        "*Generalist Deep Research Agent — stops at nothing until finding precise answers to complex questions*\n\n"
+                        "---\n"
+                        "**The DETERMINATOR** uses iterative search-and-judge loops to comprehensively investigate any research question. "
+                        "It automatically determines if medical knowledge sources (PubMed, ClinicalTrials.gov) are needed and adapts its search strategy accordingly.\n\n"
+                        "**Key Features**:\n"
+                        "- 🔍 Multi-source search (Web, PubMed, ClinicalTrials.gov, Europe PMC, RAG)\n"
+                        "- 🧠 Automatic medical knowledge detection\n"
+                        "- 🔄 Iterative refinement until precise answers are found\n"
+                        "- ⏹️ Stops only at configured limits (budget, time, iterations)\n"
+                        "- 📊 Evidence synthesis with citations\n\n"
+                        "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
+                        "**📷🎤 Multimodal Input Support**:\n"
+                        "- **Images**: Click the 📷 image icon in the textbox to upload images (OCR)\n"
+                        "- **Audio**: Click the 🎤 microphone icon in the textbox to record audio (STT)\n"
+                        "- **Files**: Drag & drop or click to upload image/audio files\n"
+                        "- **Text**: Type your research questions directly\n\n"
+                        "💡 **Tip**: Look for the 📷 and 🎤 icons in the text input box below!\n\n"
+                        "Configure multimodal inputs in the sidebar settings.\n\n"
+                        "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
+                    ),
+                    examples=[
+                        [
+                            "Create a comprehensive report on Long COVID treatments including clinical trials, mechanisms, and safety.",
+                            "deep",
+                            "zai-org/GLM-4.5-Air",
+                            "nebius",
+                            "deep",
+                            True,
+                        ],
+                        [
+                            "Analyze the current state of quantum computing architectures: compare different qubit technologies, error correction methods, and scalability challenges across major platforms including IBM, Google, and IonQ.",
+                            "deep",
+                            "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                            "",
+                            "deep",
+                            True,
+                        ],
+                        [
+                            "Investigate the economic and environmental impact of renewable energy transition: analyze cost trends, grid integration challenges, policy frameworks, and market dynamics across solar, wind, and battery storage technologies, in china",
+                            "deep",
+                            "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                            "",
+                            "deep",
+                            True,
+                        ],
+                    ],
+                    cache_examples=False,
+                    additional_inputs=[
+                        mode_radio,
+                        hf_model_dropdown,
+                        hf_provider_dropdown,
+                        graph_mode_radio,
+                        use_graph_checkbox,
+                        enable_image_input_checkbox,
+                        enable_audio_input_checkbox,
+                        tts_voice_dropdown,
+                        tts_speed_slider,
+                    ],
+                    additional_outputs=[audio_output],
+                )
 
     return demo  # type: ignore[no-any-return]
 
