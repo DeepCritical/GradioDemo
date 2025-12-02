@@ -30,8 +30,15 @@ The DETERMINATOR is a powerful generalist deep research agent system that uses i
 ## Quick Start
 
 ```bash
-# Install uv if you haven't already
-pip install uv
+# Install uv if you haven't already (recommended: standalone installer)
+# Unix/macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell):
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Alternative: pipx install uv
+# Or: pip install uv
 
 # Sync dependencies
 uv sync

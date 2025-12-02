@@ -41,7 +41,7 @@ Get up and running with The DETERMINATOR in minutes.
 ## Start the Application
 
 ```bash
-uv run gradio run src/app.py
+gradio src/app.py
 ```
 
 Open your browser to `http://localhost:7860`.
@@ -140,25 +140,3 @@ What are the active clinical trials investigating Alzheimer's disease treatments
 - Read the [Configuration Guide](../configuration/index.md) for advanced settings
 - Check out the [Architecture Documentation](../architecture/graph_orchestration.md) to understand how it works
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<<<<<<< Updated upstream
-
-
-
-
-
-=======
->>>>>>> Stashed changes

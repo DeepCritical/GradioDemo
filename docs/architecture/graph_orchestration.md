@@ -1,8 +1,14 @@
 # Graph Orchestration Architecture
 
+## Overview
+
+DeepCritical implements a graph-based orchestration system for research workflows using Pydantic AI agents as nodes. This enables better parallel execution, conditional routing, and state management compared to simple agent chains.
+
 ## Graph Patterns
 
 ### Iterative Research Graph
+
+The iterative research graph follows this pattern:
 
 ```
 [Input] → [Thinking] → [Knowledge Gap] → [Decision: Complete?]
@@ -12,13 +18,30 @@
                                     [Execute Tools] → [Loop Back]
 ```
 
+**Node IDs**: `thinking` → `knowledge_gap` → `continue_decision` → `tool_selector`/`writer` → `execute_tools` → (loop back to `thinking`)
+
+**Special Node Handling**:
+- `execute_tools`: State node that uses `search_handler` to execute searches and add evidence to workflow state
+- `continue_decision`: Decision node that routes based on `research_complete` flag from `KnowledgeGapOutput`
+
 ### Deep Research Graph
 
+The deep research graph follows this pattern:
+
 ```
-[Input] → [Planner] → [Parallel Iterative Loops] → [Synthesizer]
-                           ↓         ↓         ↓
-                        [Loop1]  [Loop2]  [Loop3]
+[Input] → [Planner] → [Store Plan] → [Parallel Loops] → [Collect Drafts] → [Synthesizer]
+                                        ↓         ↓         ↓
+                                     [Loop1]  [Loop2]  [Loop3]
 ```
+
+**Node IDs**: `planner` → `store_plan` → `parallel_loops` → `collect_drafts` → `synthesizer`
+
+**Special Node Handling**:
+- `planner`: Agent node that creates `ReportPlan` with report outline
+- `store_plan`: State node that stores `ReportPlan` in context for parallel loops
+- `parallel_loops`: Parallel node that executes `IterativeResearchFlow` instances for each section
+- `collect_drafts`: State node that collects section drafts from parallel loops
+- `synthesizer`: Agent node that calls `LongWriterAgent.write_report()` directly with `ReportDraft`
 
 ### Deep Research
 
@@ -158,14 +181,35 @@ State transitions occur at state nodes, which update the global workflow state.
 
 ## Execution Flow
 
-1. **Graph Construction**: Build graph from nodes and edges
-2. **Graph Validation**: Ensure graph is valid (no cycles, all nodes reachable)
-3. **Graph Execution**: Traverse graph from entry node
-4. **Node Execution**: Execute each node based on type
-5. **Edge Evaluation**: Determine next node(s) based on edges
+1. **Graph Construction**: Build graph from nodes and edges using `create_iterative_graph()` or `create_deep_graph()`
+2. **Graph Validation**: Ensure graph is valid (no cycles, all nodes reachable) via `ResearchGraph.validate_structure()`
+3. **Graph Execution**: Traverse graph from entry node using `GraphOrchestrator._execute_graph()`
+4. **Node Execution**: Execute each node based on type:
+   - **Agent Nodes**: Call `agent.run()` with transformed input
+   - **State Nodes**: Update workflow state via `state_updater` function
+   - **Decision Nodes**: Evaluate `decision_function` to get next node ID
+   - **Parallel Nodes**: Execute all parallel nodes concurrently via `asyncio.gather()`
+5. **Edge Evaluation**: Determine next node(s) based on edges and conditions
 6. **Parallel Execution**: Use `asyncio.gather()` for parallel nodes
-7. **State Updates**: Update state at state nodes
-8. **Event Streaming**: Yield events during execution for UI
+7. **State Updates**: Update state at state nodes via `GraphExecutionContext.update_state()`
+8. **Event Streaming**: Yield `AgentEvent` objects during execution for UI
+
+### GraphExecutionContext
+
+The `GraphExecutionContext` class manages execution state during graph traversal:
+
+- **State**: Current `WorkflowState` instance
+- **Budget Tracker**: `BudgetTracker` instance for budget enforcement
+- **Node Results**: Dictionary storing results from each node execution
+- **Visited Nodes**: Set of node IDs that have been executed
+- **Current Node**: ID of the node currently being executed
+
+Methods:
+- `set_node_result(node_id, result)`: Store result from node execution
+- `get_node_result(node_id)`: Retrieve stored result
+- `has_visited(node_id)`: Check if node was visited
+- `mark_visited(node_id)`: Mark node as visited
+- `update_state(updater, data)`: Update workflow state
 
 ## Conditional Routing
 

@@ -12,11 +12,28 @@ This guide will help you install and set up DeepCritical on your system.
 
 ### 1. Install uv (Recommended)
 
-`uv` is a fast Python package installer and resolver. Install it with:
+`uv` is a fast Python package installer and resolver. Install it using the standalone installer (recommended):
 
+**Unix/macOS/Linux:**
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Windows (PowerShell):**
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**Alternative methods:**
+```bash
+# Using pipx (recommended if you have pipx installed)
+pipx install uv
+
+# Or using pip
 pip install uv
 ```
+
+After installation, restart your terminal or add `~/.cargo/bin` to your PATH.
 
 ### 2. Clone the Repository
 
@@ -133,40 +150,3 @@ uv run pre-commit install
 - Learn about [MCP Integration](mcp-integration.md)
 - Explore [Examples](examples.md)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> 8086ce5fefde1c867880661d57e1299029a91ead
-
-<<<<<<< Updated upstream
-
-
-
-
-
-=======
->>>>>>> Stashed changes
-
-
-
-
-<<<<<<< HEAD
-
->>>>>>> Stashed changes
-
-=======
->>>>>>> 8086ce5fefde1c867880661d57e1299029a91ead

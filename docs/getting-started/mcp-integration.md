@@ -201,16 +201,3 @@ You can configure multiple DeepCritical instances:
 - Read the [Architecture Documentation](../architecture/graph_orchestration.md)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-

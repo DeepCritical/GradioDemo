@@ -1,6 +1,6 @@
 # Code Quality & Documentation
 
-This document outlines code quality standards and documentation requirements.
+This document outlines code quality standards and documentation requirements for The DETERMINATOR.
 
 ## Linting
 
@@ -12,6 +12,9 @@ This document outlines code quality standards and documentation requirements.
   - `PLR2004`: Magic values (statistical constants)
   - `PLW0603`: Global statement (singleton pattern)
   - `PLC0415`: Lazy imports for optional dependencies
+  - `E402`: Module level import not at top (needed for pytest.importorskip)
+  - `E501`: Line too long (ignore line length violations)
+  - `RUF100`: Unused noqa (version differences between local/CI)
 
 ## Type Checking
 
@@ -22,11 +25,74 @@ This document outlines code quality standards and documentation requirements.
 
 ## Pre-commit
 
-- Run `make check` before committing
-- Must pass: lint + typecheck + test-cov
-- Pre-commit hooks installed via `make install`
+Pre-commit hooks run automatically on commit to ensure code quality. Configuration is in `.pre-commit-config.yaml`.
+
+### Installation
+
+```bash
+# Install dependencies (includes pre-commit package)
+uv sync --all-extras
+
+# Set up git hooks (must be run separately)
+uv run pre-commit install
+```
+
+**Note**: `uv sync --all-extras` installs the pre-commit package, but you must run `uv run pre-commit install` separately to set up the git hooks.
+
+### Pre-commit Hooks
+
+The following hooks run automatically on commit:
+
+1. **ruff**: Lints code and fixes issues automatically
+   - Runs on: `src/` (excludes `tests/`, `reference_repos/`)
+   - Auto-fixes: Yes
+
+2. **ruff-format**: Formats code with ruff
+   - Runs on: `src/` (excludes `tests/`, `reference_repos/`)
+   - Auto-fixes: Yes
+
+3. **mypy**: Type checking
+   - Runs on: `src/` (excludes `folder/`)
+   - Additional dependencies: pydantic, pydantic-settings, tenacity, pydantic-ai
+
+4. **pytest-unit**: Runs unit tests (excludes OpenAI and embedding_provider tests)
+   - Runs: `tests/unit/` with `-m "not openai and not embedding_provider"`
+   - Always runs: Yes (not just on changed files)
+
+5. **pytest-local-embeddings**: Runs local embedding tests
+   - Runs: `tests/` with `-m "local_embeddings"`
+   - Always runs: Yes
+
+### Manual Pre-commit Run
+
+To run pre-commit hooks manually (without committing):
+
+```bash
+uv run pre-commit run --all-files
+```
+
+### Troubleshooting
+
+- **Hooks failing**: Fix the issues shown in the output, then commit again
+- **Skipping hooks**: Use `git commit --no-verify` (not recommended)
+- **Hook not running**: Ensure hooks are installed with `uv run pre-commit install`
+- **Type errors**: Check that all dependencies are installed with `uv sync --all-extras`
 
 ## Documentation
+
+### Building Documentation
+
+Documentation is built using MkDocs. Source files are in `docs/`, and the configuration is in `mkdocs.yml`.
+
+```bash
+# Build documentation
+uv run mkdocs build
+
+# Serve documentation locally (http://127.0.0.1:8000)
+uv run mkdocs serve
+```
+
+The documentation site is published at: <https://deepcritical.github.io/GradioDemo/>
 
 ### Docstrings
 

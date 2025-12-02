@@ -14,14 +14,9 @@ All tools implement the `SearchTool` protocol from `src/tools/base.py`:
 
 All tools use the `@retry` decorator from tenacity:
 
-```python
-@retry(
-    stop=stop_after_attempt(3), 
-    wait=wait_exponential(...)
-)
-async def search(self, query: str, max_results: int = 10) -> list[Evidence]:
-    # Implementation
-```
+<!--codeinclude-->
+[Retry Decorator Pattern](../src/tools/pubmed.py) start_line:46 end_line:50
+<!--/codeinclude-->
 
 Tools with API rate limits implement `_rate_limit()` method and use shared rate limiters from `src/tools/rate_limiter.py`.
 
@@ -122,11 +117,23 @@ Missing fields are handled gracefully with defaults.
 
 **Purpose**: Orchestrates parallel searches across multiple tools
 
+**Initialization Parameters**:
+- `tools: list[SearchTool]`: List of search tools to use
+- `timeout: float = 30.0`: Timeout for each search in seconds
+- `include_rag: bool = False`: Whether to include RAG tool in searches
+- `auto_ingest_to_rag: bool = True`: Whether to automatically ingest results into RAG
+- `oauth_token: str | None = None`: Optional OAuth token from HuggingFace login (for RAG LLM)
+
+**Methods**:
+- `async def execute(query: str, max_results_per_tool: int = 10) -> SearchResult`: Execute search across all tools in parallel
+
 **Features**:
-- Uses `asyncio.gather()` with `return_exceptions=True`
-- Aggregates results into `SearchResult`
-- Handles tool failures gracefully
+- Uses `asyncio.gather()` with `return_exceptions=True` for parallel execution
+- Aggregates results into `SearchResult` with evidence and metadata
+- Handles tool failures gracefully (continues with other tools)
 - Deduplicates results by URL
+- Automatically ingests results into RAG if `auto_ingest_to_rag=True`
+- Can add RAG tool dynamically via `add_rag_tool()` method
 
 ## Tool Registration
 
@@ -136,14 +143,21 @@ Tools are registered in the search handler:
 from src.tools.pubmed import PubMedTool
 from src.tools.clinicaltrials import ClinicalTrialsTool
 from src.tools.europepmc import EuropePMCTool
+from src.tools.search_handler import SearchHandler
 
 search_handler = SearchHandler(
     tools=[
         PubMedTool(),
         ClinicalTrialsTool(),
         EuropePMCTool(),
-    ]
+    ],
+    include_rag=True,  # Include RAG tool for semantic search
+    auto_ingest_to_rag=True,  # Automatically ingest results into RAG
+    oauth_token=token  # Optional HuggingFace token for RAG LLM
 )
+
+# Execute search
+result = await search_handler.execute("query", max_results_per_tool=10)
 ```
 
 ## See Also

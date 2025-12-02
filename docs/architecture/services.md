@@ -10,17 +10,18 @@ DeepCritical provides several services for embeddings, RAG, and statistical anal
 
 **Features**:
 - **No API Key Required**: Uses local sentence-transformers models
-- **Async-Safe**: All operations use `run_in_executor()` to avoid blocking
-- **ChromaDB Storage**: Vector storage for embeddings
-- **Deduplication**: 0.85 similarity threshold (85% similarity = duplicate)
+- **Async-Safe**: All operations use `run_in_executor()` to avoid blocking the event loop
+- **ChromaDB Storage**: In-memory vector storage for embeddings
+- **Deduplication**: 0.9 similarity threshold by default (90% similarity = duplicate, configurable)
 
 **Model**: Configurable via `settings.local_embedding_model` (default: `all-MiniLM-L6-v2`)
 
 **Methods**:
-- `async def embed(text: str) -> list[float]`: Generate embeddings
-- `async def embed_batch(texts: list[str]) -> list[list[float]]`: Batch embedding
-- `async def similarity(text1: str, text2: str) -> float`: Calculate similarity
-- `async def find_duplicates(texts: list[str], threshold: float = 0.85) -> list[tuple[int, int]]`: Find duplicates
+- `async def embed(text: str) -> list[float]`: Generate embeddings (async-safe via `run_in_executor()`)
+- `async def embed_batch(texts: list[str]) -> list[list[float]]`: Batch embedding (more efficient)
+- `async def add_evidence(evidence_id: str, content: str, metadata: dict[str, Any]) -> None`: Add evidence to vector store
+- `async def search_similar(query: str, n_results: int = 5) -> list[dict[str, Any]]`: Find semantically similar evidence
+- `async def deduplicate(new_evidence: list[Evidence], threshold: float = 0.9) -> list[Evidence]`: Remove semantically duplicate evidence
 
 **Usage**:
 ```python
@@ -32,15 +33,21 @@ embedding = await service.embed("text to embed")
 
 ## LlamaIndex RAG Service
 
-**File**: `src/services/rag.py`
+**File**: `src/services/llamaindex_rag.py`
 
 **Purpose**: Retrieval-Augmented Generation using LlamaIndex
 
 **Features**:
-- **OpenAI Embeddings**: Requires `OPENAI_API_KEY`
-- **ChromaDB Storage**: Vector database for document storage
+- **Multiple Embedding Providers**: OpenAI embeddings (requires `OPENAI_API_KEY`) or local sentence-transformers (no API key)
+- **Multiple LLM Providers**: HuggingFace LLM (preferred) or OpenAI LLM (fallback) for query synthesis
+- **ChromaDB Storage**: Vector database for document storage (supports in-memory mode)
 - **Metadata Preservation**: Preserves source, title, URL, date, authors
-- **Lazy Initialization**: Graceful fallback if OpenAI key not available
+- **Lazy Initialization**: Graceful fallback if dependencies not available
+
+**Initialization Parameters**:
+- `use_openai_embeddings: bool | None`: Force OpenAI embeddings (None = auto-detect)
+- `use_in_memory: bool`: Use in-memory ChromaDB client (useful for tests)
+- `oauth_token: str | None`: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
 **Methods**:
 - `async def ingest_evidence(evidence: list[Evidence]) -> None`: Ingest evidence into RAG
@@ -49,9 +56,13 @@ embedding = await service.embed("text to embed")
 
 **Usage**:
 ```python
-from src.services.rag import get_rag_service
+from src.services.llamaindex_rag import get_rag_service
 
-service = get_rag_service()
+service = get_rag_service(
+    use_openai_embeddings=False,  # Use local embeddings
+    use_in_memory=True,  # Use in-memory ChromaDB
+    oauth_token=token  # Optional HuggingFace token
+)
 if service:
     documents = await service.retrieve("query", top_k=5)
 ```
@@ -92,13 +103,19 @@ result = await analyzer.analyze(
 
 ## Singleton Pattern
 
-All services use the singleton pattern with `@lru_cache(maxsize=1)`:
+Services use singleton patterns for lazy initialization:
 
-```python
-@lru_cache(maxsize=1)
-def get_embedding_service() -> EmbeddingService:
-    return EmbeddingService()
-```
+**EmbeddingService**: Uses a global variable pattern:
+
+<!--codeinclude-->
+[EmbeddingService Singleton](../src/services/embeddings.py) start_line:164 end_line:172
+<!--/codeinclude-->
+
+**LlamaIndexRAGService**: Direct instantiation (no caching):
+
+<!--codeinclude-->
+[LlamaIndexRAGService Factory](../src/services/llamaindex_rag.py) start_line:440 end_line:466
+<!--/codeinclude-->
 
 This ensures:
 - Single instance per process

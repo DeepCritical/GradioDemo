@@ -4,12 +4,16 @@ DeepCritical uses Pydantic AI agents for all AI-powered operations. All agents f
 
 ## Agent Pattern
 
-All agents use the Pydantic AI `Agent` class with the following structure:
+### Pydantic AI Agents
+
+Pydantic AI agents use the `Agent` class with the following structure:
 
 - **System Prompt**: Module-level constant with date injection
 - **Agent Class**: `__init__(model: Any | None = None)`
 - **Main Method**: Async method (e.g., `async def evaluate()`, `async def write_report()`)
-- **Factory Function**: `def create_agent_name(model: Any | None = None) -> AgentName`
+- **Factory Function**: `def create_agent_name(model: Any | None = None, oauth_token: str | None = None) -> AgentName`
+
+**Note**: Factory functions accept an optional `oauth_token` parameter for HuggingFace authentication, which takes priority over environment variables.
 
 ## Model Initialization
 
@@ -155,16 +159,130 @@ For text output (writer agents), agents return `str` directly.
 - `key_entities`: List of key entities
 - `research_questions`: List of research questions
 
+## Magentic Agents
+
+The following agents use the `BaseAgent` pattern from `agent-framework` and are used exclusively with `MagenticOrchestrator`:
+
+### Hypothesis Agent
+
+**File**: `src/agents/hypothesis_agent.py`
+
+**Purpose**: Generates mechanistic hypotheses based on evidence.
+
+**Pattern**: `BaseAgent` from `agent-framework`
+
+**Methods**:
+- `async def run(messages, thread, **kwargs) -> AgentRunResponse`
+
+**Features**:
+- Uses internal Pydantic AI `Agent` with `HypothesisAssessment` output type
+- Accesses shared `evidence_store` for evidence
+- Uses embedding service for diverse evidence selection (MMR algorithm)
+- Stores hypotheses in shared context
+
+### Search Agent
+
+**File**: `src/agents/search_agent.py`
+
+**Purpose**: Wraps `SearchHandler` as an agent for Magentic orchestrator.
+
+**Pattern**: `BaseAgent` from `agent-framework`
+
+**Methods**:
+- `async def run(messages, thread, **kwargs) -> AgentRunResponse`
+
+**Features**:
+- Executes searches via `SearchHandlerProtocol`
+- Deduplicates evidence using embedding service
+- Searches for semantically related evidence
+- Updates shared evidence store
+
+### Analysis Agent
+
+**File**: `src/agents/analysis_agent.py`
+
+**Purpose**: Performs statistical analysis using Modal sandbox.
+
+**Pattern**: `BaseAgent` from `agent-framework`
+
+**Methods**:
+- `async def run(messages, thread, **kwargs) -> AgentRunResponse`
+
+**Features**:
+- Wraps `StatisticalAnalyzer` service
+- Analyzes evidence and hypotheses
+- Returns verdict (SUPPORTED/REFUTED/INCONCLUSIVE)
+- Stores analysis results in shared context
+
+### Report Agent (Magentic)
+
+**File**: `src/agents/report_agent.py`
+
+**Purpose**: Generates structured scientific reports from evidence and hypotheses.
+
+**Pattern**: `BaseAgent` from `agent-framework`
+
+**Methods**:
+- `async def run(messages, thread, **kwargs) -> AgentRunResponse`
+
+**Features**:
+- Uses internal Pydantic AI `Agent` with `ResearchReport` output type
+- Accesses shared evidence store and hypotheses
+- Validates citations before returning
+- Formats report as markdown
+
+### Judge Agent
+
+**File**: `src/agents/judge_agent.py`
+
+**Purpose**: Evaluates evidence quality and determines if sufficient for synthesis.
+
+**Pattern**: `BaseAgent` from `agent-framework`
+
+**Methods**:
+- `async def run(messages, thread, **kwargs) -> AgentRunResponse`
+- `async def run_stream(messages, thread, **kwargs) -> AsyncIterable[AgentRunResponseUpdate]`
+
+**Features**:
+- Wraps `JudgeHandlerProtocol`
+- Accesses shared evidence store
+- Returns `JudgeAssessment` with sufficient flag, confidence, and recommendation
+
+## Agent Patterns
+
+DeepCritical uses two distinct agent patterns:
+
+### 1. Pydantic AI Agents (Traditional Pattern)
+
+These agents use the Pydantic AI `Agent` class directly and are used in iterative and deep research flows:
+
+- **Pattern**: `Agent(model, output_type, system_prompt)`
+- **Initialization**: `__init__(model: Any | None = None)`
+- **Methods**: Agent-specific async methods (e.g., `async def evaluate()`, `async def write_report()`)
+- **Examples**: `KnowledgeGapAgent`, `ToolSelectorAgent`, `WriterAgent`, `LongWriterAgent`, `ProofreaderAgent`, `ThinkingAgent`, `InputParserAgent`
+
+### 2. Magentic Agents (Agent-Framework Pattern)
+
+These agents use the `BaseAgent` class from `agent-framework` and are used in Magentic orchestrator:
+
+- **Pattern**: `BaseAgent` from `agent-framework` with `async def run()` method
+- **Initialization**: `__init__(evidence_store, embedding_service, ...)`
+- **Methods**: `async def run(messages, thread, **kwargs) -> AgentRunResponse`
+- **Examples**: `HypothesisAgent`, `SearchAgent`, `AnalysisAgent`, `ReportAgent`, `JudgeAgent`
+
+**Note**: Magentic agents are used exclusively with the `MagenticOrchestrator` and follow the agent-framework protocol for multi-agent coordination.
+
 ## Factory Functions
 
 All agents have factory functions in `src/agent_factory/agents.py`:
 
 <!--codeinclude-->
-[Factory Functions](../src/agent_factory/agents.py) start_line:77 end_line:97
+[Factory Functions](../src/agent_factory/agents.py) start_line:79 end_line:100
 <!--/codeinclude-->
 
 Factory functions:
 - Use `get_model()` if no model provided
+- Accept `oauth_token` parameter for HuggingFace authentication
 - Raise `ConfigurationError` if creation fails
 - Log agent creation
 
@@ -173,25 +291,3 @@ Factory functions:
 - [Orchestrators](orchestrators.md) - How agents are orchestrated
 - [API Reference - Agents](../api/agents.md) - API documentation
 - [Contributing - Code Style](../contributing/code-style.md) - Development guidelines
-<<<<<<< HEAD
-=======
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> 8086ce5fefde1c867880661d57e1299029a91ead

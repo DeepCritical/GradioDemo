@@ -12,33 +12,21 @@ This page documents the API for DeepCritical orchestrators.
 
 #### `run`
 
-```python
-async def run(
-    self,
-    query: str,
-    background_context: str = "",
-    max_iterations: int | None = None,
-    max_time_minutes: float | None = None,
-    token_budget: int | None = None
-) -> AsyncGenerator[AgentEvent, None]
-```
+<!--codeinclude-->
+[IterativeResearchFlow.run](../src/orchestrator/research_flow.py) start_line:134 end_line:140
+<!--/codeinclude-->
 
 Runs iterative research flow.
 
 **Parameters**:
 - `query`: Research query string
 - `background_context`: Background context (default: "")
-- `max_iterations`: Maximum iterations (default: from settings)
-- `max_time_minutes`: Maximum time in minutes (default: from settings)
-- `token_budget`: Token budget (default: from settings)
+- `output_length`: Optional description of desired output length (default: "")
+- `output_instructions`: Optional additional instructions for report generation (default: "")
 
-**Yields**: `AgentEvent` objects for:
-- `started`: Research started
-- `search_complete`: Search completed
-- `judge_complete`: Evidence evaluation completed
-- `synthesizing`: Generating report
-- `complete`: Research completed
-- `error`: Error occurred
+**Returns**: Final report string.
+
+**Note**: `max_iterations`, `max_time_minutes`, and `token_budget` are constructor parameters, not `run()` parameters.
 
 ## DeepResearchFlow
 
@@ -50,33 +38,18 @@ Runs iterative research flow.
 
 #### `run`
 
-```python
-async def run(
-    self,
-    query: str,
-    background_context: str = "",
-    max_iterations_per_section: int | None = None,
-    max_time_minutes: float | None = None,
-    token_budget: int | None = None
-) -> AsyncGenerator[AgentEvent, None]
-```
+<!--codeinclude-->
+[DeepResearchFlow.run](../src/orchestrator/research_flow.py) start_line:778 end_line:778
+<!--/codeinclude-->
 
 Runs deep research flow.
 
 **Parameters**:
 - `query`: Research query string
-- `background_context`: Background context (default: "")
-- `max_iterations_per_section`: Maximum iterations per section (default: from settings)
-- `max_time_minutes`: Maximum time in minutes (default: from settings)
-- `token_budget`: Token budget (default: from settings)
 
-**Yields**: `AgentEvent` objects for:
-- `started`: Research started
-- `planning`: Creating research plan
-- `looping`: Running parallel research loops
-- `synthesizing`: Synthesizing results
-- `complete`: Research completed
-- `error`: Error occurred
+**Returns**: Final report string.
+
+**Note**: `max_iterations_per_section`, `max_time_minutes`, and `token_budget` are constructor parameters, not `run()` parameters.
 
 ## GraphOrchestrator
 
@@ -88,23 +61,18 @@ Runs deep research flow.
 
 #### `run`
 
-```python
-async def run(
-    self,
-    query: str,
-    research_mode: str = "auto",
-    use_graph: bool = True
-) -> AsyncGenerator[AgentEvent, None]
-```
+<!--codeinclude-->
+[GraphOrchestrator.run](../src/orchestrator/graph_orchestrator.py) start_line:177 end_line:177
+<!--/codeinclude-->
 
 Runs graph-based research orchestration.
 
 **Parameters**:
 - `query`: Research query string
-- `research_mode`: Research mode ("iterative", "deep", or "auto")
-- `use_graph`: Whether to use graph execution (default: True)
 
 **Yields**: `AgentEvent` objects during graph execution.
+
+**Note**: `research_mode` and `use_graph` are constructor parameters, not `run()` parameters.
 
 ## Orchestrator Factory
 
@@ -116,22 +84,18 @@ Runs graph-based research orchestration.
 
 #### `create_orchestrator`
 
-```python
-def create_orchestrator(
-    search_handler: SearchHandlerProtocol,
-    judge_handler: JudgeHandlerProtocol,
-    config: dict[str, Any],
-    mode: str | None = None
-) -> Any
-```
+<!--codeinclude-->
+[create_orchestrator](../src/orchestrator_factory.py) start_line:44 end_line:50
+<!--/codeinclude-->
 
 Creates an orchestrator instance.
 
 **Parameters**:
-- `search_handler`: Search handler protocol implementation
-- `judge_handler`: Judge handler protocol implementation
-- `config`: Configuration dictionary
-- `mode`: Orchestrator mode ("simple", "advanced", "magentic", or None for auto-detect)
+- `search_handler`: Search handler protocol implementation (optional, required for simple mode)
+- `judge_handler`: Judge handler protocol implementation (optional, required for simple mode)
+- `config`: Configuration object (optional)
+- `mode`: Orchestrator mode ("simple", "advanced", "magentic", "iterative", "deep", "auto", or None for auto-detect)
+- `oauth_token`: Optional OAuth token from HuggingFace login (takes priority over env vars)
 
 **Returns**: Orchestrator instance.
 
@@ -153,23 +117,18 @@ Creates an orchestrator instance.
 
 #### `run`
 
-```python
-async def run(
-    self,
-    query: str,
-    max_rounds: int = 15,
-    max_stalls: int = 3
-) -> AsyncGenerator[AgentEvent, None]
-```
+<!--codeinclude-->
+[MagenticOrchestrator.run](../src/orchestrator_magentic.py) start_line:101 end_line:101
+<!--/codeinclude-->
 
 Runs Magentic orchestration.
 
 **Parameters**:
 - `query`: Research query string
-- `max_rounds`: Maximum rounds (default: 15)
-- `max_stalls`: Maximum stalls before reset (default: 3)
 
 **Yields**: `AgentEvent` objects converted from Magentic events.
+
+**Note**: `max_rounds` and `max_stalls` are constructor parameters, not `run()` parameters.
 
 **Requirements**:
 - `agent-framework-core` package

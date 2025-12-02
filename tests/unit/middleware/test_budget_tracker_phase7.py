@@ -158,3 +158,4 @@ class TestIterationTokenTracking:
         assert budget1.iteration_tokens[1] == 100
         assert budget2.iteration_tokens[1] == 200
 
+
