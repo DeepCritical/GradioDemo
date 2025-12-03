@@ -5,9 +5,99 @@ from typing import TYPE_CHECKING
 import structlog
 
 if TYPE_CHECKING:
-    from src.utils.models import Evidence
+    from src.utils.models import Citation, Evidence
 
 logger = structlog.get_logger()
+
+
+def _format_authors(citation: "Citation") -> str:
+    """Format authors string from citation."""
+    authors = ", ".join(citation.authors[:3])
+    if len(citation.authors) > 3:
+        authors += " et al."
+    elif not authors:
+        authors = "Unknown"
+    return authors
+
+
+def _add_evidence_section(report_parts: list[str], evidence: list["Evidence"]) -> None:
+    """Add evidence summary section to report."""
+    from src.utils.models import SourceName
+
+    report_parts.append("## Evidence Summary\n")
+    report_parts.append(f"**Total Sources Found:** {len(evidence)}\n\n")
+
+    # Group evidence by source
+    by_source: dict[SourceName, list[Evidence]] = {}
+    for ev in evidence:
+        source = ev.citation.source
+        if source not in by_source:
+            by_source[source] = []
+        by_source[source].append(ev)
+
+    # Organize by source
+    for source in sorted(by_source.keys()):  # type: ignore[assignment]
+        source_evidence = by_source[source]
+        report_parts.append(f"### {source.upper()} Sources ({len(source_evidence)})\n\n")
+
+        for i, ev in enumerate(source_evidence, 1):
+            authors = _format_authors(ev.citation)
+            report_parts.append(f"#### {i}. {ev.citation.title}\n")
+            if authors and authors != "Unknown":
+                report_parts.append(f"**Authors:** {authors}  \n")
+            report_parts.append(f"**Date:** {ev.citation.date}  \n")
+            report_parts.append(f"**Source:** {ev.citation.source.upper()}  \n")
+            report_parts.append(f"**URL:** {ev.citation.url}  \n\n")
+
+            # Content (truncated if too long)
+            content = ev.content
+            if len(content) > 500:
+                content = content[:500] + "... [truncated]"
+            report_parts.append(f"{content}\n\n")
+
+
+def _add_key_findings(report_parts: list[str], evidence: list["Evidence"]) -> None:
+    """Add key findings section to report."""
+    report_parts.append("## Key Findings\n\n")
+    report_parts.append(
+        "Based on the evidence collected, the following key points were identified:\n\n"
+    )
+
+    # Extract key points from evidence (first sentence or summary)
+    key_points: list[str] = []
+    for ev in evidence[:10]:  # Limit to top 10
+        # Try to extract first meaningful sentence
+        content = ev.content.strip()
+        if content:
+            # Find first sentence
+            first_period = content.find(".")
+            if first_period > 0 and first_period < 200:
+                key_point = content[: first_period + 1].strip()
+            else:
+                # Fallback: first 150 chars
+                key_point = content[:150].strip()
+                if len(content) > 150:
+                    key_point += "..."
+            key_points.append(f"- {key_point} [[{len(key_points) + 1}]](#references)")
+
+    if key_points:
+        report_parts.append("\n".join(key_points))
+        report_parts.append("\n\n")
+    else:
+        report_parts.append("*No specific key findings could be extracted from the evidence.*\n\n")
+
+
+def _add_references(report_parts: list[str], evidence: list["Evidence"]) -> None:
+    """Add references section to report."""
+    report_parts.append("## References\n\n")
+    for i, ev in enumerate(evidence, 1):
+        authors = _format_authors(ev.citation)
+        report_parts.append(
+            f"[{i}] {authors} ({ev.citation.date}). "
+            f"*{ev.citation.title}*. "
+            f"{ev.citation.source.upper()}. "
+            f"Available at: {ev.citation.url}\n\n"
+        )
 
 
 def generate_report_from_evidence(
@@ -36,9 +126,7 @@ def generate_report_from_evidence(
 
     # Introduction
     report_parts.append("## Introduction\n")
-    report_parts.append(
-        f"This report addresses the following research query: **{query}**\n"
-    )
+    report_parts.append(f"This report addresses the following research query: **{query}**\n")
     report_parts.append(
         "*Note: This report was generated from collected evidence. "
         "LLM-based synthesis was unavailable due to API limitations.*\n\n"
@@ -46,73 +134,8 @@ def generate_report_from_evidence(
 
     # Evidence Summary
     if evidence and len(evidence) > 0:
-        report_parts.append("## Evidence Summary\n")
-        report_parts.append(
-            f"**Total Sources Found:** {len(evidence)}\n\n"
-        )
-
-        # Group evidence by source
-        by_source: dict[str, list["Evidence"]] = {}
-        for ev in evidence:
-            source = ev.citation.source
-            if source not in by_source:
-                by_source[source] = []
-            by_source[source].append(ev)
-
-        # Organize by source
-        for source in sorted(by_source.keys()):
-            source_evidence = by_source[source]
-            report_parts.append(f"### {source.upper()} Sources ({len(source_evidence)})\n\n")
-
-            for i, ev in enumerate(source_evidence, 1):
-                # Format citation
-                authors = ", ".join(ev.citation.authors[:3])
-                if len(ev.citation.authors) > 3:
-                    authors += " et al."
-
-                report_parts.append(f"#### {i}. {ev.citation.title}\n")
-                if authors:
-                    report_parts.append(f"**Authors:** {authors}  \n")
-                report_parts.append(f"**Date:** {ev.citation.date}  \n")
-                report_parts.append(f"**Source:** {ev.citation.source.upper()}  \n")
-                report_parts.append(f"**URL:** {ev.citation.url}  \n\n")
-
-                # Content (truncated if too long)
-                content = ev.content
-                if len(content) > 500:
-                    content = content[:500] + "... [truncated]"
-                report_parts.append(f"{content}\n\n")
-
-        # Key Findings Section
-        report_parts.append("## Key Findings\n\n")
-        report_parts.append(
-            "Based on the evidence collected, the following key points were identified:\n\n"
-        )
-
-        # Extract key points from evidence (first sentence or summary)
-        key_points: list[str] = []
-        for ev in evidence[:10]:  # Limit to top 10
-            # Try to extract first meaningful sentence
-            content = ev.content.strip()
-            if content:
-                # Find first sentence
-                first_period = content.find(".")
-                if first_period > 0 and first_period < 200:
-                    key_point = content[: first_period + 1].strip()
-                else:
-                    # Fallback: first 150 chars
-                    key_point = content[:150].strip()
-                    if len(content) > 150:
-                        key_point += "..."
-                key_points.append(f"- {key_point} [[{len(key_points) + 1}]](#references)")
-
-        if key_points:
-            report_parts.append("\n".join(key_points))
-            report_parts.append("\n\n")
-        else:
-            report_parts.append(
-                "*No specific key findings could be extracted from the evidence.*\n\n"
-            )
+        _add_evidence_section(report_parts, evidence)
+        _add_key_findings(report_parts, evidence)
 
     elif findings:
         # Fallback: use findings string if evidence not available
@@ -129,20 +152,7 @@ def generate_report_from_evidence(
 
     # References Section
     if evidence and len(evidence) > 0:
-        report_parts.append("## References\n\n")
-        for i, ev in enumerate(evidence, 1):
-            authors = ", ".join(ev.citation.authors[:3])
-            if len(ev.citation.authors) > 3:
-                authors += " et al."
-            elif not authors:
-                authors = "Unknown"
-
-            report_parts.append(
-                f"[{i}] {authors} ({ev.citation.date}). "
-                f"*{ev.citation.title}*. "
-                f"{ev.citation.source.upper()}. "
-                f"Available at: {ev.citation.url}\n\n"
-            )
+        _add_references(report_parts, evidence)
 
     # Conclusion
     report_parts.append("## Conclusion\n\n")
@@ -167,18 +177,3 @@ def generate_report_from_evidence(
         )
 
     return "".join(report_parts)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

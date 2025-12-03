@@ -20,6 +20,63 @@ from src.tools.vendored.web_search_core import (
 logger = structlog.get_logger()
 
 
+async def _extract_links(
+    html: str, current_url: str, base_domain: str
+) -> tuple[list[str], list[str]]:
+    """Extract prioritized links from HTML content."""
+    soup = BeautifulSoup(html, "html.parser")
+    nav_links = set()
+    body_links = set()
+
+    # Find navigation/header links
+    for nav_element in soup.find_all(["nav", "header"]):
+        for a in nav_element.find_all("a", href=True):
+            href = str(a["href"])
+            link = urljoin(current_url, href)
+            if urlparse(link).netloc == base_domain:
+                nav_links.add(link)
+
+    # Find remaining body links
+    for a in soup.find_all("a", href=True):
+        href = str(a["href"])
+        link = urljoin(current_url, href)
+        if urlparse(link).netloc == base_domain and link not in nav_links:
+            body_links.add(link)
+
+    return list(nav_links), list(body_links)
+
+
+async def _fetch_page(url: str) -> str:
+    """Fetch HTML content from a URL."""
+    connector = aiohttp.TCPConnector(ssl=ssl_context)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        try:
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with session.get(url, timeout=timeout) as response:
+                if response.status == 200:
+                    return await response.text()
+                return ""
+        except Exception as e:
+            logger.warning("Error fetching URL", url=url, error=str(e))
+            return ""
+
+
+def _add_links_to_queue(
+    links: list[str],
+    queue: list[str],
+    all_pages_to_scrape: set[str],
+    remaining_slots: int,
+) -> int:
+    """Add normalized links to queue if not already visited."""
+    for link in links:
+        normalized_link = link.rstrip("/")
+        if normalized_link not in all_pages_to_scrape and remaining_slots > 0:
+            queue.append(normalized_link)
+            all_pages_to_scrape.add(normalized_link)
+            remaining_slots -= 1
+    return remaining_slots
+
+
 async def crawl_website(starting_url: str) -> list[ScrapeResult] | str:
     """Crawl the pages of a website starting with the starting_url and then descending into the pages linked from there.
 
@@ -45,41 +102,6 @@ async def crawl_website(starting_url: str) -> list[ScrapeResult] | str:
     max_pages = 10
     base_domain = urlparse(starting_url).netloc
 
-    async def extract_links(html: str, current_url: str) -> tuple[list[str], list[str]]:
-        """Extract prioritized links from HTML content"""
-        soup = BeautifulSoup(html, "html.parser")
-        nav_links = set()
-        body_links = set()
-
-        # Find navigation/header links
-        for nav_element in soup.find_all(["nav", "header"]):
-            for a in nav_element.find_all("a", href=True):
-                link = urljoin(current_url, a["href"])
-                if urlparse(link).netloc == base_domain:
-                    nav_links.add(link)
-
-        # Find remaining body links
-        for a in soup.find_all("a", href=True):
-            link = urljoin(current_url, a["href"])
-            if urlparse(link).netloc == base_domain and link not in nav_links:
-                body_links.add(link)
-
-        return list(nav_links), list(body_links)
-
-    async def fetch_page(url: str) -> str:
-        """Fetch HTML content from a URL"""
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            try:
-                timeout = aiohttp.ClientTimeout(total=30)
-                async with session.get(url, timeout=timeout) as response:
-                    if response.status == 200:
-                        return await response.text()
-                    return ""
-            except Exception as e:
-                logger.warning("Error fetching URL", url=url, error=str(e))
-                return ""
-
     # Initialize with starting URL
     queue: list[str] = [starting_url]
     next_level_queue: list[str] = []
@@ -90,26 +112,20 @@ async def crawl_website(starting_url: str) -> list[ScrapeResult] | str:
         current_url = queue.pop(0)
 
         # Fetch and process the page
-        html_content = await fetch_page(current_url)
+        html_content = await _fetch_page(current_url)
         if html_content:
-            nav_links, body_links = await extract_links(html_content, current_url)
+            nav_links, body_links = await _extract_links(html_content, current_url, base_domain)
 
             # Add unvisited nav links to current queue (higher priority)
             remaining_slots = max_pages - len(all_pages_to_scrape)
-            for link in nav_links:
-                link = link.rstrip("/")
-                if link not in all_pages_to_scrape and remaining_slots > 0:
-                    queue.append(link)
-                    all_pages_to_scrape.add(link)
-                    remaining_slots -= 1
+            remaining_slots = _add_links_to_queue(
+                nav_links, queue, all_pages_to_scrape, remaining_slots
+            )
 
             # Add unvisited body links to next level queue (lower priority)
-            for link in body_links:
-                link = link.rstrip("/")
-                if link not in all_pages_to_scrape and remaining_slots > 0:
-                    next_level_queue.append(link)
-                    all_pages_to_scrape.add(link)
-                    remaining_slots -= 1
+            remaining_slots = _add_links_to_queue(
+                body_links, next_level_queue, all_pages_to_scrape, remaining_slots
+            )
 
         # If current queue is empty, add next level links
         if not queue:
@@ -125,18 +141,3 @@ async def crawl_website(starting_url: str) -> list[ScrapeResult] | str:
     # Use scrape_urls to get the content for all discovered pages
     result = await scrape_urls(pages_to_scrape_snippets)
     return result
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

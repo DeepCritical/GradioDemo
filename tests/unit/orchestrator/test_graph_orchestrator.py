@@ -122,9 +122,12 @@ class TestGraphExecutionContext:
             assert len(limited) == 5
             # Should be most recent
             assert limited[0].parts[0].content == "Message 5"
+            
+            # Visit a node to test has_visited
+            context.visited_nodes.add("node1")
+            assert context.has_visited("node1")
         except ImportError:
             pytest.skip("pydantic_ai not available")
-        assert context.has_visited("node1")
 
 
 class TestGraphOrchestrator:
@@ -253,7 +256,7 @@ class TestGraphOrchestrator:
         orchestrator._build_graph = mock_build_graph
 
         # Mock the graph execution
-        async def mock_run_with_graph(query: str, mode: str):
+        async def mock_run_with_graph(query: str, research_mode: str, message_history: list | None = None):
             yield AgentEvent(type="started", message="Starting", iteration=0)
             yield AgentEvent(type="looping", message="Processing", iteration=1)
             yield AgentEvent(type="complete", message="# Final Report\n\nContent", iteration=1)

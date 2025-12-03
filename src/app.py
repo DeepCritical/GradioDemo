@@ -17,12 +17,18 @@ import numpy as np
 import structlog
 
 from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
-from src.middleware.budget_tracker import BudgetTracker
-from src.middleware.state_machine import init_workflow_state
 from src.orchestrator_factory import create_orchestrator
 from src.services.multimodal_processing import get_multimodal_service
 from src.utils.config import settings
-from src.utils.models import AgentEvent, ModelMessage, OrchestratorConfig
+from src.utils.models import AgentEvent, OrchestratorConfig
+
+# Import ModelMessage from pydantic_ai with fallback
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    from typing import Any
+
+    ModelMessage = Any  # type: ignore[assignment, misc]
 
 # Type alias for Gradio multimodal input
 MultimodalPostprocess = dict[str, Any] | str
@@ -75,13 +81,12 @@ def configure_orchestrator(
     Returns:
         Tuple of (orchestrator, backend_info_string)
     """
-    from src.services.embeddings import get_embedding_service
     from src.tools.search_handler import SearchHandler
     from src.tools.web_search_factory import create_web_search_tool
 
     # Create search handler with tools
     tools = []
-    
+
     # Add web search tool
     web_search_tool = create_web_search_tool(provider=web_search_provider or "auto")
     if web_search_tool:
@@ -90,7 +95,7 @@ def configure_orchestrator(
 
     # Create config if not provided
     config = OrchestratorConfig()
-    
+
     search_handler = SearchHandler(
         tools=tools,
         timeout=config.search_timeout,
@@ -111,7 +116,7 @@ def configure_orchestrator(
     # 2. API Key (OAuth or Env) - HuggingFace only (OAuth provides HF token)
     # Priority: oauth_token > env vars
     # On HuggingFace Spaces, OAuth token is available via request.oauth_token
-    # 
+    #
     # OAuth Scope Requirements:
     # - 'inference-api': Required for HuggingFace Inference API access
     #   This scope grants access to:
@@ -119,16 +124,24 @@ def configure_orchestrator(
     #   * All third-party inference providers (nebius, together, scaleway, hyperbolic, novita, nscale, sambanova, ovh, fireworks, etc.)
     #   * All models available through the Inference Providers API
     #   See: https://huggingface.co/docs/hub/oauth#currently-supported-scopes
-    # 
+    #
     # Note: The hf_provider parameter is accepted but not used here because HuggingFaceProvider
     # from pydantic-ai doesn't support provider selection. Provider selection happens at the
     # InferenceClient level (used in HuggingFaceChatClient for advanced mode).
     effective_api_key = oauth_token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
-    
+
     # Log which authentication source is being used
     if effective_api_key:
-        auth_source = "OAuth token" if oauth_token else ("HF_TOKEN env var" if os.getenv("HF_TOKEN") else "HUGGINGFACE_API_KEY env var")
-        logger.info("Using HuggingFace authentication", source=auth_source, has_token=bool(effective_api_key))
+        auth_source = (
+            "OAuth token"
+            if oauth_token
+            else ("HF_TOKEN env var" if os.getenv("HF_TOKEN") else "HUGGINGFACE_API_KEY env var")
+        )
+        logger.info(
+            "Using HuggingFace authentication",
+            source=auth_source,
+            has_token=bool(effective_api_key),
+        )
 
     if effective_api_key:
         # We have an API key (OAuth or env) - use pydantic-ai with JudgeHandler
@@ -193,26 +206,24 @@ def configure_orchestrator(
 
 def _is_file_path(text: str) -> bool:
     """Check if text appears to be a file path.
-    
+
     Args:
         text: Text to check
-        
+
     Returns:
         True if text looks like a file path
     """
-    return (
-        "/" in text or "\\" in text
-    ) and (
+    return ("/" in text or "\\" in text) and (
         "." in text.split("/")[-1] or "." in text.split("\\")[-1]
     )
 
 
 def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
     """Convert AgentEvent to Gradio chat message format.
-    
+
     Args:
         event: AgentEvent to convert
-        
+
     Returns:
         Dictionary with 'role' and 'content' keys for Gradio Chatbot
     """
@@ -220,17 +231,17 @@ def event_to_chat_message(event: AgentEvent) -> dict[str, Any]:
         "role": "assistant",
         "content": event.to_markdown(),
     }
-    
+
     # Add metadata if available
     if event.data:
         metadata: dict[str, Any] = {}
-        
+
         # Extract file path if present
         if isinstance(event.data, dict):
             file_path = event.data.get("file_path")
             if file_path:
                 metadata["file_path"] = file_path
-        
+
         if metadata:
             result["metadata"] = metadata
     return result
@@ -271,9 +282,9 @@ def extract_oauth_info(request: gr.Request | None) -> tuple[str | None, str | No
         oauth_username = request.username
     # Also try accessing via oauth_profile if available
     elif hasattr(request, "oauth_profile") and request.oauth_profile is not None:
-        if hasattr(request.oauth_profile, "username"):
+        if hasattr(request.oauth_profile, "username") and request.oauth_profile.username:
             oauth_username = request.oauth_profile.username
-        elif hasattr(request.oauth_profile, "name"):
+        elif hasattr(request.oauth_profile, "name") and request.oauth_profile.name:
             oauth_username = request.oauth_profile.name
 
     return oauth_token, oauth_username
@@ -334,6 +345,95 @@ async def yield_auth_messages(
     }
 
 
+def _extract_oauth_token(oauth_token: gr.OAuthToken | None) -> str | None:
+    """Extract token value from OAuth token object."""
+    if oauth_token is None:
+        return None
+
+    if hasattr(oauth_token, "token"):
+        token_value: str | None = getattr(oauth_token, "token", None)  # type: ignore[assignment]
+        if token_value is None:
+            return None
+        logger.debug("OAuth token extracted from oauth_token.token attribute")
+
+        # Validate token format
+        from src.utils.hf_error_handler import log_token_info, validate_hf_token
+
+        log_token_info(token_value, context="research_agent")
+        is_valid, error_msg = validate_hf_token(token_value)
+        if not is_valid:
+            logger.warning(
+                "OAuth token validation failed",
+                error=error_msg,
+                oauth_token_type=type(oauth_token).__name__,
+            )
+        return token_value
+
+    if isinstance(oauth_token, str):
+        logger.debug("OAuth token extracted as string")
+
+        # Validate token format
+        from src.utils.hf_error_handler import log_token_info, validate_hf_token
+
+        log_token_info(oauth_token, context="research_agent")
+        return oauth_token
+
+    logger.warning(
+        "OAuth token object present but token extraction failed",
+        oauth_token_type=type(oauth_token).__name__,
+    )
+    return None
+
+
+def _extract_username(oauth_profile: gr.OAuthProfile | None) -> str | None:
+    """Extract username from OAuth profile."""
+    if oauth_profile is None:
+        return None
+
+    username: str | None = None
+    if hasattr(oauth_profile, "username") and oauth_profile.username:
+        username = str(oauth_profile.username)
+    elif hasattr(oauth_profile, "name") and oauth_profile.name:
+        username = str(oauth_profile.name)
+
+    if username:
+        logger.info("OAuth user authenticated", username=username)
+    return username
+
+
+async def _process_multimodal_input(
+    message: str | MultimodalPostprocess,
+    enable_image_input: bool,
+    enable_audio_input: bool,
+    token_value: str | None,
+) -> tuple[str, tuple[int, np.ndarray[Any, Any]] | None]:  # type: ignore[type-arg]
+    """Process multimodal input and return processed text and audio data."""
+    processed_text = ""
+    audio_input_data: tuple[int, np.ndarray[Any, Any]] | None = None  # type: ignore[type-arg]
+
+    if isinstance(message, dict):
+        processed_text = message.get("text", "") or ""
+        files = message.get("files", []) or []
+        audio_input_data = message.get("audio") or None
+
+        if (files and enable_image_input) or (audio_input_data is not None and enable_audio_input):
+            try:
+                multimodal_service = get_multimodal_service()
+                processed_text = await multimodal_service.process_multimodal_input(
+                    processed_text,
+                    files=files if enable_image_input else [],
+                    audio_input=audio_input_data if enable_audio_input else None,
+                    hf_token=token_value,
+                    prepend_multimodal=True,
+                )
+            except Exception as e:
+                logger.warning("multimodal_processing_failed", error=str(e))
+    else:
+        processed_text = str(message) if message else ""
+
+    return processed_text, audio_input_data
+
+
 async def research_agent(
     message: str | MultimodalPostprocess,
     history: list[dict[str, Any]],
@@ -349,7 +449,9 @@ async def research_agent(
     web_search_provider: str = "auto",
     oauth_token: gr.OAuthToken | None = None,
     oauth_profile: gr.OAuthProfile | None = None,
-) -> AsyncGenerator[dict[str, Any] | tuple[dict[str, Any], tuple[int, np.ndarray] | None], None]:
+) -> AsyncGenerator[
+    dict[str, Any] | tuple[dict[str, Any], tuple[int, np.ndarray[Any, Any]] | None], None
+]:  # type: ignore[type-arg]
     """
     Main research agent function that processes queries and streams results.
 
@@ -372,54 +474,9 @@ async def research_agent(
     Yields:
         Chat message dictionaries or tuples with audio data
     """
-    # According to Gradio docs: OAuthToken and OAuthProfile are None if user not logged in
-    # They are automatically passed as function parameters when OAuth is enabled
-    # We extract the token value for use in the application
-
-    token_value: str | None = None
-    username: str | None = None
-
-    if oauth_token is not None:
-        # OAuthToken has a .token attribute containing the access token
-        if hasattr(oauth_token, "token"):
-            token_value = oauth_token.token
-            logger.debug("OAuth token extracted from oauth_token.token attribute")
-            
-            # Validate token format
-            from src.utils.hf_error_handler import log_token_info, validate_hf_token
-            log_token_info(token_value, context="research_agent")
-            is_valid, error_msg = validate_hf_token(token_value)
-            if not is_valid:
-                logger.warning(
-                    "OAuth token validation failed",
-                    error=error_msg,
-                    oauth_token_type=type(oauth_token).__name__,
-                )
-        elif isinstance(oauth_token, str):
-            # Handle case where oauth_token is already a string (shouldn't happen but defensive)
-            token_value = oauth_token
-            logger.debug("OAuth token extracted as string")
-            
-            # Validate token format
-            from src.utils.hf_error_handler import log_token_info, validate_hf_token
-            log_token_info(token_value, context="research_agent")
-        else:
-            token_value = None
-            logger.warning("OAuth token object present but token extraction failed", oauth_token_type=type(oauth_token).__name__)
-
-    if oauth_profile is not None:
-        # OAuthProfile has .username, .name, .profile_image attributes
-        username = (
-            oauth_profile.username
-            if hasattr(oauth_profile, "username") and oauth_profile.username
-            else (
-                oauth_profile.name
-                if hasattr(oauth_profile, "name") and oauth_profile.name
-                else None
-            )
-        )
-        if username:
-            logger.info("OAuth user authenticated", username=username)
+    # Extract OAuth token and username
+    token_value = _extract_oauth_token(oauth_token)
+    username = _extract_username(oauth_profile)
 
     # Check if user is logged in (OAuth token or env var)
     # Fallback to env vars for local development or Spaces with HF_TOKEN secret
@@ -428,56 +485,33 @@ async def research_agent(
     )
 
     if not has_authentication:
-        yield {
-            "role": "assistant",
-            "content": (
-                "🔐 **Authentication Required**\n\n"
-                "Please **sign in with HuggingFace** using the login button at the top of the page "
-                "before using this application.\n\n"
-                "The login button is required to access the AI models and research tools."
-            ),
-        }, None
+        yield (
+            {
+                "role": "assistant",
+                "content": (
+                    "🔐 **Authentication Required**\n\n"
+                    "Please **sign in with HuggingFace** using the login button at the top of the page "
+                    "before using this application.\n\n"
+                    "The login button is required to access the AI models and research tools."
+                ),
+            },
+            None,
+        )
         return
 
-    # Process multimodal input (text + images + audio)
-    processed_text = ""
-    audio_input_data: tuple[int, np.ndarray] | None = None
-
-    # Check if message is a dict (multimodal) or string
-    if isinstance(message, dict):
-        # Extract text, files, and audio from multimodal message
-        processed_text = message.get("text", "") or ""
-        files = message.get("files", []) or []
-        # Check for audio input in message (Gradio may include it as a separate field)
-        audio_input_data = message.get("audio") or None
-
-        # Process multimodal input (images, audio files, audio input)
-        # Process if we have files (and image input enabled) or audio input (and audio input enabled)
-        # Use UI settings from function parameters
-        if (files and enable_image_input) or (audio_input_data is not None and enable_audio_input):
-            try:
-                multimodal_service = get_multimodal_service()
-                # Prepend audio/image text to original text (prepend_multimodal=True)
-                # Filter files and audio based on UI settings
-                processed_text = await multimodal_service.process_multimodal_input(
-                    processed_text,
-                    files=files if enable_image_input else [],
-                    audio_input=audio_input_data if enable_audio_input else None,
-                    hf_token=token_value,
-                    prepend_multimodal=True,  # Prepend audio/image text to text input
-                )
-            except Exception as e:
-                logger.warning("multimodal_processing_failed", error=str(e))
-                # Continue with text-only input
-    else:
-        # Plain string message
-        processed_text = str(message) if message else ""
+    # Process multimodal input
+    processed_text, audio_input_data = await _process_multimodal_input(
+        message, enable_image_input, enable_audio_input, token_value
+    )
 
     if not processed_text.strip():
-        yield {
-            "role": "assistant",
-            "content": "Please enter a research question or provide an image/audio input.",
-        }, None
+        yield (
+            {
+                "role": "assistant",
+                "content": "Please enter a research question or provide an image/audio input.",
+            },
+            None,
+        )
         return
 
     # Check available keys (use token_value instead of oauth_token)
@@ -501,7 +535,15 @@ async def research_agent(
         provider_name = hf_provider if hf_provider and hf_provider.strip() else None
 
         # Log authentication source for debugging
-        auth_source = "OAuth" if token_value else ("Env (HF_TOKEN)" if os.getenv("HF_TOKEN") else ("Env (HUGGINGFACE_API_KEY)" if os.getenv("HUGGINGFACE_API_KEY") else "None"))
+        auth_source = (
+            "OAuth"
+            if token_value
+            else (
+                "Env (HF_TOKEN)"
+                if os.getenv("HF_TOKEN")
+                else ("Env (HUGGINGFACE_API_KEY)" if os.getenv("HUGGINGFACE_API_KEY") else "None")
+            )
+        )
         logger.info(
             "Configuring orchestrator",
             mode=effective_mode,
@@ -512,7 +554,9 @@ async def research_agent(
         )
 
         # Convert empty string to None for web_search_provider
-        web_search_provider_value = web_search_provider if web_search_provider and web_search_provider.strip() else None
+        web_search_provider_value = (
+            web_search_provider if web_search_provider and web_search_provider.strip() else None
+        )
 
         orchestrator, backend_name = configure_orchestrator(
             use_mock=False,  # Never use mock in production - HF Inference is the free fallback
@@ -525,10 +569,13 @@ async def research_agent(
             web_search_provider=web_search_provider_value,  # None will use settings default
         )
 
-        yield {
-            "role": "assistant",
-            "content": f"🔧 **Backend**: {backend_name}\n\nProcessing your query...",
-        }, None
+        yield (
+            {
+                "role": "assistant",
+                "content": f"🔧 **Backend**: {backend_name}\n\nProcessing your query...",
+            },
+            None,
+        )
 
         # Convert history to ModelMessage format if needed
         message_history: list[ModelMessage] = []
@@ -537,17 +584,17 @@ async def research_agent(
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 if isinstance(content, str) and content.strip():
-                    message_history.append(
-                        ModelMessage(role=role, content=content)
-                    )
+                    message_history.append(ModelMessage(role=role, content=content))  # type: ignore[operator]
 
         # Run orchestrator and stream events
-        async for event in orchestrator.run(processed_text, message_history=message_history if message_history else None):
+        async for event in orchestrator.run(
+            processed_text, message_history=message_history if message_history else None
+        ):
             chat_msg = event_to_chat_message(event)
             yield chat_msg, None
 
         # Optional: Generate audio output if enabled
-        audio_output_data: tuple[int, np.ndarray] | None = None
+        audio_output_data: tuple[int, np.ndarray[Any, Any]] | None = None  # type: ignore[type-arg]
         if settings.enable_audio_output and settings.modal_available:
             try:
                 from src.services.tts_modal import get_tts_service
@@ -569,7 +616,7 @@ async def research_agent(
         # Note: The final message was already yielded above, so we yield None, audio_output_data
         # This will update the audio output component
         if audio_output_data is not None:
-            yield None, audio_output_data
+            yield None, audio_output_data  # type: ignore[misc]
 
     except Exception as e:
         # Return error message without metadata to avoid issues during example caching
@@ -577,10 +624,13 @@ async def research_agent(
         # Gradio Chatbot requires plain text - remove all markdown and special characters
         error_msg = str(e).replace("**", "").replace("*", "").replace("`", "")
         # Ensure content is a simple string without any special formatting
-        yield {
-            "role": "assistant",
-            "content": f"Error: {error_msg}. Please check your configuration and try again.",
-        }, None
+        yield (
+            {
+                "role": "assistant",
+                "content": f"Error: {error_msg}. Please check your configuration and try again.",
+            },
+            None,
+        )
 
 
 async def update_model_provider_dropdowns(
@@ -588,14 +638,14 @@ async def update_model_provider_dropdowns(
     oauth_profile: gr.OAuthProfile | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], str]:
     """Update model and provider dropdowns based on OAuth token.
-    
+
     This function is called when OAuth token/profile changes (user logs in/out).
     It queries HuggingFace API to get available models and providers.
-    
+
     Args:
         oauth_token: Gradio OAuth token
         oauth_profile: Gradio OAuth profile
-        
+
     Returns:
         Tuple of (model_dropdown_update, provider_dropdown_update, status_message)
     """
@@ -604,7 +654,7 @@ async def update_model_provider_dropdowns(
         get_available_providers,
         validate_oauth_token,
     )
-    
+
     # Extract token value
     token_value: str | None = None
     if oauth_token is not None:
@@ -612,12 +662,12 @@ async def update_model_provider_dropdowns(
             token_value = oauth_token.token
         elif isinstance(oauth_token, str):
             token_value = oauth_token
-    
+
     # Default values (empty = use default)
     default_models = [""]
     default_providers = [""]
     status_msg = "⚠️ Not authenticated - using default models"
-    
+
     if not token_value:
         # No token - return defaults
         return (
@@ -625,55 +675,60 @@ async def update_model_provider_dropdowns(
             gr.update(choices=default_providers, value=""),
             status_msg,
         )
-    
+
     try:
         # Validate token and get available resources
         validation_result = await validate_oauth_token(token_value)
-        
+
         if not validation_result["is_valid"]:
-            status_msg = f"❌ Token validation failed: {validation_result.get('error', 'Unknown error')}"
+            status_msg = (
+                f"❌ Token validation failed: {validation_result.get('error', 'Unknown error')}"
+            )
             return (
                 gr.update(choices=default_models, value=""),
                 gr.update(choices=default_providers, value=""),
                 status_msg,
             )
-        
-        if not validation_result["has_inference_api_scope"]:
-            status_msg = "⚠️ Token may not have 'inference-api' scope - some models may not work"
-        else:
-            status_msg = "✅ Token validated - loading available models..."
-        
+
         # Get available models and providers
         models = await get_available_models(token=token_value, limit=50)
         providers = await get_available_providers(token=token_value)
-        
+
         # Combine with defaults
-        model_choices = [""] + models[:49]  # Keep first 49 + empty option
+        model_choices = ["", *models[:49]]  # Keep first 49 + empty option
         provider_choices = providers  # Already includes "auto"
-        
+
         username = validation_result.get("username", "User")
+
+        # Build status message with warning if scope is missing
+        scope_warning = ""
+        if not validation_result["has_inference_api_scope"]:
+            scope_warning = (
+                "⚠️ Token may not have 'inference-api' scope - some models may not work\n\n"
+            )
+
         status_msg = (
-            f"✅ Authenticated as {username}\n\n"
+            f"{scope_warning}✅ Authenticated as {username}\n\n"
             f"📊 Found {len(models)} available models\n"
             f"🔧 Found {len(providers)} available providers"
         )
-        
+
         logger.info(
             "Updated model/provider dropdowns",
             model_count=len(model_choices),
             provider_count=len(provider_choices),
             username=username,
         )
-        
+
         return (
             gr.update(choices=model_choices, value=""),
             gr.update(choices=provider_choices, value=""),
             status_msg,
         )
-        
+
     except Exception as e:
         logger.error("Failed to update dropdowns", error=str(e))
-        status_msg = f"⚠️ Failed to load models: {str(e)}"
+        status_msg = f"⚠️ Failed to load models: {e!s}"
         return (
             gr.update(choices=default_models, value=""),
             gr.update(choices=default_providers, value=""),
@@ -713,10 +768,10 @@ def create_demo() -> gr.Blocks:
                 "⚠️ **Research tool only** - Synthesizes evidence but cannot provide medical advice."
             )
             gr.Markdown("---")
-            
+
             # Settings Section - Organized in Accordions
             gr.Markdown("## ⚙️ Settings")
-            
+
             # Research Configuration Accordion
             with gr.Accordion("🔬 Research Configuration", open=True):
                 mode_radio = gr.Radio(
@@ -731,29 +786,29 @@ def create_demo() -> gr.Blocks:
                         "Auto: Smart routing"
                     ),
                 )
-                
+
                 graph_mode_radio = gr.Radio(
                     choices=["iterative", "deep", "auto"],
                     value="auto",
                     label="Graph Research Mode",
                     info="Iterative: Single loop | Deep: Parallel sections | Auto: Detect from query",
                 )
-                
+
                 use_graph_checkbox = gr.Checkbox(
                     value=True,
                     label="Use Graph Execution",
                     info="Enable graph-based workflow execution",
                 )
-                
+
                 # Model and Provider selection
                 gr.Markdown("### 🤖 Model & Provider")
-                
+
                 # Status message for model/provider loading
                 model_provider_status = gr.Markdown(
                     value="⚠️ Sign in to see available models and providers",
                     visible=True,
                 )
-                
+
                 # Popular models list (will be updated by validator)
                 popular_models = [
                     "",  # Empty = use default
@@ -765,7 +820,7 @@ def create_demo() -> gr.Blocks:
                     "mistralai/Mistral-7B-Instruct-v0.2",
                     "google/gemma-2-9b-it",
                 ]
-                
+
                 hf_model_dropdown = gr.Dropdown(
                     choices=popular_models,
                     value="",  # Empty string - will be converted to None in research_agent
@@ -787,17 +842,17 @@ def create_demo() -> gr.Blocks:
                     "ovh",
                     "fireworks",
                 ]
-                
+
                 hf_provider_dropdown = gr.Dropdown(
                     choices=providers,
                     value="",  # Empty string - will be converted to None in research_agent
                     label="Inference Provider",
                     info="Select inference provider (leave empty for auto-select). Sign in to see all available providers.",
                 )
-                
+
                 # Web Search Provider selection
                 gr.Markdown("### 🔍 Web Search Provider")
-                
+
                 # Available providers with labels indicating availability
                 # Format: (display_label, value) - Gradio Dropdown supports tuples
                 web_search_provider_options = [
@@ -808,7 +863,7 @@ def create_demo() -> gr.Blocks:
                     ("Brave - Coming Soon", "brave"),  # Not implemented
                     ("Tavily - Coming Soon", "tavily"),  # Not implemented
                 ]
-                
+
                 # Create Dropdown with label-value pairs
                 # Gradio will display labels but return values
                 # Disabled options are marked with "Coming Soon" in the label
@@ -822,28 +877,28 @@ def create_demo() -> gr.Blocks:
 
                 # Multimodal Input Configuration
                 gr.Markdown("### 📷🎤 Multimodal Input")
-                
+
                 enable_image_input_checkbox = gr.Checkbox(
                     value=settings.enable_image_input,
                     label="Enable Image Input (OCR)",
                     info="Process uploaded images with OCR",
                 )
-                
+
                 enable_audio_input_checkbox = gr.Checkbox(
                     value=settings.enable_audio_input,
                     label="Enable Audio Input (STT)",
                     info="Process uploaded/recorded audio with speech-to-text",
                 )
-                
+
                 # Audio Output Configuration
                 gr.Markdown("### 🔊 Audio Output (TTS)")
-                
+
                 enable_audio_output_checkbox = gr.Checkbox(
                     value=settings.enable_audio_output,
                     label="Enable Audio Output",
                     info="Generate audio responses using text-to-speech",
                 )
-                
+
                 tts_voice_dropdown = gr.Dropdown(
                     choices=[
                         "af_heart",
@@ -982,7 +1037,7 @@ def create_demo() -> gr.Blocks:
                     label="TTS Voice",
                     info="Select TTS voice (American English voices: af_*, am_*)",
                 )
-                
+
                 tts_speed_slider = gr.Slider(
                     minimum=0.5,
                     maximum=2.0,
@@ -991,8 +1046,8 @@ def create_demo() -> gr.Blocks:
                     label="TTS Speech Speed",
                     info="Adjust TTS speech speed (0.5x to 2.0x)",
                 )
-                
-                tts_gpu_dropdown = gr.Dropdown(
+
+                gr.Dropdown(
                     choices=["T4", "A10", "A100", "L4", "L40S"],
                     value=settings.tts_gpu or "T4",
                     label="TTS GPU Type",
@@ -1000,29 +1055,31 @@ def create_demo() -> gr.Blocks:
                     visible=settings.modal_available,
                     interactive=False,  # GPU type set at function definition time, requires restart
                 )
-                
+
                 # Audio output component (for TTS response) - moved to sidebar
                 audio_output = gr.Audio(
                     label="🔊 Audio Response",
                     visible=settings.enable_audio_output,
                 )
-        
+
         # Update TTS component visibility based on enable_audio_output_checkbox
         # This must be after audio_output is defined
-        def update_tts_visibility(enabled: bool) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        def update_tts_visibility(
+            enabled: bool,
+        ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
             """Update visibility of TTS components based on enable checkbox."""
             return (
                 gr.update(visible=enabled),
                 gr.update(visible=enabled),
                 gr.update(visible=enabled),
             )
-        
+
         enable_audio_output_checkbox.change(
             fn=update_tts_visibility,
             inputs=[enable_audio_output_checkbox],
             outputs=[tts_voice_dropdown, tts_speed_slider, audio_output],
         )
-        
+
         # Update model/provider dropdowns when user clicks refresh button
         # Note: Gradio doesn't directly support watching OAuthToken/OAuthProfile changes
         # So we provide a refresh button that users can click after logging in
@@ -1032,7 +1089,7 @@ def create_demo() -> gr.Blocks:
         ) -> tuple[dict[str, Any], dict[str, Any], str]:
             """Handle refresh button click and update dropdowns."""
             import asyncio
-            
+
             # Run async function in sync context
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -1043,13 +1100,13 @@ def create_demo() -> gr.Blocks:
                 return result
             finally:
                 loop.close()
-        
+
         refresh_models_btn = gr.Button(
             value="🔄 Refresh Available Models",
             visible=True,
             size="sm",
         )
-        
+
         # Note: OAuthToken and OAuthProfile are automatically passed to functions
         # when they are available in the Gradio context
         refresh_models_btn.click(
@@ -1155,7 +1212,7 @@ def create_demo() -> gr.Blocks:
             cache_examples=False,  # Don't cache examples - requires authentication
         )
 
-    return demo
+    return demo  # type: ignore[no-any-return]
 
 
 if __name__ == "__main__":

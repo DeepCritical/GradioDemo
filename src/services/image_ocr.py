@@ -31,7 +31,10 @@ class ImageOCRService:
             ConfigurationError: If API URL not configured
         """
         # Defensively access ocr_api_url - may not exist in older config versions
-        default_url = getattr(settings, "ocr_api_url", None) or "https://prithivmlmods-multimodal-ocr3.hf.space"
+        default_url = (
+            getattr(settings, "ocr_api_url", None)
+            or "https://prithivmlmods-multimodal-ocr3.hf.space"
+        )
         self.api_url = api_url or default_url
         if not self.api_url:
             raise ConfigurationError("OCR API URL not configured")
@@ -49,11 +52,11 @@ class ImageOCRService:
         """
         # Use provided token or instance token
         token = hf_token or self.hf_token
-        
+
         # If client exists but token changed, recreate it
         if self.client is not None and token != self.hf_token:
             self.client = None
-        
+
         if self.client is None:
             loop = asyncio.get_running_loop()
             # Pass token to Client for authenticated Spaces
@@ -129,7 +132,7 @@ class ImageOCRService:
 
     async def extract_text_from_image(
         self,
-        image_data: np.ndarray | Image.Image | str,
+        image_data: np.ndarray[Any, Any] | Image.Image | str,  # type: ignore[type-arg]
         hf_token: str | None = None,
     ) -> str:
         """Extract text from image data (numpy array, PIL Image, or file path).
@@ -240,10 +243,3 @@ def get_image_ocr_service() -> ImageOCRService:
         ImageOCRService instance
     """
     return ImageOCRService()
-
-
-
-
-
-
-

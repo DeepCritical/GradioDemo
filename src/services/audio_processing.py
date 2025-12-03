@@ -8,7 +8,6 @@ import structlog
 
 from src.services.stt_gradio import STTService, get_stt_service
 from src.utils.config import settings
-from src.utils.exceptions import ConfigurationError
 
 logger = structlog.get_logger(__name__)
 
@@ -53,7 +52,7 @@ class AudioService:
 
     async def process_audio_input(
         self,
-        audio_input: tuple[int, np.ndarray] | None,
+        audio_input: tuple[int, np.ndarray[Any, Any]] | None,  # type: ignore[type-arg]
         hf_token: str | None = None,
     ) -> str | None:
         """Process audio input and return transcribed text.
@@ -82,7 +81,7 @@ class AudioService:
         text: str,
         voice: str | None = None,
         speed: float | None = None,
-    ) -> tuple[int, np.ndarray] | None:
+    ) -> tuple[int, np.ndarray[Any, Any]] | None:  # type: ignore[type-arg]
         """Generate audio output from text.
 
         Args:
@@ -115,7 +114,7 @@ class AudioService:
                     sample_rate=audio_output[0],
                 )
 
-            return audio_output
+            return audio_output  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error("audio_output_generation_failed", error=str(e))
@@ -131,4 +130,3 @@ def get_audio_service() -> AudioService:
         AudioService instance
     """
     return AudioService()
-

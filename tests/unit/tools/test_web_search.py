@@ -10,11 +10,23 @@ sys.modules["neo4j"] = MagicMock()
 sys.modules["neo4j"].GraphDatabase = MagicMock()
 
 # Mock ddgs/duckduckgo_search
-mock_ddgs = MagicMock()
-sys.modules["ddgs"] = MagicMock()
-sys.modules["ddgs"].DDGS = MagicMock
+# Create a proper mock structure to avoid "ddgs.ddgs" import errors
+mock_ddgs_module = MagicMock()
+mock_ddgs_submodule = MagicMock()
+# Create a mock DDGS class that can be instantiated
+class MockDDGS:
+    def __init__(self, *args, **kwargs):
+        pass
+    def text(self, *args, **kwargs):
+        return []
+
+mock_ddgs_submodule.DDGS = MockDDGS
+mock_ddgs_module.ddgs = mock_ddgs_submodule
+mock_ddgs_module.DDGS = MockDDGS
+sys.modules["ddgs"] = mock_ddgs_module
+sys.modules["ddgs.ddgs"] = mock_ddgs_submodule
 sys.modules["duckduckgo_search"] = MagicMock()
-sys.modules["duckduckgo_search"].DDGS = MagicMock
+sys.modules["duckduckgo_search"].DDGS = MockDDGS
 
 from src.tools.web_search import WebSearchTool
 from src.utils.exceptions import SearchError

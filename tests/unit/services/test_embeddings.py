@@ -6,15 +6,16 @@ import numpy as np
 import pytest
 
 # Skip if embeddings dependencies are not installed
-# Handle Windows-specific scipy import issues
+# Handle Windows-specific scipy import issues and PyTorch C extensions issues
 try:
     pytest.importorskip("chromadb")
-    pytest.importorskip("sentence_transformers")
-except OSError:
+    pytest.importorskip("sentence_transformers", exc_type=ImportError)
+except (OSError, ImportError):
     # On Windows, scipy import can fail with OSError during collection
+    # PyTorch C extensions can also fail to load
     # Skip the entire test module in this case
     pytest.skip(
-        "Embeddings dependencies not available (scipy import issue)", allow_module_level=True
+        "Embeddings dependencies not available (scipy/PyTorch import issue)", allow_module_level=True
     )
 
 from src.services.embeddings import EmbeddingService

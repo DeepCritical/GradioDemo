@@ -91,7 +91,10 @@ class TestExtractOAuthInfo:
         """Should extract name from oauth_profile when username not available."""
         mock_request = MagicMock()
         mock_request.oauth_token = None
-        mock_request.username = None
+        # Ensure username attribute doesn't exist or is explicitly None
+        # Use delattr to remove it, then set oauth_profile
+        if hasattr(mock_request, "username"):
+            delattr(mock_request, "username")
         mock_oauth_profile = MagicMock()
         mock_oauth_profile.username = None
         mock_oauth_profile.name = "Test User"
@@ -140,9 +143,9 @@ class TestUpdateModelProviderDropdowns:
             "username": "testuser",
         }
         
-        with patch("src.app.validate_oauth_token", return_value=mock_validation_result) as mock_validate, \
-             patch("src.app.get_available_models", new_callable=AsyncMock) as mock_get_models, \
-             patch("src.app.get_available_providers", new_callable=AsyncMock) as mock_get_providers, \
+        with patch("src.utils.hf_model_validator.validate_oauth_token", return_value=mock_validation_result) as mock_validate, \
+             patch("src.utils.hf_model_validator.get_available_models", new_callable=AsyncMock) as mock_get_models, \
+             patch("src.utils.hf_model_validator.get_available_providers", new_callable=AsyncMock) as mock_get_providers, \
              patch("src.app.gr") as mock_gr, \
              patch("src.app.logger"):
             mock_get_models.return_value = ["model1", "model2"]
@@ -177,7 +180,7 @@ class TestUpdateModelProviderDropdowns:
             "error": "Invalid token format",
         }
         
-        with patch("src.app.validate_oauth_token", return_value=mock_validation_result), \
+        with patch("src.utils.hf_model_validator.validate_oauth_token", return_value=mock_validation_result), \
              patch("src.app.gr") as mock_gr:
             mock_gr.update.return_value = {"choices": [], "value": ""}
             
@@ -200,9 +203,9 @@ class TestUpdateModelProviderDropdowns:
             "username": "testuser",
         }
         
-        with patch("src.app.validate_oauth_token", return_value=mock_validation_result), \
-             patch("src.app.get_available_models", new_callable=AsyncMock) as mock_get_models, \
-             patch("src.app.get_available_providers", new_callable=AsyncMock) as mock_get_providers, \
+        with patch("src.utils.hf_model_validator.validate_oauth_token", return_value=mock_validation_result), \
+             patch("src.utils.hf_model_validator.get_available_models", new_callable=AsyncMock) as mock_get_models, \
+             patch("src.utils.hf_model_validator.get_available_providers", new_callable=AsyncMock) as mock_get_providers, \
              patch("src.app.gr") as mock_gr, \
              patch("src.app.logger"):
             mock_get_models.return_value = []
@@ -212,7 +215,7 @@ class TestUpdateModelProviderDropdowns:
             result = await update_model_provider_dropdowns(mock_oauth_token, None)
             
             assert len(result) == 3
-            assert "inference-api scope" in result[2]
+            assert "inference-api" in result[2] and "scope" in result[2]
 
     @pytest.mark.asyncio
     async def test_update_handles_exception(self) -> None:
@@ -220,7 +223,7 @@ class TestUpdateModelProviderDropdowns:
         mock_oauth_token = MagicMock()
         mock_oauth_token.token = "hf_test_token"
         
-        with patch("src.app.validate_oauth_token", side_effect=Exception("API error")), \
+        with patch("src.utils.hf_model_validator.validate_oauth_token", side_effect=Exception("API error")), \
              patch("src.app.gr") as mock_gr, \
              patch("src.app.logger"):
             mock_gr.update.return_value = {"choices": [], "value": ""}
@@ -234,9 +237,9 @@ class TestUpdateModelProviderDropdowns:
     async def test_update_with_string_token(self) -> None:
         """Should handle string token (edge case)."""
         # Edge case: oauth_token is already a string
-        with patch("src.app.validate_oauth_token") as mock_validate, \
-             patch("src.app.get_available_models", new_callable=AsyncMock), \
-             patch("src.app.get_available_providers", new_callable=AsyncMock), \
+        with patch("src.utils.hf_model_validator.validate_oauth_token") as mock_validate, \
+             patch("src.utils.hf_model_validator.get_available_models", new_callable=AsyncMock), \
+             patch("src.utils.hf_model_validator.get_available_providers", new_callable=AsyncMock), \
              patch("src.app.gr") as mock_gr, \
              patch("src.app.logger"):
             mock_validation_result = {

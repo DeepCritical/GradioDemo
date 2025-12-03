@@ -1,6 +1,5 @@
 """Utility for converting markdown to PDF."""
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -43,9 +42,7 @@ def md_to_pdf(md_text: str, pdf_file_path: str) -> None:
         OSError: If PDF file cannot be written
     """
     if not _MD2PDF_AVAILABLE:
-        raise ImportError(
-            "md2pdf is not installed. Install it with: pip install md2pdf"
-        )
+        raise ImportError("md2pdf is not installed. Install it with: pip install md2pdf")
 
     if not md_text or not md_text.strip():
         raise ValueError("Markdown text cannot be empty")
@@ -64,18 +61,3 @@ def md_to_pdf(md_text: str, pdf_file_path: str) -> None:
         md2pdf(pdf_file_path, md_text, css_file_path=str(css_path))
 
     logger.debug("PDF generated successfully", pdf_path=pdf_file_path)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

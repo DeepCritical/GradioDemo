@@ -46,11 +46,11 @@ class STTService:
         """
         # Use provided token or instance token
         token = hf_token or self.hf_token
-        
+
         # If client exists but token changed, recreate it
         if self.client is not None and token != self.hf_token:
             self.client = None
-        
+
         if self.client is None:
             loop = asyncio.get_running_loop()
             # Pass token to Client for authenticated Spaces
@@ -130,7 +130,7 @@ class STTService:
 
     async def transcribe_audio(
         self,
-        audio_data: tuple[int, np.ndarray],
+        audio_data: tuple[int, np.ndarray[Any, Any]],  # type: ignore[type-arg]
         hf_token: str | None = None,
     ) -> str:
         """Transcribe audio numpy array to text.
@@ -163,7 +163,7 @@ class STTService:
             except Exception as e:
                 logger.warning("failed_to_cleanup_temp_file", path=temp_path, error=str(e))
 
-    def _extract_transcription(self, api_result: tuple) -> str:
+    def _extract_transcription(self, api_result: tuple[Any, ...]) -> str:
         """Extract transcription text from API result.
 
         Args:
@@ -210,7 +210,7 @@ class STTService:
 
     def _save_audio_temp(
         self,
-        audio_data: tuple[int, np.ndarray],
+        audio_data: tuple[int, np.ndarray[Any, Any]],  # type: ignore[type-arg]
     ) -> str:
         """Save audio numpy array to temporary WAV file.
 
@@ -269,4 +269,3 @@ def get_stt_service() -> STTService:
         STTService instance
     """
     return STTService()
-

@@ -234,3 +234,4 @@ class TestGetFallbackModels:
         # Should still have all fallbacks since original is not in the list
         assert len(fallbacks) >= 3  # At least 3 fallback models
 
+

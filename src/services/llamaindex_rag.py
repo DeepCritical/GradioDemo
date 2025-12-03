@@ -86,13 +86,15 @@ class LlamaIndexRAGService:
         self._initialize_chromadb()
 
     def _import_dependencies(self) -> dict[str, Any]:
-        """Import LlamaIndex dependencies and return as dict."""
+        """Import LlamaIndex dependencies and return as dict.
+
+        OpenAI dependencies are imported lazily (only when needed) to avoid
+        tiktoken circular import issues on Windows when using local embeddings.
+        """
         try:
             import chromadb
             from llama_index.core import Document, Settings, StorageContext, VectorStoreIndex
             from llama_index.core.retrievers import VectorIndexRetriever
-            from llama_index.embeddings.openai import OpenAIEmbedding
-            from llama_index.llms.openai import OpenAI
             from llama_index.vector_stores.chroma import ChromaVectorStore
 
             # Try to import Hugging Face embeddings (may not be available in all versions)
@@ -120,9 +122,21 @@ class LlamaIndexRAGService:
                         HuggingFaceLLM as _HuggingFaceLLM,  # type: ignore[import-untyped]
                     )
 
-                    huggingface_llm = _HuggingFaceLLM
+                    huggingface_llm = _HuggingFaceLLM  # type: ignore[assignment]
                 except ImportError:
                     huggingface_llm = None  # type: ignore[assignment]
+
+            # OpenAI imports are optional - only import when actually needed
+            # This avoids tiktoken circular import issues on Windows
+            try:
+                from llama_index.embeddings.openai import OpenAIEmbedding
+            except ImportError:
+                OpenAIEmbedding = None  # type: ignore[assignment, misc]  # noqa: N806
+
+            try:
+                from llama_index.llms.openai import OpenAI
+            except ImportError:
+                OpenAI = None  # type: ignore[assignment, misc]  # noqa: N806
 
             return {
                 "chromadb": chromadb,
@@ -151,6 +165,10 @@ class LlamaIndexRAGService:
     ) -> None:
         """Configure embedding model."""
         if use_openai_embeddings:
+            if openai_embedding is None:
+                raise ConfigurationError(
+                    "OpenAI embeddings not available. Install with: uv sync --extra modal"
+                )
             if not settings.openai_api_key:
                 raise ConfigurationError("OPENAI_API_KEY required for OpenAI embeddings")
             self.embedding_model = embedding_model or settings.openai_embedding_model
@@ -167,8 +185,33 @@ class LlamaIndexRAGService:
                 self._Settings.embed_model = self._create_sentence_transformer_embedding(model_name)
 
     def _create_sentence_transformer_embedding(self, model_name: str) -> Any:
-        """Create sentence-transformer embedding wrapper."""
-        from sentence_transformers import SentenceTransformer
+        """Create sentence-transformer embedding wrapper.
+
+        Note: sentence-transformers is a required dependency (in pyproject.toml).
+        If this fails, it's likely a Windows-specific regex package issue.
+
+        Raises:
+            ConfigurationError: If sentence_transformers cannot be imported
+                (e.g., due to circular import issues on Windows with regex package)
+        """
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as e:
+            # Handle Windows-specific circular import issues with regex package
+            # This is a known bug: https://github.com/mrabarnett/mrab-regex/issues/417
+            error_msg = str(e)
+            if "regex" in error_msg.lower() or "_regex" in error_msg:
+                raise ConfigurationError(
+                    "sentence_transformers cannot be imported due to circular import issue "
+                    "with regex package (Windows-specific bug). "
+                    "sentence-transformers is installed but regex has a circular import. "
+                    "Try: uv pip install --upgrade --force-reinstall regex "
+                    "Or use HuggingFace embeddings via llama-index-embeddings-huggingface instead."
+                ) from e
+            raise ConfigurationError(
+                f"sentence_transformers not available: {e}. "
+                "This is a required dependency - check your uv sync installation."
+            ) from e
 
         try:
             from llama_index.embeddings.base import (
@@ -205,11 +248,7 @@ class LlamaIndexRAGService:
     def _configure_llm(self, huggingface_llm: Any, openai_llm: Any) -> None:
         """Configure LLM for query synthesis."""
         # Priority: oauth_token > env vars
-        effective_token = (
-            self.oauth_token
-            or settings.hf_token
-            or settings.huggingface_api_key
-        )
+        effective_token = self.oauth_token or settings.hf_token or settings.huggingface_api_key
         if huggingface_llm is not None and effective_token:
             model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
             token = effective_token
@@ -245,7 +284,7 @@ class LlamaIndexRAGService:
                     tokenizer_name=model_name,
                 )
             logger.info("Using HuggingFace LLM for query synthesis", model=model_name)
-        elif settings.openai_api_key:
+        elif settings.openai_api_key and openai_llm is not None:
             self._Settings.llm = openai_llm(
                 model=settings.openai_model,
                 api_key=settings.openai_api_key,
@@ -461,6 +500,4 @@ def get_rag_service(
     # Default to local embeddings if not explicitly set
     if "use_openai_embeddings" not in kwargs:
         kwargs["use_openai_embeddings"] = False
-    return LlamaIndexRAGService(
-        collection_name=collection_name, oauth_token=oauth_token, **kwargs
-    )
+    return LlamaIndexRAGService(collection_name=collection_name, oauth_token=oauth_token, **kwargs)

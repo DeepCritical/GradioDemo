@@ -338,7 +338,9 @@ class GraphOrchestrator:
                 )
 
             try:
-                final_report = await self._iterative_flow.run(query, message_history=message_history)
+                final_report = await self._iterative_flow.run(
+                    query, message_history=message_history
+                )
             except Exception as e:
                 self.logger.error("Iterative flow failed", error=str(e), exc_info=True)
                 # Yield error event - outer handler will also catch and yield error event
@@ -544,6 +546,104 @@ class GraphOrchestrator:
             iteration=iteration,
         )
 
+    def _get_final_result_from_exit_nodes(
+        self, context: GraphExecutionContext, current_node_id: str | None
+    ) -> tuple[Any, str | None]:
+        """Get final result from exit nodes, prioritizing synthesizer/writer."""
+        if not self._graph:
+            return None, current_node_id
+
+        final_result = None
+        result_node_id = current_node_id
+
+        # First try to get result from current node (if it's an exit node)
+        if current_node_id and current_node_id in self._graph.exit_nodes:
+            final_result = context.get_node_result(current_node_id)
+            self.logger.debug(
+                "Final result from current exit node",
+                node_id=current_node_id,
+                has_result=final_result is not None,
+                result_type=type(final_result).__name__ if final_result else None,
+            )
+
+        # If no result from current node, check all exit nodes for results
+        # Prioritize synthesizer (deep research) or writer (iterative research)
+        if not final_result:
+            exit_node_priority = ["synthesizer", "writer"]
+            for exit_node_id in exit_node_priority:
+                if exit_node_id in self._graph.exit_nodes:
+                    result = context.get_node_result(exit_node_id)
+                    if result:
+                        final_result = result
+                        result_node_id = exit_node_id
+                        self.logger.debug(
+                            "Final result from priority exit node",
+                            node_id=exit_node_id,
+                            result_type=type(final_result).__name__,
+                        )
+                        break
+
+            # If still no result, check all exit nodes
+            if not final_result:
+                for exit_node_id in self._graph.exit_nodes:
+                    result = context.get_node_result(exit_node_id)
+                    if result:
+                        final_result = result
+                        result_node_id = exit_node_id
+                        self.logger.debug(
+                            "Final result from any exit node",
+                            node_id=exit_node_id,
+                            result_type=type(final_result).__name__,
+                        )
+                        break
+
+        # Log warning if no result found
+        if not final_result:
+            self.logger.warning(
+                "No final result found in exit nodes",
+                exit_nodes=list(self._graph.exit_nodes),
+                visited_nodes=list(context.visited_nodes),
+                all_node_results=list(context.node_results.keys()),
+            )
+
+        return final_result, result_node_id
+
+    def _extract_final_message_and_files(self, final_result: Any) -> tuple[str, dict[str, Any]]:
+        """Extract message and file information from final result."""
+        event_data: dict[str, Any] = {"mode": self.mode}
+        message: str = "Research completed"
+
+        if isinstance(final_result, str):
+            message = final_result
+            self.logger.debug("Final message extracted from string result", length=len(message))
+        elif isinstance(final_result, dict):
+            # First check for message key (most important)
+            if "message" in final_result:
+                message = final_result["message"]
+                self.logger.debug(
+                    "Final message extracted from dict 'message' key",
+                    length=len(message) if isinstance(message, str) else 0,
+                )
+
+            # Then check for file paths
+            if "file" in final_result:
+                file_path = final_result["file"]
+                if isinstance(file_path, str):
+                    event_data["file"] = file_path
+                    # Only override message if not already set from "message" key
+                    if "message" not in final_result:
+                        message = "Report generated. Download available."
+                    self.logger.debug("File path added to event data", file_path=file_path)
+
+            # Check for multiple files
+            if "files" in final_result:
+                files = final_result["files"]
+                if isinstance(files, list):
+                    event_data["files"] = files
+                    self.logger.debug("Multiple files added to event data", count=len(files))
+
+        return message, event_data
+
     async def _execute_graph(
         self, query: str, context: GraphExecutionContext
     ) -> AsyncGenerator[AgentEvent, None]:
@@ -609,102 +709,14 @@ class GraphOrchestrator:
             current_node_id = next_nodes[0]  # For now, take first next node (handle parallel later)
 
         # Final event - get result from exit nodes (prioritize synthesizer/writer nodes)
-        # First try to get result from current node (if it's an exit node)
-        final_result = None
-        if current_node_id and current_node_id in self._graph.exit_nodes:
-            final_result = context.get_node_result(current_node_id)
-            self.logger.debug(
-                "Final result from current exit node",
-                node_id=current_node_id,
-                has_result=final_result is not None,
-                result_type=type(final_result).__name__ if final_result else None,
-            )
-        
-        # If no result from current node, check all exit nodes for results
-        # Prioritize synthesizer (deep research) or writer (iterative research)
-        if not final_result:
-            exit_node_priority = ["synthesizer", "writer"]
-            for exit_node_id in exit_node_priority:
-                if exit_node_id in self._graph.exit_nodes:
-                    result = context.get_node_result(exit_node_id)
-                    if result:
-                        final_result = result
-                        current_node_id = exit_node_id
-                        self.logger.debug(
-                            "Final result from priority exit node",
-                            node_id=exit_node_id,
-                            result_type=type(final_result).__name__,
-                        )
-                        break
-            
-            # If still no result, check all exit nodes
-            if not final_result:
-                for exit_node_id in self._graph.exit_nodes:
-                    result = context.get_node_result(exit_node_id)
-                    if result:
-                        final_result = result
-                        current_node_id = exit_node_id
-                        self.logger.debug(
-                            "Final result from any exit node",
-                            node_id=exit_node_id,
-                            result_type=type(final_result).__name__,
-                        )
-                        break
-        
-        # Log warning if no result found
-        if not final_result:
-            self.logger.warning(
-                "No final result found in exit nodes",
-                exit_nodes=list(self._graph.exit_nodes),
-                visited_nodes=list(context.visited_nodes),
-                all_node_results=list(context.node_results.keys()),
-            )
+        final_result, result_node_id = self._get_final_result_from_exit_nodes(
+            context, current_node_id
+        )
 
         # Check if final result contains file information
         event_data: dict[str, Any] = {"mode": self.mode, "iterations": iteration}
-        message: str = "Research completed"
-
-        if isinstance(final_result, str):
-            message = final_result
-            self.logger.debug("Final message extracted from string result", length=len(message))
-        elif isinstance(final_result, dict):
-            # First check for message key (most important)
-            if "message" in final_result:
-                message = final_result["message"]
-                self.logger.debug(
-                    "Final message extracted from dict 'message' key",
-                    length=len(message) if isinstance(message, str) else 0,
-                )
-            
-            # Then check for file paths
-            if "file" in final_result:
-                file_path = final_result["file"]
-                if isinstance(file_path, str):
-                    event_data["file"] = file_path
-                    # Only override message if not already set from "message" key
-                    if "message" not in final_result:
-                        message = "Report generated. Download available."
-                    self.logger.debug("File path added to event data", file_path=file_path)
-            elif "files" in final_result:
-                files = final_result["files"]
-                if isinstance(files, list):
-                    event_data["files"] = files
-                    # Only override message if not already set from "message" key
-                    if "message" not in final_result:
-                        message = "Report generated. Downloads available."
-                elif isinstance(files, str):
-                    event_data["files"] = [files]
-                    # Only override message if not already set from "message" key
-                    if "message" not in final_result:
-                        message = "Report generated. Download available."
-                self.logger.debug("File paths added to event data", count=len(event_data.get("files", [])))
-        else:
-            # Log warning if result type is unexpected
-            self.logger.warning(
-                "Final result has unexpected type",
-                result_type=type(final_result).__name__ if final_result else None,
-                result_repr=str(final_result)[:200] if final_result else None,
-            )
+        message, file_event_data = self._extract_final_message_and_files(final_result)
+        event_data.update(file_event_data)
 
         yield AgentEvent(
             type="complete",
@@ -742,6 +754,254 @@ class GraphOrchestrator:
         else:
             raise ValueError(f"Unknown node type: {type(node)}")
 
+    async def _execute_synthesizer_node(self, query: str, context: GraphExecutionContext) -> Any:
+        """Execute synthesizer node for deep research."""
+        from src.agent_factory.agents import create_long_writer_agent
+        from src.utils.models import ReportDraft, ReportDraftSection, ReportPlan
+
+        report_plan = context.get_node_result("planner")
+        section_drafts = context.get_node_result("parallel_loops") or []
+
+        if not isinstance(report_plan, ReportPlan):
+            raise ValueError("ReportPlan not found for synthesizer")
+
+        if not section_drafts:
+            raise ValueError("Section drafts not found for synthesizer")
+
+        # Create ReportDraft from section drafts
+        report_draft = ReportDraft(
+            sections=[
+                ReportDraftSection(
+                    section_title=section.title,
+                    section_content=draft,
+                )
+                for section, draft in zip(report_plan.report_outline, section_drafts, strict=False)
+            ]
+        )
+
+        # Get LongWriterAgent instance and call write_report directly
+        long_writer_agent = create_long_writer_agent(oauth_token=self.oauth_token)
+        final_report = await long_writer_agent.write_report(
+            original_query=query,
+            report_title=report_plan.report_title,
+            report_draft=report_draft,
+        )
+
+        # Estimate tokens (rough estimate)
+        estimated_tokens = len(final_report) // 4  # Rough token estimate
+        context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
+
+        # Save report to file if enabled (may generate multiple formats)
+        return self._save_report_and_return_result(final_report, query)
+
+    def _save_report_and_return_result(self, final_report: str, query: str) -> dict[str, Any] | str:
+        """Save report to file and return result with file paths if available."""
+        file_path: str | None = None
+        pdf_path: str | None = None
+        try:
+            file_service = self._get_file_service()
+            if file_service:
+                # Use save_report_multiple_formats to get both MD and PDF if enabled
+                saved_files = file_service.save_report_multiple_formats(
+                    report_content=final_report,
+                    query=query,
+                )
+                file_path = saved_files.get("md")
+                pdf_path = saved_files.get("pdf")
+                self.logger.info(
+                    "Report saved to file",
+                    md_path=file_path,
+                    pdf_path=pdf_path,
+                )
+        except Exception as e:
+            # Don't fail the entire operation if file saving fails
+            self.logger.warning("Failed to save report to file", error=str(e))
+            file_path = None
+            pdf_path = None
+
+        # Return dict with file paths if available, otherwise return string (backward compatible)
+        if file_path:
+            result: dict[str, Any] = {
+                "message": final_report,
+                "file": file_path,
+            }
+            # Add PDF path if generated
+            if pdf_path:
+                result["files"] = [file_path, pdf_path]
+            return result
+        return final_report
+
+    async def _execute_writer_node(self, query: str, context: GraphExecutionContext) -> Any:
+        """Execute writer node for iterative research."""
+        from src.agent_factory.agents import create_writer_agent
+
+        # Get all evidence from workflow state and convert to findings string
+        evidence = context.state.evidence
+        if evidence:
+            # Convert evidence to findings format (similar to conversation.get_all_findings())
+            findings_parts: list[str] = []
+            for ev in evidence:
+                finding = f"**{ev.citation.title}**\n{ev.content}"
+                if ev.citation.url:
+                    finding += f"\nSource: {ev.citation.url}"
+                findings_parts.append(finding)
+            all_findings = "\n\n".join(findings_parts)
+        else:
+            all_findings = "No findings available yet."
+
+        # Get WriterAgent instance and call write_report directly
+        writer_agent = create_writer_agent(oauth_token=self.oauth_token)
+        final_report = await writer_agent.write_report(
+            query=query,
+            findings=all_findings,
+            output_length="",
+            output_instructions="",
+        )
+
+        # Estimate tokens (rough estimate)
+        estimated_tokens = len(final_report) // 4  # Rough token estimate
+        context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
+
+        # Save report to file if enabled (may generate multiple formats)
+        return self._save_report_and_return_result(final_report, query)
+
+    def _prepare_agent_input(
+        self, node: AgentNode, query: str, context: GraphExecutionContext
+    ) -> Any:
+        """Prepare input data for agent execution."""
+        if node.node_id == "planner":
+            # Planner takes the original query
+            input_data = query
+        else:
+            # Standard: use previous node result or query
+            prev_result = context.get_node_result(context.current_node)
+            input_data = prev_result if prev_result is not None else query
+
+        # Apply input transformer if provided
+        if node.input_transformer:
+            input_data = node.input_transformer(input_data)
+
+        return input_data
+
+    async def _execute_standard_agent(
+        self, node: AgentNode, input_data: Any, query: str, context: GraphExecutionContext
+    ) -> Any:
+        """Execute standard agent with error handling."""
+        # Get message history from context (limit to most recent 10 messages for token efficiency)
+        message_history = context.get_message_history(max_messages=10)
+
+        try:
+            # Pass message_history if available (Pydantic AI agents support this)
+            if message_history:
+                result = await node.agent.run(input_data, message_history=message_history)
+            else:
+                result = await node.agent.run(input_data)
+
+            # Accumulate new messages from agent result if available
+            if hasattr(result, "new_messages"):
+                try:
+                    new_messages = result.new_messages()
+                    for msg in new_messages:
+                        context.add_message(msg)
+                except Exception as e:
+                    # Don't fail if message accumulation fails
+                    self.logger.debug(
+                        "Failed to accumulate messages from agent result", error=str(e)
+                    )
+            return result
+        except Exception:
+            # Handle validation errors and API errors for planner node
+            if node.node_id == "planner":
+                return self._create_fallback_plan(query, input_data)
+            # For other nodes, re-raise the exception
+            raise
+
+    def _create_fallback_plan(self, query: str, input_data: Any) -> Any:
+        """Create fallback ReportPlan when planner fails."""
+        from src.utils.models import ReportPlan, ReportPlanSection
+
+        self.logger.error(
+            "Planner agent execution failed, using fallback plan",
+            error_type=type(input_data).__name__,
+        )
+
+        # Extract query from input_data if possible
+        fallback_query = query
+        if isinstance(input_data, str):
+            # Try to extract query from input string
+            if "QUERY:" in input_data:
+                fallback_query = input_data.split("QUERY:")[-1].strip()
+
+        return ReportPlan(
+            background_context="",
+            report_outline=[
+                ReportPlanSection(
+                    title="Research Findings",
+                    key_question=fallback_query,
+                )
+            ],
+            report_title=f"Research Report: {fallback_query[:50]}",
+        )
+
+    def _extract_agent_output(self, node: AgentNode, result: Any) -> Any:
+        """Extract and transform output from agent result."""
+        # Defensively extract output - handle various result formats
+        output = result.output if hasattr(result, "output") else result
+
+        # Handle case where output might be a tuple (from pydantic-ai validation errors)
+        if isinstance(output, tuple):
+            output = self._handle_tuple_output(node, output, result)
+        return output
+
+    def _handle_tuple_output(self, node: AgentNode, output: tuple[Any, ...], result: Any) -> Any:
+        """Handle tuple output from agent (validation errors)."""
+        # If tuple contains a dict-like structure, try to reconstruct the object
+        if len(output) == 2 and isinstance(output[0], str) and output[0] == "research_complete":
+            # This is likely a validation error format: ('research_complete', False)
+            # Try to get the actual output from result
+            self.logger.warning(
+                "Agent result output is a tuple, attempting to extract actual output",
+                node_id=node.node_id,
+                tuple_value=output,
+            )
+            # Try to get output from result attributes
+            if hasattr(result, "data"):
+                return result.data
+            if hasattr(result, "response"):
+                return result.response
+            # Last resort: try to reconstruct from tuple
+            # This shouldn't happen, but handle gracefully
+            from src.utils.models import KnowledgeGapOutput
+
+            if node.node_id == "knowledge_gap":
+                # Reconstruct KnowledgeGapOutput from validation error tuple
+                reconstructed = KnowledgeGapOutput(
+                    research_complete=output[1] if len(output) > 1 else False,
+                    outstanding_gaps=[],
+                )
+                self.logger.info(
+                    "Reconstructed KnowledgeGapOutput from validation error tuple",
+                    node_id=node.node_id,
+                    research_complete=reconstructed.research_complete,
+                )
+                return reconstructed
+
+        # For other nodes, try to extract meaningful output or use fallback
+        self.logger.warning(
+            "Agent node output is tuple format, attempting extraction",
+            node_id=node.node_id,
+            tuple_value=output,
+        )
+        # Try to extract first meaningful element
+        if len(output) > 0:
+            # If first element is a string or dict, might be the actual output
+            if isinstance(output[0], str | dict):
+                return output[0]
+            # Last resort: use first element
+            return output[0]
+        # Empty tuple - use None and let downstream handle it
+        return None
+
     async def _execute_agent_node(
         self, node: AgentNode, query: str, context: GraphExecutionContext
     ) -> Any:
@@ -761,268 +1021,16 @@ class GraphOrchestrator:
         """
         # Special handling for synthesizer node (deep research)
         if node.node_id == "synthesizer":
-            # Call LongWriterAgent.write_report() directly instead of using agent.run()
-            from src.agent_factory.agents import create_long_writer_agent
-            from src.utils.models import ReportDraft, ReportDraftSection, ReportPlan
-
-            report_plan = context.get_node_result("planner")
-            section_drafts = context.get_node_result("parallel_loops") or []
-
-            if not isinstance(report_plan, ReportPlan):
-                raise ValueError("ReportPlan not found for synthesizer")
-
-            if not section_drafts:
-                raise ValueError("Section drafts not found for synthesizer")
-
-            # Create ReportDraft from section drafts
-            report_draft = ReportDraft(
-                sections=[
-                    ReportDraftSection(
-                        section_title=section.title,
-                        section_content=draft,
-                    )
-                    for section, draft in zip(
-                        report_plan.report_outline, section_drafts, strict=False
-                    )
-                ]
-            )
-
-            # Get LongWriterAgent instance and call write_report directly
-            long_writer_agent = create_long_writer_agent(oauth_token=self.oauth_token)
-            final_report = await long_writer_agent.write_report(
-                original_query=query,
-                report_title=report_plan.report_title,
-                report_draft=report_draft,
-            )
-
-            # Estimate tokens (rough estimate)
-            estimated_tokens = len(final_report) // 4  # Rough token estimate
-            context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
-
-            # Save report to file if enabled (may generate multiple formats)
-            file_path: str | None = None
-            pdf_path: str | None = None
-            try:
-                file_service = self._get_file_service()
-                if file_service:
-                    # Use save_report_multiple_formats to get both MD and PDF if enabled
-                    saved_files = file_service.save_report_multiple_formats(
-                        report_content=final_report,
-                        query=query,
-                    )
-                    file_path = saved_files.get("md")
-                    pdf_path = saved_files.get("pdf")
-                    self.logger.info(
-                        "Report saved to file",
-                        md_path=file_path,
-                        pdf_path=pdf_path,
-                    )
-            except Exception as e:
-                # Don't fail the entire operation if file saving fails
-                self.logger.warning("Failed to save report to file", error=str(e))
-                file_path = None
-                pdf_path = None
-
-            # Return dict with file paths if available, otherwise return string (backward compatible)
-            if file_path:
-                result: dict[str, Any] = {
-                    "message": final_report,
-                    "file": file_path,
-                }
-                # Add PDF path if generated
-                if pdf_path:
-                    result["files"] = [file_path, pdf_path]
-                return result
-            return final_report
+            return await self._execute_synthesizer_node(query, context)
 
         # Special handling for writer node (iterative research)
         if node.node_id == "writer":
-            # Call WriterAgent.write_report() directly instead of using agent.run()
-            # Collect all findings from workflow state
-            from src.agent_factory.agents import create_writer_agent
-
-            # Get all evidence from workflow state and convert to findings string
-            evidence = context.state.evidence
-            if evidence:
-                # Convert evidence to findings format (similar to conversation.get_all_findings())
-                findings_parts: list[str] = []
-                for ev in evidence:
-                    finding = f"**{ev.title}**\n{ev.content}"
-                    if ev.url:
-                        finding += f"\nSource: {ev.url}"
-                    findings_parts.append(finding)
-                all_findings = "\n\n".join(findings_parts)
-            else:
-                all_findings = "No findings available yet."
-
-            # Get WriterAgent instance and call write_report directly
-            writer_agent = create_writer_agent(oauth_token=self.oauth_token)
-            final_report = await writer_agent.write_report(
-                query=query,
-                findings=all_findings,
-                output_length="",
-                output_instructions="",
-            )
-
-            # Estimate tokens (rough estimate)
-            estimated_tokens = len(final_report) // 4  # Rough token estimate
-            context.budget_tracker.add_tokens("graph_execution", estimated_tokens)
-
-            # Save report to file if enabled (may generate multiple formats)
-            file_path: str | None = None
-            pdf_path: str | None = None
-            try:
-                file_service = self._get_file_service()
-                if file_service:
-                    # Use save_report_multiple_formats to get both MD and PDF if enabled
-                    saved_files = file_service.save_report_multiple_formats(
-                        report_content=final_report,
-                        query=query,
-                    )
-                    file_path = saved_files.get("md")
-                    pdf_path = saved_files.get("pdf")
-                    self.logger.info(
-                        "Report saved to file",
-                        md_path=file_path,
-                        pdf_path=pdf_path,
-                    )
-            except Exception as e:
-                # Don't fail the entire operation if file saving fails
-                self.logger.warning("Failed to save report to file", error=str(e))
-                file_path = None
-                pdf_path = None
-
-            # Return dict with file paths if available, otherwise return string (backward compatible)
-            if file_path:
-                result: dict[str, Any] = {
-                    "message": final_report,
-                    "file": file_path,
-                }
-                # Add PDF path if generated
-                if pdf_path:
-                    result["files"] = [file_path, pdf_path]
-                return result
-            return final_report
+            return await self._execute_writer_node(query, context)
 
         # Standard agent execution
-        # Prepare input based on node type
-        if node.node_id == "planner":
-            # Planner takes the original query
-            input_data = query
-        else:
-            # Standard: use previous node result or query
-            prev_result = context.get_node_result(context.current_node)
-            input_data = prev_result if prev_result is not None else query
-
-        # Apply input transformer if provided
-        if node.input_transformer:
-            input_data = node.input_transformer(input_data)
-
-        # Get message history from context (limit to most recent 10 messages for token efficiency)
-        message_history = context.get_message_history(max_messages=10)
-
-        # Execute agent with error handling
-        try:
-            # Pass message_history if available (Pydantic AI agents support this)
-            if message_history:
-                result = await node.agent.run(input_data, message_history=message_history)
-            else:
-                result = await node.agent.run(input_data)
-            
-            # Accumulate new messages from agent result if available
-            if hasattr(result, "new_messages"):
-                try:
-                    new_messages = result.new_messages()
-                    for msg in new_messages:
-                        context.add_message(msg)
-                except Exception as e:
-                    # Don't fail if message accumulation fails
-                    self.logger.debug("Failed to accumulate messages from agent result", error=str(e))
-        except Exception as e:
-            # Handle validation errors and API errors for planner node
-            if node.node_id == "planner":
-                self.logger.error(
-                    "Planner agent execution failed, using fallback plan",
-                    error=str(e),
-                    error_type=type(e).__name__,
-                )
-                # Return a minimal fallback ReportPlan
-                from src.utils.models import ReportPlan, ReportPlanSection
-
-                # Extract query from input_data if possible
-                fallback_query = query
-                if isinstance(input_data, str):
-                    # Try to extract query from input string
-                    if "QUERY:" in input_data:
-                        fallback_query = input_data.split("QUERY:")[-1].strip()
-
-                return ReportPlan(
-                    background_context="",
-                    report_outline=[
-                        ReportPlanSection(
-                            title="Research Findings",
-                            key_question=fallback_query,
-                        )
-                    ],
-                    report_title=f"Research Report: {fallback_query[:50]}",
-                )
-            # For other nodes, re-raise the exception
-            raise
-
-        # Transform output if needed
-        # Defensively extract output - handle various result formats
-        output = result.output if hasattr(result, "output") else result
-
-        # Handle case where output might be a tuple (from pydantic-ai validation errors)
-        if isinstance(output, tuple):
-            # If tuple contains a dict-like structure, try to reconstruct the object
-            if len(output) == 2 and isinstance(output[0], str) and output[0] == "research_complete":
-                # This is likely a validation error format: ('research_complete', False)
-                # Try to get the actual output from result
-                self.logger.warning(
-                    "Agent result output is a tuple, attempting to extract actual output",
-                    node_id=node.node_id,
-                    tuple_value=output,
-                )
-                # Try to get output from result attributes
-                if hasattr(result, "data"):
-                    output = result.data
-                elif hasattr(result, "response"):
-                    output = result.response
-                else:
-                    # Last resort: try to reconstruct from tuple
-                    # This shouldn't happen, but handle gracefully
-                    from src.utils.models import KnowledgeGapOutput
-
-                    if node.node_id == "knowledge_gap":
-                        # Reconstruct KnowledgeGapOutput from validation error tuple
-                        output = KnowledgeGapOutput(
-                            research_complete=output[1] if len(output) > 1 else False,
-                            outstanding_gaps=[],
-                        )
-                        self.logger.info(
-                            "Reconstructed KnowledgeGapOutput from validation error tuple",
-                            node_id=node.node_id,
-                            research_complete=output.research_complete,
-                        )
-                    else:
-                        # For other nodes, try to extract meaningful output or use fallback
-                        self.logger.warning(
-                            "Agent node output is tuple format, attempting extraction",
-                            node_id=node.node_id,
-                            tuple_value=output,
-                        )
-                        # Try to extract first meaningful element
-                        if len(output) > 0:
-                            # If first element is a string or dict, might be the actual output
-                            if isinstance(output[0], (str, dict)):
-                                output = output[0]
-                            else:
-                                # Last resort: use first element
-                                output = output[0]
-                        else:
-                            # Empty tuple - use None and let downstream handle it
-                            output = None
+        input_data = self._prepare_agent_input(node, query, context)
+        result = await self._execute_standard_agent(node, input_data, query, context)
+        output = self._extract_agent_output(node, result)
 
         if node.output_transformer:
             output = node.output_transformer(output)
@@ -1206,10 +1214,15 @@ class GraphOrchestrator:
                 prev_result = prev_result[0]
             elif len(prev_result) > 1 and hasattr(prev_result[1], "research_complete"):
                 prev_result = prev_result[1]
-            elif len(prev_result) == 2 and isinstance(prev_result[0], str) and prev_result[0] == "research_complete":
+            elif (
+                len(prev_result) == 2
+                and isinstance(prev_result[0], str)
+                and prev_result[0] == "research_complete"
+            ):
                 # Handle validation error format: ('research_complete', False)
                 # Reconstruct KnowledgeGapOutput from tuple
                 from src.utils.models import KnowledgeGapOutput
+
                 self.logger.warning(
                     "Decision node received validation error tuple, reconstructing KnowledgeGapOutput",
                     node_id=node.node_id,
@@ -1230,6 +1243,7 @@ class GraphOrchestrator:
                 # Try to reconstruct KnowledgeGapOutput if this is from knowledge_gap node
                 if prev_node_id == "knowledge_gap":
                     from src.utils.models import KnowledgeGapOutput
+
                     # Try to extract research_complete from tuple
                     research_complete = False
                     for item in prev_result:

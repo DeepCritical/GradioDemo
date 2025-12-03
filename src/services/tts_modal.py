@@ -87,7 +87,7 @@ def _setup_modal_function() -> None:
     Note: GPU type is set at function definition time. Changes to settings.tts_gpu
     require app restart to take effect.
     """
-    global _tts_function, _modal_app
+    global _tts_function
 
     if _tts_function is not None:
         return  # Already set up
@@ -107,12 +107,14 @@ def _setup_modal_function() -> None:
 
         # Define GPU function at module level (required by Modal)
         # Modal functions are immutable once defined, so GPU changes require restart
-        @app.function(
+        @app.function(  # type: ignore[misc]
             image=tts_image,
             gpu=gpu_type,
             timeout=timeout_seconds,
         )
-        def kokoro_tts_function(text: str, voice: str, speed: float) -> tuple[int, np.ndarray]:
+        def kokoro_tts_function(
+            text: str, voice: str, speed: float
+        ) -> tuple[int, np.ndarray[Any, Any]]:  # type: ignore[type-arg]
             """Modal GPU function for Kokoro TTS.
 
             This function runs on Modal's GPU infrastructure.
@@ -123,7 +125,6 @@ def _setup_modal_function() -> None:
 
             # Import Kokoro inside function (lazy load)
             try:
-                import torch
                 from kokoro import KModel, KPipeline
 
                 # Initialize model (cached on GPU)
@@ -194,7 +195,7 @@ class ModalTTSExecutor:
         voice: str = "af_heart",
         speed: float = 1.0,
         timeout: int = 60,
-    ) -> tuple[int, np.ndarray]:
+    ) -> tuple[int, np.ndarray[Any, Any]]:  # type: ignore[type-arg]
         """Synthesize text to speech using Kokoro on Modal GPU.
 
         Args:
@@ -225,7 +226,7 @@ class ModalTTSExecutor:
                 "tts_synthesis_complete", sample_rate=result[0], audio_shape=result[1].shape
             )
 
-            return result
+            return result  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error("tts_synthesis_failed", error=str(e), error_type=type(e).__name__)
@@ -246,7 +247,7 @@ class TTSService:
         text: str,
         voice: str = "af_heart",
         speed: float = 1.0,
-    ) -> tuple[int, np.ndarray] | None:
+    ) -> tuple[int, np.ndarray[Any, Any]] | None:  # type: ignore[type-arg]
         """Async wrapper for TTS synthesis.
 
         Args:

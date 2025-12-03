@@ -42,6 +42,11 @@ def test_get_model_anthropic(mock_settings):
     mock_settings.llm_provider = "anthropic"
     mock_settings.anthropic_api_key = "sk-ant-test"
     mock_settings.anthropic_model = "claude-sonnet-4-5-20250929"
+    # Ensure no HF token is set, otherwise get_model() will prefer HuggingFace
+    mock_settings.hf_token = None
+    mock_settings.huggingface_api_key = None
+    mock_settings.has_openai_key = False
+    mock_settings.has_anthropic_key = True
 
     model = get_model()
     assert isinstance(model, AnthropicModel)

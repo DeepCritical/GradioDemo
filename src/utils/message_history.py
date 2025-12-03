@@ -114,7 +114,7 @@ def message_history_to_string(
             parts.append(f"User: {text}")
             turn_num += 1
         elif isinstance(msg, ModelResponse):
-            for part in msg.parts:
+            for part in msg.parts:  # type: ignore[assignment]
                 if hasattr(part, "content"):
                     text += str(part.content)
             parts.append(f"Assistant: {text}")
@@ -123,7 +123,7 @@ def message_history_to_string(
     return "\n".join(parts)
 
 
-def create_truncation_processor(max_messages: int = 10):
+def create_truncation_processor(max_messages: int = 10) -> Any:
     """Create a history processor that keeps only the most recent N messages.
 
     Args:
@@ -139,7 +139,7 @@ def create_truncation_processor(max_messages: int = 10):
     return processor
 
 
-def create_relevance_processor(min_length: int = 10):
+def create_relevance_processor(min_length: int = 10) -> Any:
     """Create a history processor that filters out very short messages.
 
     Args:
@@ -158,7 +158,7 @@ def create_relevance_processor(min_length: int = 10):
                     if hasattr(part, "content"):
                         text += str(part.content)
             elif isinstance(msg, ModelResponse):
-                for part in msg.parts:
+                for part in msg.parts:  # type: ignore[assignment]
                     if hasattr(part, "content"):
                         text += str(part.content)
 
@@ -167,8 +167,3 @@ def create_relevance_processor(min_length: int = 10):
         return filtered
 
     return processor
-
-
-
-
-
