@@ -449,9 +449,7 @@ async def research_agent(
     web_search_provider: str = "auto",
     oauth_token: gr.OAuthToken | None = None,
     oauth_profile: gr.OAuthProfile | None = None,
-) -> AsyncGenerator[
-    dict[str, Any] | tuple[dict[str, Any], tuple[int, np.ndarray[Any, Any]] | None], None
-]:  # type: ignore[type-arg]
+) -> AsyncGenerator[dict[str, Any], None]:
     """
     Main research agent function that processes queries and streams results.
 
@@ -485,18 +483,15 @@ async def research_agent(
     )
 
     if not has_authentication:
-        yield (
-            {
-                "role": "assistant",
-                "content": (
-                    "🔐 **Authentication Required**\n\n"
-                    "Please **sign in with HuggingFace** using the login button at the top of the page "
-                    "before using this application.\n\n"
-                    "The login button is required to access the AI models and research tools."
-                ),
-            },
-            None,
-        )
+        yield {
+            "role": "assistant",
+            "content": (
+                "🔐 **Authentication Required**\n\n"
+                "Please **sign in with HuggingFace** using the login button at the top of the page "
+                "before using this application.\n\n"
+                "The login button is required to access the AI models and research tools."
+            ),
+        }
         return
 
     # Process multimodal input
@@ -505,13 +500,10 @@ async def research_agent(
     )
 
     if not processed_text.strip():
-        yield (
-            {
-                "role": "assistant",
-                "content": "Please enter a research question or provide an image/audio input.",
-            },
-            None,
-        )
+        yield {
+            "role": "assistant",
+            "content": "Please enter a research question or provide an image/audio input.",
+        }
         return
 
     # Check available keys (use token_value instead of oauth_token)
@@ -569,13 +561,10 @@ async def research_agent(
             web_search_provider=web_search_provider_value,  # None will use settings default
         )
 
-        yield (
-            {
-                "role": "assistant",
-                "content": f"🔧 **Backend**: {backend_name}\n\nProcessing your query...",
-            },
-            None,
-        )
+        yield {
+            "role": "assistant",
+            "content": f"🔧 **Backend**: {backend_name}\n\nProcessing your query...",
+        }
 
         # Convert history to ModelMessage format if needed
         message_history: list[ModelMessage] = []
@@ -591,7 +580,7 @@ async def research_agent(
             processed_text, message_history=message_history if message_history else None
         ):
             chat_msg = event_to_chat_message(event)
-            yield chat_msg, None
+            yield chat_msg
 
         # Optional: Generate audio output if enabled
         audio_output_data: tuple[int, np.ndarray[Any, Any]] | None = None  # type: ignore[type-arg]
@@ -612,11 +601,9 @@ async def research_agent(
                 logger.warning("audio_synthesis_failed", error=str(e))
                 # Continue without audio output
 
-        # If we have audio output, we need to yield it with the final message
-        # Note: The final message was already yielded above, so we yield None, audio_output_data
-        # This will update the audio output component
-        if audio_output_data is not None:
-            yield None, audio_output_data  # type: ignore[misc]
+        # Note: Audio output is handled separately via TTS service
+        # Gradio ChatInterface doesn't support tuple yields, so we skip audio output here
+        # Audio can be handled via a separate component if needed
 
     except Exception as e:
         # Return error message without metadata to avoid issues during example caching
@@ -624,13 +611,10 @@ async def research_agent(
         # Gradio Chatbot requires plain text - remove all markdown and special characters
         error_msg = str(e).replace("**", "").replace("*", "").replace("`", "")
         # Ensure content is a simple string without any special formatting
-        yield (
-            {
-                "role": "assistant",
-                "content": f"Error: {error_msg}. Please check your configuration and try again.",
-            },
-            None,
-        )
+        yield {
+            "role": "assistant",
+            "content": f"Error: {error_msg}. Please check your configuration and try again.",
+        }
 
 
 async def update_model_provider_dropdowns(
