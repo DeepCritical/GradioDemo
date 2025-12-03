@@ -70,6 +70,7 @@ logs/
 .mypy_cache/
 .coverage
 htmlcov/
+test_output*.txt
 
 # Database files
 chroma_db/

@@ -1,7 +1,7 @@
 """Shared pytest fixtures for all tests."""
 
 import os
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -79,3 +79,66 @@ def default_to_huggingface(monkeypatch):
     # Set a dummy HF_TOKEN if not set (prevents errors, but tests should mock actual API calls)
     if "HF_TOKEN" not in os.environ:
         monkeypatch.setenv("HF_TOKEN", "dummy_token_for_testing")
+
+
+@pytest.fixture
+def mock_hf_model():
+    """Create a mock HuggingFace model for testing.
+    
+    This fixture provides a mock model that can be used in agent tests
+    to avoid requiring actual API keys.
+    """
+    model = MagicMock()
+    model.name = "meta-llama/Llama-3.1-8B-Instruct"
+    model.model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    return model
+
+
+@pytest.fixture(autouse=True)
+def auto_mock_get_model(mock_hf_model, request):
+    """Automatically mock get_model() in all agent modules.
+    
+    This fixture runs automatically for all tests (except OpenAI tests) and
+    mocks get_model() where it's imported in each agent module, preventing
+    tests from requiring actual API keys.
+    
+    Tests marked with @pytest.mark.openai will skip this fixture.
+    Tests can override by explicitly patching get_model() themselves.
+    """
+    # Skip auto-mocking for OpenAI tests
+    if "openai" in request.keywords:
+        return
+    
+    # Patch get_model in all agent modules where it's imported
+    agent_modules = [
+        "src.agents.input_parser",
+        "src.agents.writer",
+        "src.agents.long_writer",
+        "src.agents.proofreader",
+        "src.agents.knowledge_gap",
+        "src.agents.tool_selector",
+        "src.agents.thinking",
+        "src.agents.hypothesis_agent",
+        "src.agents.report_agent",
+        "src.agents.judge_agent_llm",
+        "src.orchestrator.planner_agent",
+        "src.services.statistical_analyzer",
+    ]
+    
+    patches = []
+    for module in agent_modules:
+        try:
+            patches.append(patch(f"{module}.get_model", return_value=mock_hf_model))
+        except (ImportError, AttributeError):
+            # Module might not exist or get_model might not be imported
+            pass
+    
+    # Start all patches
+    for patch_obj in patches:
+        patch_obj.start()
+    
+    yield
+    
+    # Stop all patches
+    for patch_obj in patches:
+        patch_obj.stop()
