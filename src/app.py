@@ -583,7 +583,6 @@ async def research_agent(
             yield chat_msg
 
         # Optional: Generate audio output if enabled
-        audio_output_data: tuple[int, np.ndarray[Any, Any]] | None = None  # type: ignore[type-arg]
         if settings.enable_audio_output and settings.modal_available:
             try:
                 from src.services.tts_modal import get_tts_service
@@ -592,7 +591,7 @@ async def research_agent(
                 # Get the last message from history for TTS
                 last_message = history[-1].get("content", "") if history else processed_text
                 if last_message:
-                    audio_output_data = await tts_service.synthesize_async(
+                    await tts_service.synthesize_async(
                         text=last_message,
                         voice=tts_voice,
                         speed=tts_speed,
@@ -834,6 +833,48 @@ def create_demo() -> gr.Blocks:
                     info="Select inference provider (leave empty for auto-select). Sign in to see all available providers.",
                 )
 
+                # Refresh button for updating models/providers after login
+                def refresh_models_and_providers(
+                    request: gr.Request,
+                ) -> tuple[dict[str, Any], dict[str, Any], str]:
+                    """Handle refresh button click and update dropdowns."""
+                    import asyncio
+
+                    # Extract OAuth token and profile from request
+                    oauth_token: gr.OAuthToken | None = None
+                    oauth_profile: gr.OAuthProfile | None = None
+
+                    if request is not None:
+                        # Try to get OAuth token from request
+                        if hasattr(request, "oauth_token"):
+                            oauth_token = request.oauth_token
+                        if hasattr(request, "oauth_profile"):
+                            oauth_profile = request.oauth_profile
+
+                    # Run async function in sync context
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        result = loop.run_until_complete(
+                            update_model_provider_dropdowns(oauth_token, oauth_profile)
+                        )
+                        return result
+                    finally:
+                        loop.close()
+
+                refresh_models_btn = gr.Button(
+                    value="🔄 Refresh Available Models",
+                    visible=True,
+                    size="sm",
+                )
+
+                # Pass request to get OAuth token from Gradio context
+                refresh_models_btn.click(
+                    fn=refresh_models_and_providers,
+                    inputs=[],  # Request is automatically available in Gradio context
+                    outputs=[hf_model_dropdown, hf_provider_dropdown, model_provider_status],
+                )
+
                 # Web Search Provider selection
                 gr.Markdown("### 🔍 Web Search Provider")
 
@@ -1062,41 +1103,6 @@ def create_demo() -> gr.Blocks:
             fn=update_tts_visibility,
             inputs=[enable_audio_output_checkbox],
             outputs=[tts_voice_dropdown, tts_speed_slider, audio_output],
-        )
-
-        # Update model/provider dropdowns when user clicks refresh button
-        # Note: Gradio doesn't directly support watching OAuthToken/OAuthProfile changes
-        # So we provide a refresh button that users can click after logging in
-        def refresh_models_and_providers(
-            oauth_token: gr.OAuthToken | None = None,
-            oauth_profile: gr.OAuthProfile | None = None,
-        ) -> tuple[dict[str, Any], dict[str, Any], str]:
-            """Handle refresh button click and update dropdowns."""
-            import asyncio
-
-            # Run async function in sync context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                result = loop.run_until_complete(
-                    update_model_provider_dropdowns(oauth_token, oauth_profile)
-                )
-                return result
-            finally:
-                loop.close()
-
-        refresh_models_btn = gr.Button(
-            value="🔄 Refresh Available Models",
-            visible=True,
-            size="sm",
-        )
-
-        # Note: OAuthToken and OAuthProfile are automatically passed to functions
-        # when they are available in the Gradio context
-        refresh_models_btn.click(
-            fn=refresh_models_and_providers,
-            inputs=[],  # OAuth components are automatically available in Gradio context
-            outputs=[hf_model_dropdown, hf_provider_dropdown, model_provider_status],
         )
 
         # Chat interface with multimodal support

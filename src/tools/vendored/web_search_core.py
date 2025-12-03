@@ -199,4 +199,3 @@ def is_valid_url(url: str) -> bool:
     if any(ext in url for ext in restricted_extensions):
         return False
     return True
-

@@ -886,10 +886,11 @@ class GraphOrchestrator:
     async def _execute_standard_agent(
         self, node: AgentNode, input_data: Any, query: str, context: GraphExecutionContext
     ) -> Any:
-        """Execute standard agent with error handling."""
+        """Execute standard agent with error handling and fallback models."""
         # Get message history from context (limit to most recent 10 messages for token efficiency)
         message_history = context.get_message_history(max_messages=10)
 
+        # Try with the original agent first
         try:
             # Pass message_history if available (Pydantic AI agents support this)
             if message_history:
@@ -909,12 +910,203 @@ class GraphOrchestrator:
                         "Failed to accumulate messages from agent result", error=str(e)
                     )
             return result
-        except Exception:
-            # Handle validation errors and API errors for planner node
+        except Exception as e:
+            # Check if we should retry with fallback models
+            from src.utils.hf_error_handler import (
+                extract_error_details,
+                should_retry_with_fallback,
+            )
+
+            error_details = extract_error_details(e)
+            should_retry = should_retry_with_fallback(e)
+
+            # Handle validation errors and API errors for planner node (with fallback)
             if node.node_id == "planner":
+                if should_retry:
+                    self.logger.warning(
+                        "Planner failed, trying fallback models",
+                        original_error=str(e),
+                        status_code=error_details.get("status_code"),
+                    )
+                    # Try fallback models for planner
+                    fallback_result = await self._try_fallback_models(
+                        node, input_data, message_history, query, context, e
+                    )
+                    if fallback_result is not None:
+                        return fallback_result
+                # If fallback failed or not applicable, use fallback plan
                 return self._create_fallback_plan(query, input_data)
-            # For other nodes, re-raise the exception
+
+            # For other nodes, try fallback models if applicable
+            if should_retry:
+                self.logger.warning(
+                    "Agent node failed, trying fallback models",
+                    node_id=node.node_id,
+                    original_error=str(e),
+                    status_code=error_details.get("status_code"),
+                )
+                fallback_result = await self._try_fallback_models(
+                    node, input_data, message_history, query, context, e
+                )
+                if fallback_result is not None:
+                    return fallback_result
+
+            # If fallback didn't work or wasn't applicable, re-raise the exception
             raise
+
+    async def _try_fallback_models(
+        self,
+        node: AgentNode,
+        input_data: Any,
+        message_history: list[Any],
+        query: str,
+        context: GraphExecutionContext,
+        original_error: Exception,
+    ) -> Any | None:
+        """Try executing agent with fallback models.
+
+        Args:
+            node: The agent node that failed
+            input_data: Input data for the agent
+            message_history: Message history for the agent
+            query: The research query
+            context: Execution context
+            original_error: The original error that triggered fallback
+
+        Returns:
+            Agent result if successful, None if all fallbacks failed
+        """
+        from src.utils.hf_error_handler import extract_error_details, get_fallback_models
+
+        error_details = extract_error_details(original_error)
+        original_model = error_details.get("model_name")
+        fallback_models = get_fallback_models(original_model)
+
+        # Also try models from settings fallback list
+        from src.utils.config import settings
+
+        settings_fallbacks = settings.get_hf_fallback_models_list()
+        for model in settings_fallbacks:
+            if model not in fallback_models:
+                fallback_models.append(model)
+
+        self.logger.info(
+            "Trying fallback models",
+            node_id=node.node_id,
+            original_model=original_model,
+            fallback_count=len(fallback_models),
+        )
+
+        # Try each fallback model
+        for fallback_model in fallback_models:
+            try:
+                # Recreate agent with fallback model
+                fallback_agent = self._recreate_agent_with_model(node.node_id, fallback_model)
+                if fallback_agent is None:
+                    continue
+
+                # Try running with fallback agent
+                if message_history:
+                    result = await fallback_agent.run(input_data, message_history=message_history)
+                else:
+                    result = await fallback_agent.run(input_data)
+
+                self.logger.info(
+                    "Fallback model succeeded",
+                    node_id=node.node_id,
+                    fallback_model=fallback_model,
+                )
+
+                # Accumulate new messages from agent result if available
+                if hasattr(result, "new_messages"):
+                    try:
+                        new_messages = result.new_messages()
+                        for msg in new_messages:
+                            context.add_message(msg)
+                    except Exception as e:
+                        self.logger.debug(
+                            "Failed to accumulate messages from fallback agent result", error=str(e)
+                        )
+
+                return result
+
+            except Exception as e:
+                self.logger.warning(
+                    "Fallback model failed",
+                    node_id=node.node_id,
+                    fallback_model=fallback_model,
+                    error=str(e),
+                )
+                continue
+
+        # All fallback models failed
+        self.logger.error(
+            "All fallback models failed",
+            node_id=node.node_id,
+            fallback_count=len(fallback_models),
+        )
+        return None
+
+    def _recreate_agent_with_model(self, node_id: str, model_name: str) -> Any | None:
+        """Recreate an agent with a specific model.
+
+        Args:
+            node_id: The node ID (e.g., "thinking", "knowledge_gap")
+            model_name: The model name to use
+
+        Returns:
+            Agent instance or None if recreation failed
+        """
+        try:
+            from pydantic_ai.models.huggingface import HuggingFaceModel
+            from pydantic_ai.providers.huggingface import HuggingFaceProvider
+
+            # Create model with fallback model name
+            hf_provider = HuggingFaceProvider(api_key=self.oauth_token)
+            model = HuggingFaceModel(model_name, provider=hf_provider)
+
+            # Recreate agent based on node_id
+            if node_id == "thinking":
+                from src.agent_factory.agents import create_thinking_agent
+
+                agent_wrapper = create_thinking_agent(model=model, oauth_token=self.oauth_token)
+                return agent_wrapper.agent
+            elif node_id == "knowledge_gap":
+                from src.agent_factory.agents import create_knowledge_gap_agent
+
+                agent_wrapper = create_knowledge_gap_agent(  # type: ignore[assignment]
+                    model=model, oauth_token=self.oauth_token
+                )
+                return agent_wrapper.agent
+            elif node_id == "tool_selector":
+                from src.agent_factory.agents import create_tool_selector_agent
+
+                agent_wrapper = create_tool_selector_agent(  # type: ignore[assignment]
+                    model=model, oauth_token=self.oauth_token
+                )
+                return agent_wrapper.agent
+            elif node_id == "planner":
+                from src.agent_factory.agents import create_planner_agent
+
+                agent_wrapper = create_planner_agent(model=model, oauth_token=self.oauth_token)  # type: ignore[assignment]
+                return agent_wrapper.agent
+            elif node_id == "writer":
+                from src.agent_factory.agents import create_writer_agent
+
+                agent_wrapper = create_writer_agent(model=model, oauth_token=self.oauth_token)  # type: ignore[assignment]
+                return agent_wrapper.agent
+            else:
+                self.logger.warning("Unknown node_id for agent recreation", node_id=node_id)
+                return None
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to recreate agent with fallback model",
+                node_id=node_id,
+                model_name=model_name,
+                error=str(e),
+            )
+            return None
 
     def _create_fallback_plan(self, query: str, input_data: Any) -> Any:
         """Create fallback ReportPlan when planner fails."""

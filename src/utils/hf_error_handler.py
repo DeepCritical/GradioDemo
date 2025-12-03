@@ -197,4 +197,3 @@ def get_fallback_models(original_model: str | None = None) -> list[str]:
         fallbacks.remove(original_model)
 
     return fallbacks
-

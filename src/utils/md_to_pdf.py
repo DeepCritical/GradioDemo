@@ -61,4 +61,3 @@ def md_to_pdf(md_text: str, pdf_file_path: str) -> None:
         md2pdf(pdf_file_path, md_text, css_file_path=str(css_path))
 
     logger.debug("PDF generated successfully", pdf_path=pdf_file_path)
-
