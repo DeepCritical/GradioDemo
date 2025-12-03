@@ -85,12 +85,17 @@ class SearchXNGWebSearchTool:
             # Convert ScrapeResult to Evidence objects
             evidence = []
             for result in scraped:
+                # Truncate title to max 500 characters to match Citation model validation
+                title = result.title
+                if len(title) > 500:
+                    title = title[:497] + "..."
+                
                 ev = Evidence(
                     content=result.text,
                     citation=Citation(
-                        title=result.title,
+                        title=title,
                         url=result.url,
-                        source="searchxng",
+                        source="web",  # Use "web" to match SourceName literal, not "searchxng"
                         date="Unknown",
                         authors=[],
                     ),

@@ -50,8 +50,22 @@ def get_model(oauth_token: str | None = None) -> Any:
     Raises:
         ConfigurationError: If no LLM provider is available
     """
+    from src.utils.hf_error_handler import log_token_info, validate_hf_token
+
     # Priority: oauth_token > settings.hf_token > settings.huggingface_api_key
     effective_hf_token = oauth_token or settings.hf_token or settings.huggingface_api_key
+
+    # Validate and log token information
+    if effective_hf_token:
+        log_token_info(effective_hf_token, context="get_model")
+        is_valid, error_msg = validate_hf_token(effective_hf_token)
+        if not is_valid:
+            logger.warning(
+                "Token validation failed",
+                error=error_msg,
+                has_oauth=bool(oauth_token),
+            )
+            # Continue anyway - let the API call fail with a clear error
 
     # Try HuggingFace first (preferred for free tier)
     if effective_hf_token:
@@ -157,7 +171,28 @@ class JudgeHandler:
             return assessment
 
         except Exception as e:
-            logger.error("Assessment failed", error=str(e))
+            # Extract error details for better logging and handling
+            from src.utils.hf_error_handler import (
+                extract_error_details,
+                get_user_friendly_error_message,
+                should_retry_with_fallback,
+            )
+            
+            error_details = extract_error_details(e)
+            logger.error(
+                "Assessment failed",
+                error=str(e),
+                status_code=error_details.get("status_code"),
+                model_name=error_details.get("model_name"),
+                is_auth_error=error_details.get("is_auth_error"),
+                is_model_error=error_details.get("is_model_error"),
+            )
+            
+            # Log user-friendly message for debugging
+            if error_details.get("is_auth_error") or error_details.get("is_model_error"):
+                user_msg = get_user_friendly_error_message(e, error_details.get("model_name"))
+                logger.warning("API error details", user_message=user_msg[:200])
+            
             # Return a safe default assessment on failure
             return self._create_fallback_assessment(question, str(e))
 

@@ -113,6 +113,8 @@ class SearchHandler:
         # Some tools have internal names that differ from SourceName literals
         tool_name_to_source: dict[str, SourceName] = {
             "duckduckgo": "web",
+            "serper": "web",  # Serper uses Google search but maps to "web" source
+            "searchxng": "web",  # SearchXNG also maps to "web" source
             "pubmed": "pubmed",
             "clinicaltrials": "clinicaltrials",
             "europepmc": "europepmc",

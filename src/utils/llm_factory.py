@@ -147,6 +147,19 @@ def get_pydantic_ai_model(oauth_token: str | None = None) -> Any:
             "3. Set huggingface_api_key in settings"
         )
 
+    # Validate and log token information
+    from src.utils.hf_error_handler import log_token_info, validate_hf_token
+
+    log_token_info(effective_hf_token, context="get_pydantic_ai_model")
+    is_valid, error_msg = validate_hf_token(effective_hf_token)
+    if not is_valid:
+        logger.warning(
+            "Token validation failed in get_pydantic_ai_model",
+            error=error_msg,
+            has_oauth=bool(oauth_token),
+        )
+        # Continue anyway - let the API call fail with a clear error
+
     # Always use HuggingFace with available token
     model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"
     hf_provider = HuggingFaceProvider(api_key=effective_hf_token)

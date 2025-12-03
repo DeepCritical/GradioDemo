@@ -55,10 +55,15 @@ class WebSearchTool:
 
             evidence = []
             for r in raw_results:
+                # Truncate title to max 500 characters to match Citation model validation
+                title = r.get("title", "No Title")
+                if len(title) > 500:
+                    title = title[:497] + "..."
+                
                 ev = Evidence(
                     content=r.get("body", ""),
                     citation=Citation(
-                        title=r.get("title", "No Title"),
+                        title=title,
                         url=r.get("href", ""),
                         source="web",
                         date="Unknown",
