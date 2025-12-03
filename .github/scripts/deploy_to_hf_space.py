@@ -3,6 +3,7 @@
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Set
 
@@ -48,7 +49,6 @@ def get_excluded_files() -> Set[str]:
         "mkdocs.yml",
         "uv.lock",
         "AGENTS.txt",
-        "CONTRIBUTING.md",
         ".env",
         ".env.local",
         "*.local",
@@ -147,8 +147,36 @@ def deploy_to_hf_space() -> None:
         )
         print(f"✅ Created new Space: {repo_id}")
     
+    # Configure Git credential helper for authentication
+    # This is needed for Git LFS to work properly with fine-grained tokens
+    print("🔐 Configuring Git credentials...")
+    
+    # Use Git credential store to store the token
+    # This allows Git LFS to authenticate properly
+    temp_dir = Path(tempfile.gettempdir())
+    credential_store = temp_dir / ".git-credentials-hf"
+    
+    # Write credentials in the format: https://username:token@huggingface.co
+    credential_store.write_text(f"https://{hf_username}:{hf_token}@huggingface.co\n", encoding="utf-8")
+    try:
+        credential_store.chmod(0o600)  # Secure permissions (Unix only)
+    except OSError:
+        # Windows doesn't support chmod, skip
+        pass
+    
+    # Configure Git to use the credential store
+    subprocess.run(
+        ["git", "config", "--global", "credential.helper", f"store --file={credential_store}"],
+        check=True,
+        capture_output=True,
+    )
+    
+    # Also set environment variable for Git LFS
+    os.environ["GIT_CREDENTIAL_HELPER"] = f"store --file={credential_store}"
+    
     # Clone repository using git
-    space_url = f"https://{hf_token}@huggingface.co/spaces/{repo_id}"
+    # Use the token in the URL for initial clone, but LFS will use credential store
+    space_url = f"https://{hf_username}:{hf_token}@huggingface.co/spaces/{repo_id}"
     
     if Path(local_dir).exists():
         print(f"🧹 Removing existing {local_dir} directory...")
@@ -163,10 +191,58 @@ def deploy_to_hf_space() -> None:
             text=True,
         )
         print(f"✅ Cloned Space repository")
+        
+        # After clone, configure the remote to use credential helper
+        # This ensures future operations (like push) use the credential store
+        os.chdir(local_dir)
+        subprocess.run(
+            ["git", "remote", "set-url", "origin", f"https://huggingface.co/spaces/{repo_id}"],
+            check=True,
+            capture_output=True,
+        )
+        os.chdir("..")
+        
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr if e.stderr else e.stdout if e.stdout else "Unknown error"
         print(f"❌ Failed to clone Space repository: {error_msg}")
-        raise RuntimeError(f"Git clone failed: {error_msg}") from e
+        
+        # Try alternative: clone with LFS skip, then fetch LFS files separately
+        print("🔄 Trying alternative clone method (skip LFS during clone)...")
+        try:
+            env = os.environ.copy()
+            env["GIT_LFS_SKIP_SMUDGE"] = "1"  # Skip LFS during clone
+            
+            subprocess.run(
+                ["git", "clone", space_url, local_dir],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            print(f"✅ Cloned Space repository (LFS skipped)")
+            
+            # Configure remote
+            os.chdir(local_dir)
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", f"https://huggingface.co/spaces/{repo_id}"],
+                check=True,
+                capture_output=True,
+            )
+            
+            # Try to fetch LFS files with proper authentication
+            print("📥 Fetching LFS files...")
+            subprocess.run(
+                ["git", "lfs", "pull"],
+                check=False,  # Don't fail if LFS pull fails - we'll continue without LFS files
+                capture_output=True,
+                text=True,
+            )
+            os.chdir("..")
+            print(f"✅ Repository cloned (LFS files may be incomplete, but deployment can continue)")
+        except subprocess.CalledProcessError as e2:
+            error_msg2 = e2.stderr if e2.stderr else e2.stdout if e2.stdout else "Unknown error"
+            print(f"❌ Alternative clone method also failed: {error_msg2}")
+            raise RuntimeError(f"Git clone failed: {error_msg}") from e
     
     # Get exclusion sets
     excluded_dirs = get_excluded_dirs()
@@ -266,6 +342,12 @@ def deploy_to_hf_space() -> None:
                 capture_output=True,
             )
             print("📤 Pushing to Hugging Face Space...")
+            # Ensure remote URL uses credential helper (not token in URL)
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", f"https://huggingface.co/spaces/{repo_id}"],
+                check=True,
+                capture_output=True,
+            )
             subprocess.run(
                 ["git", "push"],
                 check=True,
@@ -286,6 +368,14 @@ def deploy_to_hf_space() -> None:
     finally:
         # Return to original directory
         os.chdir(original_cwd)
+        
+        # Clean up credential store for security
+        try:
+            if credential_store.exists():
+                credential_store.unlink()
+        except Exception:
+            # Ignore cleanup errors
+            pass
     
     print(f"🎉 Successfully deployed to: https://huggingface.co/spaces/{repo_id}")
 

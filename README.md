@@ -10,7 +10,14 @@ app_file: src/app.py
 hf_oauth: true
 hf_oauth_expiration_minutes: 480
 hf_oauth_scopes:
- - inference-api
+  # Required for HuggingFace Inference API (includes all third-party providers)
+  # This scope grants access to:
+  # - HuggingFace's own Inference API
+  # - Third-party inference providers (nebius, together, scaleway, hyperbolic, novita, nscale, sambanova, ovh, fireworks, etc.)
+  # - All models available through the Inference Providers API
+  - inference-api
+  # Optional: Uncomment if you need to access user's billing information
+  # - read-billing
 pinned: true
 license: mit
 tags:

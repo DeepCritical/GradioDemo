@@ -110,11 +110,29 @@ def configure_orchestrator(
     # 2. API Key (OAuth or Env) - HuggingFace only (OAuth provides HF token)
     # Priority: oauth_token > env vars
     # On HuggingFace Spaces, OAuth token is available via request.oauth_token
+    # 
+    # OAuth Scope Requirements:
+    # - 'inference-api': Required for HuggingFace Inference API access
+    #   This scope grants access to:
+    #   * HuggingFace's own Inference API
+    #   * All third-party inference providers (nebius, together, scaleway, hyperbolic, novita, nscale, sambanova, ovh, fireworks, etc.)
+    #   * All models available through the Inference Providers API
+    #   See: https://huggingface.co/docs/hub/oauth#currently-supported-scopes
+    # 
+    # Note: The hf_provider parameter is accepted but not used here because HuggingFaceProvider
+    # from pydantic-ai doesn't support provider selection. Provider selection happens at the
+    # InferenceClient level (used in HuggingFaceChatClient for advanced mode).
     effective_api_key = oauth_token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
+    
+    # Log which authentication source is being used
+    if effective_api_key:
+        auth_source = "OAuth token" if oauth_token else ("HF_TOKEN env var" if os.getenv("HF_TOKEN") else "HUGGINGFACE_API_KEY env var")
+        logger.info("Using HuggingFace authentication", source=auth_source, has_token=bool(effective_api_key))
 
     if effective_api_key:
         # We have an API key (OAuth or env) - use pydantic-ai with JudgeHandler
-        # This uses HuggingFace's own inference API, not third-party providers
+        # This uses HuggingFace Inference API, which includes access to all third-party providers
+        # via the Inference Providers API (router.huggingface.co)
         model: Any | None = None
         # Use selected model or fall back to env var/settings
         model_name = (
@@ -132,6 +150,7 @@ def configure_orchestrator(
         # Per https://ai.pydantic.dev/models/huggingface/#configure-the-provider
         # HuggingFaceProvider accepts api_key parameter directly
         # This is consistent with usage in src/utils/llm_factory.py and src/agent_factory/judges.py
+        # The OAuth token with 'inference-api' scope provides access to all inference providers
         provider = HuggingFaceProvider(api_key=effective_api_key)  # type: ignore[misc]
         model = HuggingFaceModel(model_name, provider=provider)  # type: ignore[misc]
         backend_info = "API (HuggingFace OAuth)" if oauth_token else "API (Env Config)"
@@ -599,11 +618,14 @@ async def research_agent(
         # OAuthToken has a .token attribute containing the access token
         if hasattr(oauth_token, "token"):
             token_value = oauth_token.token
+            logger.debug("OAuth token extracted from oauth_token.token attribute")
         elif isinstance(oauth_token, str):
             # Handle case where oauth_token is already a string (shouldn't happen but defensive)
             token_value = oauth_token
+            logger.debug("OAuth token extracted as string")
         else:
             token_value = None
+            logger.warning("OAuth token object present but token extraction failed", oauth_token_type=type(oauth_token).__name__)
 
     if oauth_profile is not None:
         # OAuthProfile has .username, .name, .profile_image attributes
@@ -616,6 +638,8 @@ async def research_agent(
                 else None
             )
         )
+        if username:
+            logger.info("OAuth user authenticated", username=username)
 
     # Check if user is logged in (OAuth token or env var)
     # Fallback to env vars for local development or Spaces with HF_TOKEN secret
@@ -695,10 +719,21 @@ async def research_agent(
         model_id = hf_model if hf_model and hf_model.strip() else None
         provider_name = hf_provider if hf_provider and hf_provider.strip() else None
 
+        # Log authentication source for debugging
+        auth_source = "OAuth" if token_value else ("Env (HF_TOKEN)" if os.getenv("HF_TOKEN") else ("Env (HUGGINGFACE_API_KEY)" if os.getenv("HUGGINGFACE_API_KEY") else "None"))
+        logger.info(
+            "Configuring orchestrator",
+            mode=effective_mode,
+            auth_source=auth_source,
+            has_oauth_token=bool(token_value),
+            model=model_id or "default",
+            provider=provider_name or "auto",
+        )
+
         orchestrator, backend_name = configure_orchestrator(
             use_mock=False,  # Never use mock in production - HF Inference is the free fallback
             mode=effective_mode,
-            oauth_token=token_value,  # Use extracted token value
+            oauth_token=token_value,  # Use extracted token value - passed to all agents and services
             hf_model=model_id,  # None will use defaults in configure_orchestrator
             hf_provider=provider_name,  # None will use defaults in configure_orchestrator
             graph_mode=graph_mode if graph_mode else None,
