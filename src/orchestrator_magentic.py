@@ -4,6 +4,11 @@ from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
 import structlog
+
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
 from agent_framework import (
     MagenticAgentDeltaEvent,
     MagenticAgentMessageEvent,
@@ -98,17 +103,24 @@ class MagenticOrchestrator:
             .build()
         )
 
-    async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:
+    async def run(
+        self, query: str, message_history: list[ModelMessage] | None = None
+    ) -> AsyncGenerator[AgentEvent, None]:
         """
         Run the Magentic workflow.
 
         Args:
             query: User's research question
+            message_history: Optional user conversation history (for compatibility)
 
         Yields:
             AgentEvent objects for real-time UI updates
         """
-        logger.info("Starting Magentic orchestrator", query=query)
+        logger.info(
+            "Starting Magentic orchestrator",
+            query=query,
+            has_history=bool(message_history),
+        )
 
         yield AgentEvent(
             type="started",
@@ -122,7 +134,17 @@ class MagenticOrchestrator:
 
         workflow = self._build_workflow()
 
-        task = f"""Research query: {query}
+        # Include conversation history context if provided
+        history_context = ""
+        if message_history:
+            # Convert message history to string context for task
+            from src.utils.message_history import message_history_to_string
+
+            history_str = message_history_to_string(message_history, max_messages=5)
+            if history_str:
+                history_context = f"\n\nPrevious conversation context:\n{history_str}"
+
+        task = f"""Research query: {query}{history_context}
 
 Workflow:
 1. SearchAgent: Find evidence from available sources (automatically selects: web search, PubMed, ClinicalTrials.gov, Europe PMC, or RAG based on query)

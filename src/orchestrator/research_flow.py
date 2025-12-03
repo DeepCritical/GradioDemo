@@ -10,6 +10,11 @@ from typing import Any
 
 import structlog
 
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
+
 from src.agent_factory.agents import (
     create_graph_orchestrator,
     create_knowledge_gap_agent,
@@ -137,6 +142,7 @@ class IterativeResearchFlow:
         background_context: str = "",
         output_length: str = "",
         output_instructions: str = "",
+        message_history: list[ModelMessage] | None = None,
     ) -> str:
         """
         Run the iterative research flow.
@@ -146,17 +152,18 @@ class IterativeResearchFlow:
             background_context: Optional background context
             output_length: Optional description of desired output length
             output_instructions: Optional additional instructions
+            message_history: Optional user conversation history
 
         Returns:
             Final report string
         """
         if self.use_graph:
             return await self._run_with_graph(
-                query, background_context, output_length, output_instructions
+                query, background_context, output_length, output_instructions, message_history
             )
         else:
             return await self._run_with_chains(
-                query, background_context, output_length, output_instructions
+                query, background_context, output_length, output_instructions, message_history
             )
 
     async def _run_with_chains(
@@ -165,6 +172,7 @@ class IterativeResearchFlow:
         background_context: str = "",
         output_length: str = "",
         output_instructions: str = "",
+        message_history: list[ModelMessage] | None = None,
     ) -> str:
         """
         Run the iterative research flow using agent chains.
@@ -174,6 +182,7 @@ class IterativeResearchFlow:
             background_context: Optional background context
             output_length: Optional description of desired output length
             output_instructions: Optional additional instructions
+            message_history: Optional user conversation history
 
         Returns:
             Final report string
@@ -193,10 +202,10 @@ class IterativeResearchFlow:
             self.conversation.add_iteration()
 
             # 1. Generate observations
-            await self._generate_observations(query, background_context)
+            await self._generate_observations(query, background_context, message_history)
 
             # 2. Evaluate gaps
-            evaluation = await self._evaluate_gaps(query, background_context)
+            evaluation = await self._evaluate_gaps(query, background_context, message_history)
 
             # 3. Assess with judge (after tools execute, we'll assess again)
             # For now, check knowledge gap evaluation
@@ -210,7 +219,7 @@ class IterativeResearchFlow:
 
             # 4. Select tools for next gap
             next_gap = evaluation.outstanding_gaps[0] if evaluation.outstanding_gaps else query
-            selection_plan = await self._select_agents(next_gap, query, background_context)
+            selection_plan = await self._select_agents(next_gap, query, background_context, message_history)
 
             # 5. Execute tools
             await self._execute_tools(selection_plan.tasks)
@@ -250,6 +259,7 @@ class IterativeResearchFlow:
         background_context: str = "",
         output_length: str = "",
         output_instructions: str = "",
+        message_history: list[ModelMessage] | None = None,
     ) -> str:
         """
         Run the iterative research flow using graph execution.
@@ -313,7 +323,9 @@ class IterativeResearchFlow:
 
         return True
 
-    async def _generate_observations(self, query: str, background_context: str = "") -> str:
+    async def _generate_observations(
+        self, query: str, background_context: str = "", message_history: list[ModelMessage] | None = None
+    ) -> str:
         """Generate observations from current research state."""
         # Build input prompt for token estimation
         conversation_history = self.conversation.compile_conversation_history()
@@ -335,6 +347,7 @@ ORIGINAL QUERY:
             query=query,
             background_context=background_context,
             conversation_history=conversation_history,
+            message_history=message_history,
             iteration=self.iteration,
         )
 
@@ -350,7 +363,9 @@ ORIGINAL QUERY:
         self.conversation.set_latest_thought(observations)
         return observations
 
-    async def _evaluate_gaps(self, query: str, background_context: str = "") -> KnowledgeGapOutput:
+    async def _evaluate_gaps(
+        self, query: str, background_context: str = "", message_history: list[ModelMessage] | None = None
+    ) -> KnowledgeGapOutput:
         """Evaluate knowledge gaps in current research."""
         if self.start_time:
             elapsed_minutes = (time.time() - self.start_time) / 60
@@ -377,6 +392,7 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             query=query,
             background_context=background_context,
             conversation_history=conversation_history,
+            message_history=message_history,
             iteration=self.iteration,
             time_elapsed_minutes=elapsed_minutes,
             max_time_minutes=self.max_time_minutes,
@@ -437,7 +453,11 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
         return assessment
 
     async def _select_agents(
-        self, gap: str, query: str, background_context: str = ""
+        self,
+        gap: str,
+        query: str,
+        background_context: str = "",
+        message_history: list[ModelMessage] | None = None,
     ) -> AgentSelectionPlan:
         """Select tools to address knowledge gap."""
         # Build input prompt for token estimation
@@ -461,6 +481,7 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             query=query,
             background_context=background_context,
             conversation_history=conversation_history,
+            message_history=message_history,
         )
 
         # Track tokens for this iteration
@@ -775,27 +796,29 @@ class DeepResearchFlow:
                 return None
         return self._file_service
 
-    async def run(self, query: str) -> str:
+    async def run(self, query: str, message_history: list[ModelMessage] | None = None) -> str:
         """
         Run the deep research flow.
 
         Args:
             query: The research query
+            message_history: Optional user conversation history
 
         Returns:
             Final report string
         """
         if self.use_graph:
-            return await self._run_with_graph(query)
+            return await self._run_with_graph(query, message_history)
         else:
-            return await self._run_with_chains(query)
+            return await self._run_with_chains(query, message_history)
 
-    async def _run_with_chains(self, query: str) -> str:
+    async def _run_with_chains(self, query: str, message_history: list[ModelMessage] | None = None) -> str:
         """
         Run the deep research flow using agent chains.
 
         Args:
             query: The research query
+            message_history: Optional user conversation history
 
         Returns:
             Final report string
@@ -812,11 +835,11 @@ class DeepResearchFlow:
             embedding_service = None
             self.logger.debug("Embedding service unavailable, initializing state without it")
 
-        init_workflow_state(embedding_service=embedding_service)
+        init_workflow_state(embedding_service=embedding_service, message_history=message_history)
         self.logger.debug("Workflow state initialized for deep research")
 
         # 1. Build report plan
-        report_plan = await self._build_report_plan(query)
+        report_plan = await self._build_report_plan(query, message_history)
         self.logger.info(
             "Report plan created",
             sections=len(report_plan.report_outline),
@@ -824,7 +847,7 @@ class DeepResearchFlow:
         )
 
         # 2. Run parallel research loops with state synchronization
-        section_drafts = await self._run_research_loops(report_plan)
+        section_drafts = await self._run_research_loops(report_plan, message_history)
 
         # Verify state synchronization - log evidence count
         state = get_workflow_state()
@@ -845,12 +868,13 @@ class DeepResearchFlow:
 
         return final_report
 
-    async def _run_with_graph(self, query: str) -> str:
+    async def _run_with_graph(self, query: str, message_history: list[ModelMessage] | None = None) -> str:
         """
         Run the deep research flow using graph execution.
 
         Args:
             query: The research query
+            message_history: Optional user conversation history
 
         Returns:
             Final report string
@@ -868,7 +892,7 @@ class DeepResearchFlow:
 
         # Run orchestrator and collect events
         final_report = ""
-        async for event in self._graph_orchestrator.run(query):
+        async for event in self._graph_orchestrator.run(query, message_history=message_history):
             if event.type == "complete":
                 final_report = event.message
                 break
@@ -884,13 +908,17 @@ class DeepResearchFlow:
 
         return final_report
 
-    async def _build_report_plan(self, query: str) -> ReportPlan:
+    async def _build_report_plan(
+        self, query: str, message_history: list[ModelMessage] | None = None
+    ) -> ReportPlan:
         """Build the initial report plan."""
         self.logger.info("Building report plan")
 
         # Build input prompt for token estimation
         input_prompt = f"QUERY: {query}"
 
+        # Planner agent may not support message_history yet, so we'll pass it if available
+        # For now, just use the standard run() call
         report_plan = await self.planner_agent.run(query)
 
         # Track tokens for planner agent
@@ -913,7 +941,9 @@ class DeepResearchFlow:
 
         return report_plan
 
-    async def _run_research_loops(self, report_plan: ReportPlan) -> list[str]:
+    async def _run_research_loops(
+        self, report_plan: ReportPlan, message_history: list[ModelMessage] | None = None
+    ) -> list[str]:
         """Run parallel iterative research loops for each section."""
         self.logger.info("Running research loops", sections=len(report_plan.report_outline))
 
@@ -950,10 +980,11 @@ class DeepResearchFlow:
                     judge_handler=self.judge_handler if not self.use_graph else None,
                 )
 
-                # Run research
+                # Run research with message_history
                 result = await flow.run(
                     query=query,
                     background_context=background_context,
+                    message_history=message_history,
                 )
 
                 # Sync evidence from flow to loop
