@@ -11,11 +11,13 @@ from src.utils.models import ParsedQuery
 
 
 @pytest.fixture
-def mock_model() -> MagicMock:
-    """Create a mock Pydantic AI model."""
-    model = MagicMock()
-    model.name = "test-model"
-    return model
+def mock_model(mock_hf_model):
+    """Create a HuggingFace model for testing.
+    
+    Uses the mock_hf_model from conftest which is a real HuggingFaceModel
+    instance with mocked InferenceClient to prevent real API calls.
+    """
+    return mock_hf_model
 
 
 @pytest.fixture
