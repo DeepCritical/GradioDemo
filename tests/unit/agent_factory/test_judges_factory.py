@@ -21,8 +21,13 @@ def mock_settings():
         yield mock_settings
 
 
+@pytest.mark.openai
 def test_get_model_openai(mock_settings):
-    """Test that OpenAI model is returned when provider is openai."""
+    """Test that OpenAI model is returned when provider is openai.
+    
+    This test instantiates an OpenAI model and requires OpenAI API key.
+    Marked with @pytest.mark.openai to exclude from pre-commit and CI.
+    """
     mock_settings.llm_provider = "openai"
     mock_settings.openai_api_key = "sk-test"
     mock_settings.openai_model = "gpt-5.1"

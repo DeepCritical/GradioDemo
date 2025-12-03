@@ -16,8 +16,12 @@ Pydantic AI Models:
 
 from typing import TYPE_CHECKING, Any
 
+import structlog
+
 from src.utils.config import settings
 from src.utils.exceptions import ConfigurationError
+
+logger = structlog.get_logger()
 
 if TYPE_CHECKING:
     from agent_framework.openai import OpenAIChatClient

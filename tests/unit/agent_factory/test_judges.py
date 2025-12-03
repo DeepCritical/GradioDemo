@@ -142,6 +142,135 @@ class TestJudgeHandler:
             assert result.recommendation == "continue"
             assert "failed" in result.reasoning.lower()
 
+    @pytest.mark.asyncio
+    async def test_assess_handles_403_error(self):
+        """JudgeHandler should handle 403 Forbidden errors with error extraction."""
+        error_msg = "status_code: 403, model_name: Qwen/Qwen3-Next-80B-A3B-Thinking, body: Forbidden"
+        
+        with (
+            patch("src.agent_factory.judges.get_model") as mock_get_model,
+            patch("src.agent_factory.judges.Agent") as mock_agent_class,
+            patch("src.agent_factory.judges.logger") as mock_logger,
+        ):
+            mock_get_model.return_value = MagicMock()
+            mock_agent = AsyncMock()
+            mock_agent.run = AsyncMock(side_effect=Exception(error_msg))
+            mock_agent_class.return_value = mock_agent
+
+            handler = JudgeHandler()
+            handler.agent = mock_agent
+
+            evidence = [
+                Evidence(
+                    content="Some content",
+                    citation=Citation(
+                        source="pubmed",
+                        title="Title",
+                        url="url",
+                        date="2024",
+                    ),
+                )
+            ]
+
+            result = await handler.assess("test question", evidence)
+
+            # Should return fallback
+            assert result.sufficient is False
+            assert result.recommendation == "continue"
+            
+            # Should log error details
+            error_calls = [call for call in mock_logger.error.call_args_list if "Assessment failed" in str(call)]
+            assert len(error_calls) > 0
+
+    @pytest.mark.asyncio
+    async def test_assess_handles_422_error(self):
+        """JudgeHandler should handle 422 Unprocessable Entity errors."""
+        error_msg = "status_code: 422, model_name: meta-llama/Llama-3.1-70B-Instruct, body: Unprocessable Entity"
+        
+        with (
+            patch("src.agent_factory.judges.get_model") as mock_get_model,
+            patch("src.agent_factory.judges.Agent") as mock_agent_class,
+            patch("src.agent_factory.judges.logger") as mock_logger,
+        ):
+            mock_get_model.return_value = MagicMock()
+            mock_agent = AsyncMock()
+            mock_agent.run = AsyncMock(side_effect=Exception(error_msg))
+            mock_agent_class.return_value = mock_agent
+
+            handler = JudgeHandler()
+            handler.agent = mock_agent
+
+            evidence = [
+                Evidence(
+                    content="Some content",
+                    citation=Citation(
+                        source="pubmed",
+                        title="Title",
+                        url="url",
+                        date="2024",
+                    ),
+                )
+            ]
+
+            result = await handler.assess("test question", evidence)
+
+            # Should return fallback
+            assert result.sufficient is False
+            
+            # Should log warning with user-friendly message
+            warning_calls = [call for call in mock_logger.warning.call_args_list if "API error details" in str(call)]
+            assert len(warning_calls) > 0
+
+
+class TestGetModel:
+    """Tests for get_model function with token validation."""
+
+    @patch("src.agent_factory.judges.settings")
+    @patch("src.utils.hf_error_handler.log_token_info")
+    @patch("src.utils.hf_error_handler.validate_hf_token")
+    def test_get_model_validates_oauth_token(self, mock_validate, mock_log, mock_settings):
+        """Should validate and log OAuth token when provided."""
+        mock_settings.hf_token = None
+        mock_settings.huggingface_api_key = None
+        mock_settings.huggingface_model = "test-model"
+        mock_validate.return_value = (True, None)
+        
+        with patch("src.agent_factory.judges.HuggingFaceProvider"), \
+             patch("src.agent_factory.judges.HuggingFaceModel") as mock_model_class:
+            mock_model_class.return_value = MagicMock()
+            
+            from src.agent_factory.judges import get_model
+            
+            get_model(oauth_token="hf_test_token")
+            
+            # Should log token info
+            mock_log.assert_called_once_with("hf_test_token", context="get_model")
+            # Should validate token
+            mock_validate.assert_called_once_with("hf_test_token")
+
+    @patch("src.agent_factory.judges.settings")
+    @patch("src.utils.hf_error_handler.log_token_info")
+    @patch("src.utils.hf_error_handler.validate_hf_token")
+    @patch("src.agent_factory.judges.logger")
+    def test_get_model_warns_on_invalid_token(self, mock_logger, mock_validate, mock_log, mock_settings):
+        """Should warn when token validation fails."""
+        mock_settings.hf_token = None
+        mock_settings.huggingface_api_key = None
+        mock_settings.huggingface_model = "test-model"
+        mock_validate.return_value = (False, "Token too short")
+        
+        with patch("src.agent_factory.judges.HuggingFaceProvider"), \
+             patch("src.agent_factory.judges.HuggingFaceModel") as mock_model_class:
+            mock_model_class.return_value = MagicMock()
+            
+            from src.agent_factory.judges import get_model
+            
+            get_model(oauth_token="short")
+            
+            # Should warn about invalid token
+            warning_calls = [call for call in mock_logger.warning.call_args_list if "Token validation failed" in str(call)]
+            assert len(warning_calls) > 0
+
 
 class TestMockJudgeHandler:
     """Tests for MockJudgeHandler."""
