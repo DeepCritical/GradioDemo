@@ -39,6 +39,7 @@ def get_excluded_dirs() -> Set[str]:
         "dist",
         ".eggs",
         "htmlcov",
+        "hf_space",  # Exclude the cloned HF Space directory itself
     }
 
 
@@ -267,6 +268,10 @@ def deploy_to_hf_space() -> None:
     for item in repo_root.rglob("*"):
         # Skip if in .git directory
         if ".git" in item.parts:
+            continue
+        
+        # Skip if in hf_space directory (the cloned Space directory)
+        if "hf_space" in item.parts:
             continue
         
         # Skip if should be excluded
