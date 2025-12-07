@@ -29,27 +29,45 @@ def mock_agent_result() -> AgentRunResult[Any]:
 @pytest.fixture
 def writer_agent(mock_model: MagicMock) -> WriterAgent:
     """Create a WriterAgent instance with mocked model."""
-    return WriterAgent(model=mock_model)
+    with patch("src.agents.writer.Agent") as mock_agent_class:
+        mock_agent_instance = MagicMock()
+        # The .run method needs to be an async mock for the tests
+        mock_agent_instance.run = AsyncMock()
+        mock_agent_class.return_value = mock_agent_instance
+        yield WriterAgent(model=mock_model)
 
 
 class TestWriterAgentInit:
     """Test WriterAgent initialization."""
 
-    def test_writer_agent_init_with_model(self, mock_model: MagicMock) -> None:
+    @patch("src.agents.writer.Agent")
+    def test_writer_agent_init_with_model(self, mock_agent_class: MagicMock, mock_model: MagicMock) -> None:
         """Test WriterAgent initialization with provided model."""
-        agent = WriterAgent(model=mock_model)
-        assert agent.model == mock_model
-        assert agent.agent is not None
+        mock_agent_instance = MagicMock()
+        mock_agent_class.return_value = mock_agent_instance
 
+        agent = WriterAgent(model=mock_model)
+        
+        assert agent.model == mock_model
+        assert agent.agent == mock_agent_instance
+        mock_agent_class.assert_called_once()
+
+    @patch("src.agents.writer.Agent")
     @patch("src.agents.writer.get_model")
     def test_writer_agent_init_without_model(
-        self, mock_get_model: MagicMock, mock_model: MagicMock
+        self, mock_get_model: MagicMock, mock_agent_class: MagicMock, mock_model: MagicMock
     ) -> None:
         """Test WriterAgent initialization without model (uses default)."""
         mock_get_model.return_value = mock_model
+        mock_agent_instance = MagicMock()
+        mock_agent_class.return_value = mock_agent_instance
+
         agent = WriterAgent()
+
         assert agent.model == mock_model
+        assert agent.agent == mock_agent_instance
         mock_get_model.assert_called_once()
+        mock_agent_class.assert_called_once()
 
     def test_writer_agent_has_correct_system_prompt(self, writer_agent: WriterAgent) -> None:
         """Test that WriterAgent has correct system prompt."""
