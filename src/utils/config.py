@@ -172,6 +172,10 @@ class Settings(BaseSettings):
         le=2.0,
         description="TTS speech speed multiplier (0.5x to 2.0x)",
     )
+    tts_use_llm_polish: bool = Field(
+        default=False,
+        description="Use LLM for final text polish before TTS (optional, costs API calls)",
+    )
     tts_gpu: str | None = Field(
         default=None,
         description="Modal GPU type for TTS (T4, A10, A100, L4, L40S). None uses default T4.",

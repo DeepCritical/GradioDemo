@@ -18,6 +18,7 @@ import structlog
 
 from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
 from src.orchestrator_factory import create_orchestrator
+from src.services.audio_processing import get_audio_service
 from src.services.multimodal_processing import get_multimodal_service
 from src.utils.config import settings
 from src.utils.models import AgentEvent, OrchestratorConfig
@@ -446,6 +447,7 @@ async def research_agent(
     enable_audio_input: bool = True,
     tts_voice: str = "af_heart",
     tts_speed: float = 1.0,
+    tts_use_llm_polish: bool = False,
     web_search_provider: str = "auto",
     oauth_token: gr.OAuthToken | None = None,
     oauth_profile: gr.OAuthProfile | None = None,
@@ -465,6 +467,7 @@ async def research_agent(
         enable_audio_input: Whether to process audio inputs
         tts_voice: TTS voice selection
         tts_speed: TTS speech speed
+        tts_use_llm_polish: Apply LLM-based final polish to audio text (costs API calls)
         web_search_provider: Web search provider selection
         oauth_token: Gradio OAuth token (None if user not logged in)
         oauth_profile: Gradio OAuth profile (None if user not logged in)
@@ -585,17 +588,23 @@ async def research_agent(
         # Optional: Generate audio output if enabled
         if settings.enable_audio_output and settings.modal_available:
             try:
-                from src.services.tts_modal import get_tts_service
-
-                tts_service = get_tts_service()
+                audio_service = get_audio_service()
                 # Get the last message from history for TTS
                 last_message = history[-1].get("content", "") if history else processed_text
                 if last_message:
-                    await tts_service.synthesize_async(
-                        text=last_message,
-                        voice=tts_voice,
-                        speed=tts_speed,
-                    )
+                    # Temporarily override tts_use_llm_polish setting from UI
+                    original_llm_polish = settings.tts_use_llm_polish
+                    try:
+                        settings.tts_use_llm_polish = tts_use_llm_polish
+                        # Use UI-configured voice and speed, fallback to settings defaults
+                        await audio_service.generate_audio_output(
+                            text=last_message,
+                            voice=tts_voice or settings.tts_voice,
+                            speed=tts_speed if tts_speed else settings.tts_speed,
+                        )
+                    finally:
+                        # Restore original setting
+                        settings.tts_use_llm_polish = original_llm_polish
             except Exception as e:
                 logger.warning("audio_synthesis_failed", error=str(e))
                 # Continue without audio output
@@ -1081,6 +1090,13 @@ def create_demo() -> gr.Blocks:
                     interactive=False,  # GPU type set at function definition time, requires restart
                 )
 
+                tts_use_llm_polish_checkbox = gr.Checkbox(
+                    value=settings.tts_use_llm_polish,
+                    label="Use LLM Polish for Audio",
+                    info="Apply LLM-based final polish to remove remaining formatting artifacts (costs API calls)",
+                    visible=settings.enable_audio_output,
+                )
+
                 # Audio output component (for TTS response) - moved to sidebar
                 audio_output = gr.Audio(
                     label="🔊 Audio Response",
@@ -1091,9 +1107,10 @@ def create_demo() -> gr.Blocks:
         # This must be after audio_output is defined
         def update_tts_visibility(
             enabled: bool,
-        ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
             """Update visibility of TTS components based on enable checkbox."""
             return (
+                gr.update(visible=enabled),
                 gr.update(visible=enabled),
                 gr.update(visible=enabled),
                 gr.update(visible=enabled),
@@ -1102,7 +1119,7 @@ def create_demo() -> gr.Blocks:
         enable_audio_output_checkbox.change(
             fn=update_tts_visibility,
             inputs=[enable_audio_output_checkbox],
-            outputs=[tts_voice_dropdown, tts_speed_slider, audio_output],
+            outputs=[tts_voice_dropdown, tts_speed_slider, tts_use_llm_polish_checkbox, audio_output],
         )
 
         # Chat interface with multimodal support
@@ -1196,6 +1213,7 @@ def create_demo() -> gr.Blocks:
                 enable_audio_input_checkbox,
                 tts_voice_dropdown,
                 tts_speed_slider,
+                tts_use_llm_polish_checkbox,
                 web_search_provider_dropdown,
                 # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters
             ],

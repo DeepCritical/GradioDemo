@@ -57,6 +57,9 @@ reference_repos/DeepCritical/
 # Keep the README in reference_repos
 !reference_repos/README.md
 
+# Development directory
+dev/
+
 # OS
 .DS_Store
 Thumbs.db
