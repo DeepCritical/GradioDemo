@@ -37,6 +37,7 @@ class TestIterativeResearchFlow:
             patch("src.orchestrator.research_flow.create_thinking_agent") as mock_thinking,
             patch("src.orchestrator.research_flow.create_writer_agent") as mock_writer,
             patch("src.orchestrator.research_flow.execute_tool_tasks") as mock_execute,
+            patch("src.orchestrator.research_flow.create_judge_handler") as mock_judge,
         ):
             mock_kg.return_value = mock_agents["knowledge_gap"]
             mock_ts.return_value = mock_agents["tool_selector"]
@@ -45,6 +46,7 @@ class TestIterativeResearchFlow:
             mock_execute.return_value = {
                 "task_1": ToolAgentOutput(output="Finding 1", sources=["url1"]),
             }
+            mock_judge.return_value = AsyncMock()
 
             yield IterativeResearchFlow(max_iterations=2, max_time_minutes=5)
 
@@ -203,10 +205,12 @@ class TestDeepResearchFlow:
             patch("src.orchestrator.research_flow.create_planner_agent") as mock_planner,
             patch("src.orchestrator.research_flow.create_long_writer_agent") as mock_long_writer,
             patch("src.orchestrator.research_flow.create_proofreader_agent") as mock_proofreader,
+            patch("src.orchestrator.research_flow.create_judge_handler") as mock_judge_handler,
         ):
             mock_planner.return_value = mock_agents["planner"]
             mock_long_writer.return_value = mock_agents["long_writer"]
             mock_proofreader.return_value = mock_agents["proofreader"]
+            mock_judge_handler.return_value = AsyncMock()
 
             yield DeepResearchFlow(max_iterations=2, max_time_minutes=5)
 

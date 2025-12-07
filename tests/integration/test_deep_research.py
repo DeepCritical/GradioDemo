@@ -3,7 +3,7 @@
 Tests the complete deep research pattern: plan → parallel loops → synthesis.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -12,13 +12,56 @@ from src.orchestrator.research_flow import DeepResearchFlow
 from src.utils.models import ReportPlan, ReportPlanSection
 
 
+def _create_mock_planner_agent():
+    """Create a mock planner agent for testing."""
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock()
+    return mock_agent
+
+
+def _create_mock_long_writer_agent():
+    """Create a mock long writer agent for testing."""
+    mock_agent = MagicMock()
+    mock_agent.write_report = AsyncMock()
+    return mock_agent
+
+
+def _create_mock_proofreader_agent():
+    """Create a mock proofreader agent for testing."""
+    mock_agent = MagicMock()
+    mock_agent.proofread = AsyncMock()
+    return mock_agent
+
+
+def _create_mock_judge_handler():
+    """Create a mock judge handler for testing."""
+    mock_handler = MagicMock()
+    mock_handler.assess = AsyncMock(return_value=MagicMock(is_sufficient=True))
+    return mock_handler
+
+
 @pytest.mark.integration
 class TestDeepResearchFlow:
     """Integration tests for DeepResearchFlow."""
 
     @pytest.mark.asyncio
-    async def test_deep_research_creates_plan(self) -> None:
+    @patch("src.orchestrator.research_flow.create_planner_agent")
+    @patch("src.orchestrator.research_flow.create_long_writer_agent")
+    @patch("src.orchestrator.research_flow.create_proofreader_agent")
+    @patch("src.orchestrator.research_flow.create_judge_handler")
+    async def test_deep_research_creates_plan(
+        self,
+        mock_judge_factory,
+        mock_proofreader_factory,
+        mock_long_writer_factory,
+        mock_planner_factory,
+    ) -> None:
         """Test that deep research creates a report plan."""
+        mock_planner_factory.return_value = _create_mock_planner_agent()
+        mock_long_writer_factory.return_value = _create_mock_long_writer_agent()
+        mock_proofreader_factory.return_value = _create_mock_proofreader_agent()
+        mock_judge_factory.return_value = _create_mock_judge_handler()
+
         # Initialize workflow state
         init_workflow_state()
 
@@ -66,8 +109,36 @@ class TestDeepResearchFlow:
         assert plan.report_outline[0].title == "Section 1"
 
     @pytest.mark.asyncio
-    async def test_deep_research_parallel_loops_state_synchronization(self) -> None:
+    @patch("src.orchestrator.research_flow.create_planner_agent")
+    @patch("src.orchestrator.research_flow.create_long_writer_agent")
+    @patch("src.orchestrator.research_flow.create_proofreader_agent")
+    @patch("src.orchestrator.research_flow.create_judge_handler")
+    @patch("src.orchestrator.research_flow.create_knowledge_gap_agent")
+    @patch("src.orchestrator.research_flow.create_tool_selector_agent")
+    @patch("src.orchestrator.research_flow.create_thinking_agent")
+    @patch("src.orchestrator.research_flow.create_writer_agent")
+    async def test_deep_research_parallel_loops_state_synchronization(
+        self,
+        mock_writer_factory,
+        mock_thinking_factory,
+        mock_tool_selector_factory,
+        mock_knowledge_gap_factory,
+        mock_judge_factory,
+        mock_proofreader_factory,
+        mock_long_writer_factory,
+        mock_planner_factory,
+    ) -> None:
         """Test that parallel loops properly synchronize state."""
+        mock_planner_factory.return_value = _create_mock_planner_agent()
+        mock_long_writer_factory.return_value = _create_mock_long_writer_agent()
+        mock_proofreader_factory.return_value = _create_mock_proofreader_agent()
+        mock_judge_factory.return_value = _create_mock_judge_handler()
+        # Mocks for agents created by IterativeResearchFlow
+        mock_knowledge_gap_factory.return_value = AsyncMock()
+        mock_tool_selector_factory.return_value = AsyncMock()
+        mock_thinking_factory.return_value = AsyncMock()
+        mock_writer_factory.return_value = AsyncMock()
+
         # Initialize workflow state
         state = init_workflow_state()
 
@@ -120,16 +191,33 @@ class TestDeepResearchFlow:
 
         # Verify parallel execution
         assert len(section_drafts) == 2
-        assert "Question 1" in section_drafts[0]
-        assert "Question 2" in section_drafts[1]
+        # Order is not guaranteed in parallel execution, check for presence of both drafts
+        all_drafts = "".join(section_drafts)
+        assert "Question 1" in all_drafts
+        assert "Question 2" in all_drafts
 
         # Verify state has evidence from both sections
         # Note: In real execution, evidence would be synced via WorkflowManager
         # This test verifies the structure works
 
     @pytest.mark.asyncio
-    async def test_deep_research_synthesizes_final_report(self) -> None:
+    @patch("src.orchestrator.research_flow.create_planner_agent")
+    @patch("src.orchestrator.research_flow.create_long_writer_agent")
+    @patch("src.orchestrator.research_flow.create_proofreader_agent")
+    @patch("src.orchestrator.research_flow.create_judge_handler")
+    async def test_deep_research_synthesizes_final_report(
+        self,
+        mock_judge_factory,
+        mock_proofreader_factory,
+        mock_long_writer_factory,
+        mock_planner_factory,
+    ) -> None:
         """Test that deep research synthesizes final report from section drafts."""
+        mock_planner_factory.return_value = _create_mock_planner_agent()
+        mock_long_writer_factory.return_value = _create_mock_long_writer_agent()
+        mock_proofreader_factory.return_value = _create_mock_proofreader_agent()
+        mock_judge_factory.return_value = _create_mock_judge_handler()
+
         flow = DeepResearchFlow(
             max_iterations=1,
             max_time_minutes=2,
@@ -177,8 +265,36 @@ class TestDeepResearchFlow:
         assert len(call_args.kwargs["report_draft"].sections) == 2
 
     @pytest.mark.asyncio
-    async def test_deep_research_agent_chains_full_flow(self) -> None:
+    @patch("src.orchestrator.research_flow.create_planner_agent")
+    @patch("src.orchestrator.research_flow.create_long_writer_agent")
+    @patch("src.orchestrator.research_flow.create_proofreader_agent")
+    @patch("src.orchestrator.research_flow.create_judge_handler")
+    @patch("src.orchestrator.research_flow.create_knowledge_gap_agent")
+    @patch("src.orchestrator.research_flow.create_tool_selector_agent")
+    @patch("src.orchestrator.research_flow.create_thinking_agent")
+    @patch("src.orchestrator.research_flow.create_writer_agent")
+    async def test_deep_research_agent_chains_full_flow(
+        self,
+        mock_writer_factory,
+        mock_thinking_factory,
+        mock_tool_selector_factory,
+        mock_knowledge_gap_factory,
+        mock_judge_factory,
+        mock_proofreader_factory,
+        mock_long_writer_factory,
+        mock_planner_factory,
+    ) -> None:
         """Test full deep research flow with agent chains (mocked)."""
+        mock_planner_factory.return_value = _create_mock_planner_agent()
+        mock_long_writer_factory.return_value = _create_mock_long_writer_agent()
+        mock_proofreader_factory.return_value = _create_mock_proofreader_agent()
+        mock_judge_factory.return_value = _create_mock_judge_handler()
+        # Mocks for agents created by IterativeResearchFlow
+        mock_knowledge_gap_factory.return_value = AsyncMock()
+        mock_tool_selector_factory.return_value = AsyncMock()
+        mock_thinking_factory.return_value = AsyncMock()
+        mock_writer_factory.return_value = AsyncMock()
+
         # Initialize workflow state
         init_workflow_state()
 
@@ -224,8 +340,36 @@ class TestDeepResearchFlow:
         flow.long_writer_agent.write_report.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_deep_research_handles_multiple_sections(self) -> None:
+    @patch("src.orchestrator.research_flow.create_planner_agent")
+    @patch("src.orchestrator.research_flow.create_long_writer_agent")
+    @patch("src.orchestrator.research_flow.create_proofreader_agent")
+    @patch("src.orchestrator.research_flow.create_judge_handler")
+    @patch("src.orchestrator.research_flow.create_knowledge_gap_agent")
+    @patch("src.orchestrator.research_flow.create_tool_selector_agent")
+    @patch("src.orchestrator.research_flow.create_thinking_agent")
+    @patch("src.orchestrator.research_flow.create_writer_agent")
+    async def test_deep_research_handles_multiple_sections(
+        self,
+        mock_writer_factory,
+        mock_thinking_factory,
+        mock_tool_selector_factory,
+        mock_knowledge_gap_factory,
+        mock_judge_factory,
+        mock_proofreader_factory,
+        mock_long_writer_factory,
+        mock_planner_factory,
+    ) -> None:
         """Test that deep research handles multiple sections correctly."""
+        mock_planner_factory.return_value = _create_mock_planner_agent()
+        mock_long_writer_factory.return_value = _create_mock_long_writer_agent()
+        mock_proofreader_factory.return_value = _create_mock_proofreader_agent()
+        mock_judge_factory.return_value = _create_mock_judge_handler()
+        # Mocks for agents created by IterativeResearchFlow
+        mock_knowledge_gap_factory.return_value = AsyncMock()
+        mock_tool_selector_factory.return_value = AsyncMock()
+        mock_thinking_factory.return_value = AsyncMock()
+        mock_writer_factory.return_value = AsyncMock()
+
         flow = DeepResearchFlow(
             max_iterations=1,
             max_time_minutes=2,
@@ -263,8 +407,35 @@ class TestDeepResearchFlow:
             assert f"Section {i}" in draft or f"section {i}" in draft.lower()
 
     @pytest.mark.asyncio
-    async def test_deep_research_workflow_manager_integration(self) -> None:
+    @patch("src.orchestrator.research_flow.create_planner_agent")
+    @patch("src.orchestrator.research_flow.create_long_writer_agent")
+    @patch("src.orchestrator.research_flow.create_proofreader_agent")
+    @patch("src.orchestrator.research_flow.create_judge_handler")
+    @patch("src.orchestrator.research_flow.create_knowledge_gap_agent")
+    @patch("src.orchestrator.research_flow.create_tool_selector_agent")
+    @patch("src.orchestrator.research_flow.create_thinking_agent")
+    @patch("src.orchestrator.research_flow.create_writer_agent")
+    async def test_deep_research_workflow_manager_integration(
+        self,
+        mock_writer_factory,
+        mock_thinking_factory,
+        mock_tool_selector_factory,
+        mock_knowledge_gap_factory,
+        mock_judge_factory,
+        mock_proofreader_factory,
+        mock_long_writer_factory,
+        mock_planner_factory,
+    ) -> None:
         """Test that deep research properly uses WorkflowManager."""
+        mock_planner_factory.return_value = _create_mock_planner_agent()
+        mock_long_writer_factory.return_value = _create_mock_long_writer_agent()
+        mock_proofreader_factory.return_value = _create_mock_proofreader_agent()
+        mock_judge_factory.return_value = _create_mock_judge_handler()
+        # Mocks for agents created by IterativeResearchFlow
+        mock_knowledge_gap_factory.return_value = AsyncMock()
+        mock_tool_selector_factory.return_value = AsyncMock()
+        mock_thinking_factory.return_value = AsyncMock()
+        mock_writer_factory.return_value = AsyncMock()
 
         # Initialize workflow state
         init_workflow_state()
@@ -308,8 +479,36 @@ class TestDeepResearchFlow:
         assert all(isinstance(draft, str) for draft in section_drafts)
 
     @pytest.mark.asyncio
-    async def test_deep_research_state_initialization(self) -> None:
+    @patch("src.orchestrator.research_flow.create_planner_agent")
+    @patch("src.orchestrator.research_flow.create_long_writer_agent")
+    @patch("src.orchestrator.research_flow.create_proofreader_agent")
+    @patch("src.orchestrator.research_flow.create_judge_handler")
+    @patch("src.orchestrator.research_flow.create_knowledge_gap_agent")
+    @patch("src.orchestrator.research_flow.create_tool_selector_agent")
+    @patch("src.orchestrator.research_flow.create_thinking_agent")
+    @patch("src.orchestrator.research_flow.create_writer_agent")
+    async def test_deep_research_state_initialization(
+        self,
+        mock_writer_factory,
+        mock_thinking_factory,
+        mock_tool_selector_factory,
+        mock_knowledge_gap_factory,
+        mock_judge_factory,
+        mock_proofreader_factory,
+        mock_long_writer_factory,
+        mock_planner_factory,
+    ) -> None:
         """Test that deep research properly initializes workflow state."""
+        mock_planner_factory.return_value = _create_mock_planner_agent()
+        mock_long_writer_factory.return_value = _create_mock_long_writer_agent()
+        mock_proofreader_factory.return_value = _create_mock_proofreader_agent()
+        mock_judge_factory.return_value = _create_mock_judge_handler()
+        # Mocks for agents created by IterativeResearchFlow
+        mock_knowledge_gap_factory.return_value = AsyncMock()
+        mock_tool_selector_factory.return_value = AsyncMock()
+        mock_thinking_factory.return_value = AsyncMock()
+        mock_writer_factory.return_value = AsyncMock()
+
         flow = DeepResearchFlow(
             max_iterations=1,
             max_time_minutes=2,
