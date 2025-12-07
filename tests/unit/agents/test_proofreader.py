@@ -62,21 +62,34 @@ def sample_report_draft() -> ReportDraft:
 class TestProofreaderAgentInit:
     """Test ProofreaderAgent initialization."""
 
-    def test_proofreader_agent_init_with_model(self, mock_model: MagicMock) -> None:
+    @patch("src.agents.proofreader.Agent")
+    def test_proofreader_agent_init_with_model(self, mock_agent_class: MagicMock, mock_model: MagicMock) -> None:
         """Test ProofreaderAgent initialization with provided model."""
-        agent = ProofreaderAgent(model=mock_model)
-        assert agent.model == mock_model
-        assert agent.agent is not None
+        mock_agent_instance = MagicMock()
+        mock_agent_class.return_value = mock_agent_instance
 
+        agent = ProofreaderAgent(model=mock_model)
+        
+        assert agent.model == mock_model
+        assert agent.agent == mock_agent_instance
+        mock_agent_class.assert_called_once()
+
+    @patch("src.agents.proofreader.Agent")
     @patch("src.agents.proofreader.get_model")
     def test_proofreader_agent_init_without_model(
-        self, mock_get_model: MagicMock, mock_model: MagicMock
+        self, mock_get_model: MagicMock, mock_agent_class: MagicMock, mock_model: MagicMock
     ) -> None:
         """Test ProofreaderAgent initialization without model (uses default)."""
         mock_get_model.return_value = mock_model
+        mock_agent_instance = MagicMock()
+        mock_agent_class.return_value = mock_agent_instance
+
         agent = ProofreaderAgent()
+
         assert agent.model == mock_model
+        assert agent.agent == mock_agent_instance
         mock_get_model.assert_called_once()
+        mock_agent_class.assert_called_once()
 
     def test_proofreader_agent_has_correct_system_prompt(
         self, proofreader_agent: ProofreaderAgent

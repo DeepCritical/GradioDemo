@@ -75,21 +75,34 @@ def input_parser_agent(mock_model: MagicMock) -> InputParserAgent:
 class TestInputParserAgentInit:
     """Test InputParserAgent initialization."""
 
-    def test_input_parser_agent_init_with_model(self, mock_model: MagicMock) -> None:
+    @patch("src.agents.input_parser.Agent")
+    def test_input_parser_agent_init_with_model(self, mock_agent_class: MagicMock, mock_model: MagicMock) -> None:
         """Test InputParserAgent initialization with provided model."""
-        agent = InputParserAgent(model=mock_model)
-        assert agent.model == mock_model
-        assert agent.agent is not None
+        mock_agent_instance = MagicMock()
+        mock_agent_class.return_value = mock_agent_instance
 
+        agent = InputParserAgent(model=mock_model)
+        
+        assert agent.model == mock_model
+        assert agent.agent == mock_agent_instance
+        mock_agent_class.assert_called_once()
+
+    @patch("src.agents.input_parser.Agent")
     @patch("src.agents.input_parser.get_model")
     def test_input_parser_agent_init_without_model(
-        self, mock_get_model: MagicMock, mock_model: MagicMock
+        self, mock_get_model: MagicMock, mock_agent_class: MagicMock, mock_model: MagicMock
     ) -> None:
         """Test InputParserAgent initialization without model (uses default)."""
         mock_get_model.return_value = mock_model
+        mock_agent_instance = MagicMock()
+        mock_agent_class.return_value = mock_agent_instance
+        
         agent = InputParserAgent()
+
         assert agent.model == mock_model
+        assert agent.agent == mock_agent_instance
         mock_get_model.assert_called_once()
+        mock_agent_class.assert_called_once()
 
     def test_input_parser_agent_has_correct_system_prompt(
         self, input_parser_agent: InputParserAgent
@@ -254,26 +267,36 @@ class TestParse:
 class TestCreateInputParserAgent:
     """Test create_input_parser_agent() factory function."""
 
+    @patch("src.agents.input_parser.InputParserAgent")
     @patch("src.agents.input_parser.get_model")
     def test_create_input_parser_agent_with_model(
-        self, mock_get_model: MagicMock, mock_model: MagicMock
+        self, mock_get_model: MagicMock, mock_input_parser_agent_class: MagicMock, mock_model: MagicMock
     ) -> None:
         """Test factory function with provided model."""
+        mock_agent_instance = MagicMock()
+        mock_input_parser_agent_class.return_value = mock_agent_instance
+        
         agent = create_input_parser_agent(model=mock_model)
-        assert isinstance(agent, InputParserAgent)
-        assert agent.model == mock_model
+        
+        assert agent == mock_agent_instance
+        mock_input_parser_agent_class.assert_called_once_with(model=mock_model)
         mock_get_model.assert_not_called()
 
+    @patch("src.agents.input_parser.InputParserAgent")
     @patch("src.agents.input_parser.get_model")
     def test_create_input_parser_agent_without_model(
-        self, mock_get_model: MagicMock, mock_model: MagicMock
+        self, mock_get_model: MagicMock, mock_input_parser_agent_class: MagicMock, mock_model: MagicMock
     ) -> None:
         """Test factory function without model (uses default)."""
         mock_get_model.return_value = mock_model
+        mock_agent_instance = MagicMock()
+        mock_input_parser_agent_class.return_value = mock_agent_instance
+
         agent = create_input_parser_agent()
-        assert isinstance(agent, InputParserAgent)
-        assert agent.model == mock_model
+
+        assert agent == mock_agent_instance
         mock_get_model.assert_called_once()
+        mock_input_parser_agent_class.assert_called_once_with(model=mock_model)
 
     @patch("src.agents.input_parser.get_model")
     def test_create_input_parser_agent_handles_error(self, mock_get_model: MagicMock) -> None:
