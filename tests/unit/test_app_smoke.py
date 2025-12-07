@@ -5,6 +5,8 @@ They catch configuration errors like invalid Gradio parameters
 that wouldn't be caught by unit tests.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 
@@ -12,7 +14,8 @@ import pytest
 class TestAppSmoke:
     """Smoke tests for app initialization."""
 
-    def test_app_creates_demo(self) -> None:
+    @patch("gradio.LoginButton")
+    def test_app_creates_demo(self, mock_login_button: MagicMock) -> None:
         """App should create Gradio demo without crashing.
 
         This catches:

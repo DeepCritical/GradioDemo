@@ -23,7 +23,9 @@ def mock_settings():
 
 def test_get_model_openai(mock_settings):
     """Test that OpenAI model is returned when provider is openai."""
-    mock_settings.llm_provider = "openai"
+    mock_settings.hf_token = None
+    mock_settings.huggingface_api_key = None
+    mock_settings.has_openai_key = True
     mock_settings.openai_api_key = "sk-test"
     mock_settings.openai_model = "gpt-5.1"
 
@@ -34,7 +36,10 @@ def test_get_model_openai(mock_settings):
 
 def test_get_model_anthropic(mock_settings):
     """Test that Anthropic model is returned when provider is anthropic."""
-    mock_settings.llm_provider = "anthropic"
+    mock_settings.hf_token = None
+    mock_settings.huggingface_api_key = None
+    mock_settings.has_openai_key = False
+    mock_settings.has_anthropic_key = True
     mock_settings.anthropic_api_key = "sk-ant-test"
     mock_settings.anthropic_model = "claude-sonnet-4-5-20250929"
 
