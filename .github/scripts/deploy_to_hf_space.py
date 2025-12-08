@@ -3,22 +3,13 @@
 import os
 import shutil
 import subprocess
-<<<<<<< HEAD
 import tempfile
 from pathlib import Path
-=======
-from pathlib import Path
-from typing import Set
->>>>>>> origin/dev
 
 from huggingface_hub import HfApi
 
 
-<<<<<<< HEAD
 def get_excluded_dirs() -> set[str]:
-=======
-def get_excluded_dirs() -> Set[str]:
->>>>>>> origin/dev
     """Get set of directory names to exclude from deployment."""
     return {
         "docs",
@@ -47,28 +38,17 @@ def get_excluded_dirs() -> Set[str]:
         "dist",
         ".eggs",
         "htmlcov",
-<<<<<<< HEAD
         "hf_space",  # Exclude the cloned HF Space directory itself
     }
 
 
 def get_excluded_files() -> set[str]:
-=======
-    }
-
-
-def get_excluded_files() -> Set[str]:
->>>>>>> origin/dev
     """Get set of file names to exclude from deployment."""
     return {
         ".pre-commit-config.yaml",
         "mkdocs.yml",
         "uv.lock",
         "AGENTS.txt",
-<<<<<<< HEAD
-=======
-        "CONTRIBUTING.md",
->>>>>>> origin/dev
         ".env",
         ".env.local",
         "*.local",
@@ -80,29 +60,17 @@ def get_excluded_files() -> Set[str]:
     }
 
 
-<<<<<<< HEAD
 def should_exclude(path: Path, excluded_dirs: set[str], excluded_files: set[str]) -> bool:
-=======
-def should_exclude(path: Path, excluded_dirs: Set[str], excluded_files: Set[str]) -> bool:
->>>>>>> origin/dev
     """Check if a path should be excluded from deployment."""
     # Check if any parent directory is excluded
     for parent in path.parents:
         if parent.name in excluded_dirs:
             return True
-<<<<<<< HEAD
 
     # Check if the path itself is a directory that should be excluded
     if path.is_dir() and path.name in excluded_dirs:
         return True
 
-=======
-    
-    # Check if the path itself is a directory that should be excluded
-    if path.is_dir() and path.name in excluded_dirs:
-        return True
-    
->>>>>>> origin/dev
     # Check if the file name matches excluded patterns
     if path.is_file():
         # Check exact match
@@ -115,36 +83,22 @@ def should_exclude(path: Path, excluded_dirs: Set[str], excluded_files: Set[str]
                 suffix = pattern.replace("*", "")
                 if path.name.endswith(suffix):
                     return True
-<<<<<<< HEAD
-
-=======
-    
->>>>>>> origin/dev
     return False
 
 
 def deploy_to_hf_space() -> None:
     """Deploy repository to Hugging Face Space.
-<<<<<<< HEAD
 
     Supports both user and organization Spaces:
     - User Space: username/space-name
     - Organization Space: organization-name/space-name
 
-=======
-    
-    Supports both user and organization Spaces:
-    - User Space: username/space-name
-    - Organization Space: organization-name/space-name
-    
->>>>>>> origin/dev
     Works with both classic tokens and fine-grained tokens.
     """
     # Get configuration from environment variables
     hf_token = os.getenv("HF_TOKEN")
     hf_username = os.getenv("HF_USERNAME")  # Can be username or organization name
     space_name = os.getenv("HF_SPACE_NAME")
-<<<<<<< HEAD
 
     # Check which variables are missing and provide helpful error message
     missing = []
@@ -164,33 +118,16 @@ def deploy_to_hf_space() -> None:
             f"  - HF_SPACE_NAME in Settings > Secrets and variables > Actions > Variables"
         )
 
-=======
-    
-    if not all([hf_token, hf_username, space_name]):
-        raise ValueError(
-            "Missing required environment variables: HF_TOKEN, HF_USERNAME, HF_SPACE_NAME"
-        )
-    
->>>>>>> origin/dev
     # HF_USERNAME can be either a username or organization name
     # Format: {username|organization}/{space_name}
     repo_id = f"{hf_username}/{space_name}"
     local_dir = "hf_space"
-<<<<<<< HEAD
 
     print(f"🚀 Deploying to Hugging Face Space: {repo_id}")
 
     # Initialize HF API
     api = HfApi(token=hf_token)
 
-=======
-    
-    print(f"🚀 Deploying to Hugging Face Space: {repo_id}")
-    
-    # Initialize HF API
-    api = HfApi(token=hf_token)
-    
->>>>>>> origin/dev
     # Create Space if it doesn't exist
     try:
         api.repo_info(repo_id=repo_id, repo_type="space", token=hf_token)
@@ -208,7 +145,6 @@ def deploy_to_hf_space() -> None:
             exist_ok=True,
         )
         print(f"✅ Created new Space: {repo_id}")
-<<<<<<< HEAD
 
     # Configure Git credential helper for authentication
     # This is needed for Git LFS to work properly with fine-grained tokens
@@ -248,17 +184,6 @@ def deploy_to_hf_space() -> None:
         shutil.rmtree(local_dir)
 
     print("📥 Cloning Space repository...")
-=======
-    
-    # Clone repository using git
-    space_url = f"https://{hf_token}@huggingface.co/spaces/{repo_id}"
-    
-    if Path(local_dir).exists():
-        print(f"🧹 Removing existing {local_dir} directory...")
-        shutil.rmtree(local_dir)
-    
-    print(f"📥 Cloning Space repository...")
->>>>>>> origin/dev
     try:
         result = subprocess.run(
             ["git", "clone", space_url, local_dir],
@@ -266,7 +191,6 @@ def deploy_to_hf_space() -> None:
             capture_output=True,
             text=True,
         )
-<<<<<<< HEAD
         print("✅ Cloned Space repository")
 
         # After clone, configure the remote to use credential helper
@@ -325,18 +249,6 @@ def deploy_to_hf_space() -> None:
     excluded_dirs = get_excluded_dirs()
     excluded_files = get_excluded_files()
 
-=======
-        print(f"✅ Cloned Space repository")
-    except subprocess.CalledProcessError as e:
-        error_msg = e.stderr if e.stderr else e.stdout if e.stdout else "Unknown error"
-        print(f"❌ Failed to clone Space repository: {error_msg}")
-        raise RuntimeError(f"Git clone failed: {error_msg}") from e
-    
-    # Get exclusion sets
-    excluded_dirs = get_excluded_dirs()
-    excluded_files = get_excluded_files()
-    
->>>>>>> origin/dev
     # Remove all existing files in HF Space (except .git)
     print("🧹 Cleaning existing files...")
     for item in Path(local_dir).iterdir():
@@ -346,26 +258,15 @@ def deploy_to_hf_space() -> None:
             shutil.rmtree(item)
         else:
             item.unlink()
-<<<<<<< HEAD
-
-=======
-    
->>>>>>> origin/dev
     # Copy files from repository root
     print("📦 Copying files...")
     repo_root = Path(".")
     files_copied = 0
     dirs_copied = 0
-<<<<<<< HEAD
-
-=======
-    
->>>>>>> origin/dev
     for item in repo_root.rglob("*"):
         # Skip if in .git directory
         if ".git" in item.parts:
             continue
-<<<<<<< HEAD
 
         # Skip if in hf_space directory (the cloned Space directory)
         if "hf_space" in item.parts:
@@ -375,20 +276,12 @@ def deploy_to_hf_space() -> None:
         if should_exclude(item, excluded_dirs, excluded_files):
             continue
 
-=======
-        
-        # Skip if should be excluded
-        if should_exclude(item, excluded_dirs, excluded_files):
-            continue
-        
->>>>>>> origin/dev
         # Calculate relative path
         try:
             rel_path = item.relative_to(repo_root)
         except ValueError:
             # Item is outside repo root, skip
             continue
-<<<<<<< HEAD
 
         # Skip if in excluded directory
         if any(part in excluded_dirs for part in rel_path.parts):
@@ -400,19 +293,6 @@ def deploy_to_hf_space() -> None:
         # Create parent directories
         dest_path.parent.mkdir(parents=True, exist_ok=True)
 
-=======
-        
-        # Skip if in excluded directory
-        if any(part in excluded_dirs for part in rel_path.parts):
-            continue
-        
-        # Destination path
-        dest_path = Path(local_dir) / rel_path
-        
-        # Create parent directories
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
-        
->>>>>>> origin/dev
         # Copy file or directory
         if item.is_file():
             shutil.copy2(item, dest_path)
@@ -420,7 +300,6 @@ def deploy_to_hf_space() -> None:
         elif item.is_dir():
             # Directory will be created by parent mkdir, but we track it
             dirs_copied += 1
-<<<<<<< HEAD
 
     print(f"✅ Copied {files_copied} files and {dirs_copied} directories")
 
@@ -431,18 +310,6 @@ def deploy_to_hf_space() -> None:
     original_cwd = os.getcwd()
     os.chdir(local_dir)
 
-=======
-    
-    print(f"✅ Copied {files_copied} files and {dirs_copied} directories")
-    
-    # Commit and push changes using git
-    print("💾 Committing changes...")
-    
-    # Change to the Space directory
-    original_cwd = os.getcwd()
-    os.chdir(local_dir)
-    
->>>>>>> origin/dev
     try:
         # Configure git user (required for commit)
         subprocess.run(
@@ -455,18 +322,12 @@ def deploy_to_hf_space() -> None:
             check=True,
             capture_output=True,
         )
-<<<<<<< HEAD
-
-=======
-        
->>>>>>> origin/dev
         # Add all files
         subprocess.run(
             ["git", "add", "."],
             check=True,
             capture_output=True,
         )
-<<<<<<< HEAD
 
         # Check if there are changes to commit
         result = subprocess.run(
@@ -476,16 +337,6 @@ def deploy_to_hf_space() -> None:
             text=True,
         )
 
-=======
-        
-        # Check if there are changes to commit
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-        )
-        
->>>>>>> origin/dev
         if result.stdout.strip():
             # There are changes, commit and push
             subprocess.run(
@@ -494,15 +345,12 @@ def deploy_to_hf_space() -> None:
                 capture_output=True,
             )
             print("📤 Pushing to Hugging Face Space...")
-<<<<<<< HEAD
             # Ensure remote URL uses credential helper (not token in URL)
             subprocess.run(
                 ["git", "remote", "set-url", "origin", f"https://huggingface.co/spaces/{repo_id}"],
                 check=True,
                 capture_output=True,
             )
-=======
->>>>>>> origin/dev
             subprocess.run(
                 ["git", "push"],
                 check=True,
@@ -523,7 +371,6 @@ def deploy_to_hf_space() -> None:
     finally:
         # Return to original directory
         os.chdir(original_cwd)
-<<<<<<< HEAD
 
         # Clean up credential store for security
         try:
@@ -533,15 +380,8 @@ def deploy_to_hf_space() -> None:
             # Ignore cleanup errors
             pass
 
-=======
-    
->>>>>>> origin/dev
     print(f"🎉 Successfully deployed to: https://huggingface.co/spaces/{repo_id}")
 
 
 if __name__ == "__main__":
     deploy_to_hf_space()
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/dev
