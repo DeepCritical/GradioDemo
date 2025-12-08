@@ -6,9 +6,9 @@ from typing import Any
 import numpy as np
 import structlog
 
+from src.agents.audio_refiner import audio_refiner
 from src.services.stt_gradio import STTService, get_stt_service
 from src.utils.config import settings
-from src.utils.exceptions import ConfigurationError
 
 logger = structlog.get_logger(__name__)
 
@@ -53,7 +53,7 @@ class AudioService:
 
     async def process_audio_input(
         self,
-        audio_input: tuple[int, np.ndarray] | None,
+        audio_input: tuple[int, np.ndarray[Any, Any]] | None,  # type: ignore[type-arg]
         hf_token: str | None = None,
     ) -> str | None:
         """Process audio input and return transcribed text.
@@ -82,11 +82,11 @@ class AudioService:
         text: str,
         voice: str | None = None,
         speed: float | None = None,
-    ) -> tuple[int, np.ndarray] | None:
+    ) -> tuple[int, np.ndarray[Any, Any]] | None:  # type: ignore[type-arg]
         """Generate audio output from text.
 
         Args:
-            text: Text to synthesize
+            text: Text to synthesize (markdown will be cleaned for audio)
             voice: Voice ID (default: settings.tts_voice)
             speed: Speech speed (default: settings.tts_speed)
 
@@ -102,11 +102,23 @@ class AudioService:
             return None
 
         try:
+            # Refine text for audio (remove markdown, citations, etc.)
+            # Use LLM polish if enabled in settings
+            refined_text = await audio_refiner.refine_for_audio(
+                text, use_llm_polish=settings.tts_use_llm_polish
+            )
+            logger.info(
+                "text_refined_for_audio",
+                original_length=len(text),
+                refined_length=len(refined_text),
+                llm_polish_enabled=settings.tts_use_llm_polish,
+            )
+
             # Use provided voice/speed or fallback to settings defaults
             voice = voice if voice else settings.tts_voice
             speed = speed if speed is not None else settings.tts_speed
 
-            audio_output = await self.tts.synthesize_async(text, voice, speed)  # type: ignore[misc]
+            audio_output = await self.tts.synthesize_async(refined_text, voice, speed)  # type: ignore[misc]
 
             if audio_output:
                 logger.info(
@@ -115,7 +127,7 @@ class AudioService:
                     sample_rate=audio_output[0],
                 )
 
-            return audio_output
+            return audio_output  # type: ignore[no-any-return]
 
         except Exception as e:
             logger.error("audio_output_generation_failed", error=str(e))
@@ -131,4 +143,3 @@ def get_audio_service() -> AudioService:
         AudioService instance
     """
     return AudioService()
-

@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, cast
 
 import structlog
 
+from src.services.neo4j_service import get_neo4j_service
 from src.tools.base import SearchTool
 from src.tools.rag_tool import create_rag_tool
 from src.utils.exceptions import ConfigurationError, SearchError
 from src.utils.models import Evidence, SearchResult, SourceName
-from src.services.neo4j_service import get_neo4j_service
 
 if TYPE_CHECKING:
     from src.services.llamaindex_rag import LlamaIndexRAGService
@@ -113,6 +113,8 @@ class SearchHandler:
         # Some tools have internal names that differ from SourceName literals
         tool_name_to_source: dict[str, SourceName] = {
             "duckduckgo": "web",
+            "serper": "web",  # Serper uses Google search but maps to "web" source
+            "searchxng": "web",  # SearchXNG also maps to "web" source
             "pubmed": "pubmed",
             "clinicaltrials": "clinicaltrials",
             "europepmc": "europepmc",
@@ -131,7 +133,15 @@ class SearchHandler:
 
                 # Map tool.name to SourceName (handle tool names that don't match SourceName literals)
                 tool_name = tool_name_to_source.get(tool.name, cast(SourceName, tool.name))
-                if tool_name not in ["pubmed", "clinicaltrials", "biorxiv", "europepmc", "preprint", "rag", "web"]:
+                if tool_name not in [
+                    "pubmed",
+                    "clinicaltrials",
+                    "biorxiv",
+                    "europepmc",
+                    "preprint",
+                    "rag",
+                    "web",
+                ]:
                     logger.warning(
                         "Tool name not in SourceName literals, defaulting to 'web'",
                         tool_name=tool.name,
@@ -173,18 +183,20 @@ class SearchHandler:
                     disease = query
                     if "for" in query.lower():
                         disease = query.split("for")[-1].strip().rstrip("?")
-                    
+
                     # Convert Evidence objects to dicts for Neo4j
                     papers = []
                     for ev in all_evidence:
-                        papers.append({
-                            'id': ev.citation.url or '',
-                            'title': ev.citation.title or '',
-                            'abstract': ev.content,
-                            'url': ev.citation.url or '',
-                            'source': ev.citation.source,
-                        })
-                    
+                        papers.append(
+                            {
+                                "id": ev.citation.url or "",
+                                "title": ev.citation.title or "",
+                                "abstract": ev.content,
+                                "url": ev.citation.url or "",
+                                "source": ev.citation.source,
+                            }
+                        )
+
                     stats = neo4j_service.ingest_search_results(disease, papers)
                     logger.info("💾 Saved to Neo4j", stats=stats)
             except Exception as e:

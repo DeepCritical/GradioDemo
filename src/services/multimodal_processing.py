@@ -83,7 +83,9 @@ class MultimodalService:
                         # For now, log a warning
                         logger.warning("audio_file_upload_not_supported", file_path=file_path)
                     except Exception as e:
-                        logger.warning("audio_file_processing_failed", file_path=file_path, error=str(e))
+                        logger.warning(
+                            "audio_file_processing_failed", file_path=file_path, error=str(e)
+                        )
 
         # Add original text if present
         if text and text.strip():
@@ -142,7 +144,3 @@ def get_multimodal_service() -> MultimodalService:
         MultimodalService instance
     """
     return MultimodalService()
-
-
-
-

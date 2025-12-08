@@ -127,6 +127,7 @@ ignore = [
     "PLR0913",  # Too many arguments (agents need many params)
     "PLR0912",  # Too many branches (complex orchestrator logic)
     "PLR0911",  # Too many return statements (complex agent logic)
+    "PLR0915",  # Too many statements (Gradio UI setup functions)
     "PLR2004",  # Magic values (statistical constants like p-values)
     "PLW0603",  # Global statement (singleton pattern for Modal)
     "PLC0415",  # Lazy imports for optional dependencies
@@ -152,6 +153,7 @@ exclude = [
     "^reference_repos/",
     "^examples/",
     "^folder/",
+    "^src/app.py",
 ]
 
 # ============== PYTEST CONFIG ==============

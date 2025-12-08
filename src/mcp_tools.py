@@ -242,7 +242,6 @@ async def extract_text_from_image(
         Extracted text from the image
     """
     from src.services.image_ocr import get_image_ocr_service
-
     from src.utils.config import settings
 
     try:
@@ -280,7 +279,6 @@ async def transcribe_audio_file(
         Transcribed text from the audio file
     """
     from src.services.stt_gradio import get_stt_service
-
     from src.utils.config import settings
 
     try:

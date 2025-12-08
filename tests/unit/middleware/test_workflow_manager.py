@@ -285,4 +285,3 @@ class TestWorkflowManager:
         assert len(shared) == 1
         assert shared[0].content == "Shared"
 
-

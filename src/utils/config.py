@@ -61,6 +61,15 @@ class Settings(BaseSettings):
         default="meta-llama/Llama-3.1-8B-Instruct",
         description="Default HuggingFace model ID for inference",
     )
+    hf_fallback_models: str = Field(
+        default="Qwen/Qwen3-Next-80B-A3B-Thinking,Qwen/Qwen3-Next-80B-A3B-Instruct,meta-llama/Llama-3.3-70B-Instruct,meta-llama/Llama-3.1-8B-Instruct,HuggingFaceH4/zephyr-7b-beta,Qwen/Qwen2-7B-Instruct",
+        alias="HF_FALLBACK_MODELS",
+        description=(
+            "Comma-separated list of fallback models for provider discovery and error recovery. "
+            "Reads from HF_FALLBACK_MODELS environment variable. "
+            "Default value is used only if the environment variable is not set."
+        ),
+    )
 
     # PubMed Configuration
     ncbi_api_key: str | None = Field(
@@ -68,9 +77,11 @@ class Settings(BaseSettings):
     )
 
     # Web Search Configuration
-    web_search_provider: Literal["serper", "searchxng", "brave", "tavily", "duckduckgo"] = Field(
-        default="duckduckgo",
-        description="Web search provider to use",
+    web_search_provider: Literal["serper", "searchxng", "brave", "tavily", "duckduckgo", "auto"] = (
+        Field(
+            default="auto",
+            description="Web search provider to use. 'auto' will auto-detect best available (prefers Serper > SearchXNG > DuckDuckGo)",
+        )
     )
     serper_api_key: str | None = Field(default=None, description="Serper API key for Google search")
     searchxng_host: str | None = Field(default=None, description="SearchXNG host URL")
@@ -162,6 +173,10 @@ class Settings(BaseSettings):
         ge=0.5,
         le=2.0,
         description="TTS speech speed multiplier (0.5x to 2.0x)",
+    )
+    tts_use_llm_polish: bool = Field(
+        default=False,
+        description="Use LLM for final text polish before TTS (optional, costs API calls)",
     )
     tts_gpu: str | None = Field(
         default=None,
@@ -268,6 +283,19 @@ class Settings(BaseSettings):
         if self.web_search_provider == "tavily":
             return bool(self.tavily_api_key)
         return False
+
+    def get_hf_fallback_models_list(self) -> list[str]:
+        """Get the list of fallback models as a list.
+
+        Parses the comma-separated HF_FALLBACK_MODELS string into a list,
+        stripping whitespace from each model ID.
+
+        Returns:
+            List of model IDs
+        """
+        if not self.hf_fallback_models:
+            return []
+        return [model.strip() for model in self.hf_fallback_models.split(",") if model.strip()]
 
 
 def get_settings() -> Settings:

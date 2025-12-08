@@ -11,6 +11,11 @@ from typing import TYPE_CHECKING, Any
 import structlog
 from pydantic import BaseModel, Field
 
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
+
 from src.utils.models import Citation, Conversation, Evidence
 
 if TYPE_CHECKING:
@@ -28,6 +33,10 @@ class WorkflowState(BaseModel):
 
     evidence: list[Evidence] = Field(default_factory=list)
     conversation: Conversation = Field(default_factory=Conversation)
+    user_message_history: list[ModelMessage] = Field(
+        default_factory=list,
+        description="User conversation history (multi-turn interactions)",
+    )
     # Type as Any to avoid circular imports/runtime resolution issues
     # The actual object injected will be an EmbeddingService instance
     embedding_service: Any = Field(default=None)
@@ -90,6 +99,31 @@ class WorkflowState(BaseModel):
 
         return evidence_list
 
+    def add_user_message(self, message: ModelMessage) -> None:
+        """Add a user message to conversation history.
+
+        Args:
+            message: Message to add
+        """
+        self.user_message_history.append(message)
+
+    def get_user_history(self, max_messages: int | None = None) -> list[ModelMessage]:
+        """Get user conversation history.
+
+        Args:
+            max_messages: Maximum messages to return (None for all)
+
+        Returns:
+            List of messages
+        """
+        if max_messages is None:
+            return self.user_message_history.copy()
+        return (
+            self.user_message_history[-max_messages:]
+            if len(self.user_message_history) > max_messages
+            else self.user_message_history.copy()
+        )
+
 
 # The ContextVar holds the WorkflowState for the current execution context
 _workflow_state_var: ContextVar[WorkflowState | None] = ContextVar("workflow_state", default=None)
@@ -97,18 +131,26 @@ _workflow_state_var: ContextVar[WorkflowState | None] = ContextVar("workflow_sta
 
 def init_workflow_state(
     embedding_service: "EmbeddingService | None" = None,
+    message_history: list[ModelMessage] | None = None,
 ) -> WorkflowState:
     """Initialize a new state for the current context.
 
     Args:
         embedding_service: Optional embedding service for semantic search.
+        message_history: Optional user conversation history.
 
     Returns:
         The initialized WorkflowState instance.
     """
     state = WorkflowState(embedding_service=embedding_service)
+    if message_history:
+        state.user_message_history = message_history.copy()
     _workflow_state_var.set(state)
-    logger.debug("Workflow state initialized", has_embeddings=embedding_service is not None)
+    logger.debug(
+        "Workflow state initialized",
+        has_embeddings=embedding_service is not None,
+        has_history=bool(message_history),
+    )
     return state
 
 
@@ -127,13 +169,3 @@ def get_workflow_state() -> WorkflowState:
         logger.debug("Workflow state not found, auto-initializing")
         return init_workflow_state()
     return state
-
-
-
-
-
-
-
-
-
-

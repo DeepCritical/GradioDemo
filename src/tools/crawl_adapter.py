@@ -56,8 +56,3 @@ async def crawl_website(starting_url: str) -> str:
     except Exception as e:
         logger.error("Crawl failed", error=str(e), url=starting_url)
         return f"Error crawling website: {e!s}"
-
-
-
-
-

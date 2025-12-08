@@ -6,6 +6,31 @@ Marked with @pytest.mark.integration to skip in unit test runs.
 
 import pytest
 
+# Skip if sentence_transformers cannot be imported
+# Note: sentence-transformers is a required dependency, but may fail due to:
+# - Windows regex circular import bug
+# - PyTorch C extensions not loading properly
+try:
+    pytest.importorskip("sentence_transformers", exc_type=ImportError)
+except (ImportError, OSError) as e:
+    # Handle various import issues
+    error_msg = str(e).lower()
+    if "regex" in error_msg or "_regex" in error_msg:
+        pytest.skip(
+            "sentence_transformers import failed due to Windows regex circular import bug. "
+            "This is a known issue with the regex package on Windows. "
+            "Try: uv pip install --upgrade --force-reinstall regex",
+            allow_module_level=True,
+        )
+    elif "pytorch" in error_msg or "torch" in error_msg:
+        pytest.skip(
+            "sentence_transformers import failed due to PyTorch C extensions issue. "
+            "Try: uv pip install --upgrade --force-reinstall torch",
+            allow_module_level=True,
+        )
+    # Re-raise other import errors
+    raise
+
 from src.services.llamaindex_rag import get_rag_service
 from src.tools.rag_tool import create_rag_tool
 from src.tools.search_handler import SearchHandler

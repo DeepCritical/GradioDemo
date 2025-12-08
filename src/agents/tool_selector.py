@@ -9,6 +9,11 @@ from typing import Any
 import structlog
 from pydantic_ai import Agent
 
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
+
 from src.agent_factory.judges import get_model
 from src.utils.exceptions import ConfigurationError
 from src.utils.models import AgentSelectionPlan
@@ -81,6 +86,7 @@ class ToolSelectorAgent:
         query: str,
         background_context: str = "",
         conversation_history: str = "",
+        message_history: list[ModelMessage] | None = None,
     ) -> AgentSelectionPlan:
         """
         Select tools to address a knowledge gap.
@@ -89,7 +95,8 @@ class ToolSelectorAgent:
             gap: The knowledge gap to address
             query: The original research query
             background_context: Optional background context
-            conversation_history: History of actions, findings, and thoughts
+            conversation_history: History of actions, findings, and thoughts (backward compat)
+            message_history: Optional user conversation history (Pydantic AI format)
 
         Returns:
             AgentSelectionPlan with tasks for selected agents
@@ -115,8 +122,11 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
 """
 
         try:
-            # Run the agent
-            result = await self.agent.run(user_message)
+            # Run the agent with message_history if provided
+            if message_history:
+                result = await self.agent.run(user_message, message_history=message_history)
+            else:
+                result = await self.agent.run(user_message)
             selection_plan = result.output
 
             self.logger.info(
@@ -144,7 +154,9 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             )
 
 
-def create_tool_selector_agent(model: Any | None = None, oauth_token: str | None = None) -> ToolSelectorAgent:
+def create_tool_selector_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> ToolSelectorAgent:
     """
     Factory function to create a tool selector agent.
 

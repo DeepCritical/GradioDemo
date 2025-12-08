@@ -16,8 +16,12 @@ Pydantic AI Models:
 
 from typing import TYPE_CHECKING, Any
 
+import structlog
+
 from src.utils.config import settings
 from src.utils.exceptions import ConfigurationError
+
+logger = structlog.get_logger()
 
 if TYPE_CHECKING:
     from agent_framework.openai import OpenAIChatClient
@@ -98,7 +102,7 @@ def get_chat_client_for_agent(oauth_token: str | None = None) -> Any:
     """
     # Check if we have OAuth token or env vars
     has_hf_key = bool(oauth_token or settings.has_huggingface_key)
-    
+
     # Prefer HuggingFace if available (free tier)
     if has_hf_key:
         return get_huggingface_chat_client(oauth_token=oauth_token)
@@ -146,6 +150,19 @@ def get_pydantic_ai_model(oauth_token: str | None = None) -> Any:
             "2. Set HF_TOKEN environment variable\n"
             "3. Set huggingface_api_key in settings"
         )
+
+    # Validate and log token information
+    from src.utils.hf_error_handler import log_token_info, validate_hf_token
+
+    log_token_info(effective_hf_token, context="get_pydantic_ai_model")
+    is_valid, error_msg = validate_hf_token(effective_hf_token)
+    if not is_valid:
+        logger.warning(
+            "Token validation failed in get_pydantic_ai_model",
+            error=error_msg,
+            has_oauth=bool(oauth_token),
+        )
+        # Continue anyway - let the API call fail with a clear error
 
     # Always use HuggingFace with available token
     model_name = settings.huggingface_model or "meta-llama/Llama-3.1-8B-Instruct"

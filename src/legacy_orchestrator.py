@@ -6,6 +6,11 @@ from typing import Any, Protocol
 
 import structlog
 
+try:
+    from pydantic_ai import ModelMessage
+except ImportError:
+    ModelMessage = Any  # type: ignore[assignment, misc]
+
 from src.utils.config import settings
 from src.utils.models import (
     AgentEvent,
@@ -153,7 +158,9 @@ class Orchestrator:
                 iteration=iteration,
             )
 
-    async def run(self, query: str) -> AsyncGenerator[AgentEvent, None]:  # noqa: PLR0915
+    async def run(
+        self, query: str, message_history: list[ModelMessage] | None = None
+    ) -> AsyncGenerator[AgentEvent, None]:  # noqa: PLR0915
         """
         Run the agent loop for a query.
 
@@ -161,11 +168,16 @@ class Orchestrator:
 
         Args:
             query: The user's research question
+            message_history: Optional user conversation history (for compatibility)
 
         Yields:
             AgentEvent objects for each step of the process
         """
-        logger.info("Starting orchestrator", query=query)
+        logger.info(
+            "Starting orchestrator",
+            query=query,
+            has_history=bool(message_history),
+        )
 
         yield AgentEvent(
             type="started",

@@ -57,6 +57,9 @@ reference_repos/DeepCritical/
 # Keep the README in reference_repos
 !reference_repos/README.md
 
+# Development directory
+dev/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -70,6 +73,7 @@ logs/
 .mypy_cache/
 .coverage
 htmlcov/
+test_output*.txt
 
 # Database files
 chroma_db/

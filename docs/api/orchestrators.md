@@ -23,9 +23,18 @@ Runs iterative research flow.
 - `background_context`: Background context (default: "")
 - `output_length`: Optional description of desired output length (default: "")
 - `output_instructions`: Optional additional instructions for report generation (default: "")
+<<<<<<< HEAD
+- `message_history`: Optional user conversation history in Pydantic AI `ModelMessage` format (default: None)
 
 **Returns**: Final report string.
 
+**Note**: The `message_history` parameter enables multi-turn conversations by providing context from previous interactions.
+
+=======
+
+**Returns**: Final report string.
+
+>>>>>>> origin/dev
 **Note**: `max_iterations`, `max_time_minutes`, and `token_budget` are constructor parameters, not `run()` parameters.
 
 ## DeepResearchFlow
@@ -46,9 +55,18 @@ Runs deep research flow.
 
 **Parameters**:
 - `query`: Research query string
+<<<<<<< HEAD
+- `message_history`: Optional user conversation history in Pydantic AI `ModelMessage` format (default: None)
 
 **Returns**: Final report string.
 
+**Note**: The `message_history` parameter enables multi-turn conversations by providing context from previous interactions.
+
+=======
+
+**Returns**: Final report string.
+
+>>>>>>> origin/dev
 **Note**: `max_iterations_per_section`, `max_time_minutes`, and `token_budget` are constructor parameters, not `run()` parameters.
 
 ## GraphOrchestrator
@@ -69,10 +87,20 @@ Runs graph-based research orchestration.
 
 **Parameters**:
 - `query`: Research query string
+<<<<<<< HEAD
+- `message_history`: Optional user conversation history in Pydantic AI `ModelMessage` format (default: None)
+
+**Yields**: `AgentEvent` objects during graph execution.
+
+**Note**: 
+- `research_mode` and `use_graph` are constructor parameters, not `run()` parameters.
+- The `message_history` parameter enables multi-turn conversations by providing context from previous interactions. Message history is stored in `GraphExecutionContext` and passed to agents during execution.
+=======
 
 **Yields**: `AgentEvent` objects during graph execution.
 
 **Note**: `research_mode` and `use_graph` are constructor parameters, not `run()` parameters.
+>>>>>>> origin/dev
 
 ## Orchestrator Factory
 
