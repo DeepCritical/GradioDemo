@@ -77,9 +77,11 @@ class Settings(BaseSettings):
     )
 
     # Web Search Configuration
-    web_search_provider: Literal["serper", "searchxng", "brave", "tavily", "duckduckgo", "auto"] = Field(
-        default="auto",
-        description="Web search provider to use. 'auto' will auto-detect best available (prefers Serper > SearchXNG > DuckDuckGo)",
+    web_search_provider: Literal["serper", "searchxng", "brave", "tavily", "duckduckgo", "auto"] = (
+        Field(
+            default="auto",
+            description="Web search provider to use. 'auto' will auto-detect best available (prefers Serper > SearchXNG > DuckDuckGo)",
+        )
     )
     serper_api_key: str | None = Field(default=None, description="Serper API key for Google search")
     searchxng_host: str | None = Field(default=None, description="SearchXNG host URL")
@@ -284,10 +286,10 @@ class Settings(BaseSettings):
 
     def get_hf_fallback_models_list(self) -> list[str]:
         """Get the list of fallback models as a list.
-        
+
         Parses the comma-separated HF_FALLBACK_MODELS string into a list,
         stripping whitespace from each model ID.
-        
+
         Returns:
             List of model IDs
         """

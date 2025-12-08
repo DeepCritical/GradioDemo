@@ -18,7 +18,6 @@ import structlog
 
 from src.agent_factory.judges import HFInferenceJudgeHandler, JudgeHandler, MockJudgeHandler
 from src.orchestrator_factory import create_orchestrator
-from src.services.audio_processing import get_audio_service
 from src.services.multimodal_processing import get_multimodal_service
 from src.utils.config import settings
 from src.utils.models import AgentEvent, OrchestratorConfig
@@ -445,9 +444,6 @@ async def research_agent(
     use_graph: bool = True,
     enable_image_input: bool = True,
     enable_audio_input: bool = True,
-    tts_voice: str = "af_heart",
-    tts_speed: float = 1.0,
-    tts_use_llm_polish: bool = False,
     web_search_provider: str = "auto",
     oauth_token: gr.OAuthToken | None = None,
     oauth_profile: gr.OAuthProfile | None = None,
@@ -465,15 +461,12 @@ async def research_agent(
         use_graph: Whether to use graph execution
         enable_image_input: Whether to process image inputs
         enable_audio_input: Whether to process audio inputs
-        tts_voice: TTS voice selection
-        tts_speed: TTS speech speed
-        tts_use_llm_polish: Apply LLM-based final polish to audio text (costs API calls)
         web_search_provider: Web search provider selection
         oauth_token: Gradio OAuth token (None if user not logged in)
         oauth_profile: Gradio OAuth profile (None if user not logged in)
 
     Yields:
-        Chat message dictionaries or tuples with audio data
+        Chat message dictionaries
     """
     # Extract OAuth token and username
     token_value = _extract_oauth_token(oauth_token)
@@ -585,33 +578,8 @@ async def research_agent(
             chat_msg = event_to_chat_message(event)
             yield chat_msg
 
-        # Optional: Generate audio output if enabled
-        if settings.enable_audio_output and settings.modal_available:
-            try:
-                audio_service = get_audio_service()
-                # Get the last message from history for TTS
-                last_message = history[-1].get("content", "") if history else processed_text
-                if last_message:
-                    # Temporarily override tts_use_llm_polish setting from UI
-                    original_llm_polish = settings.tts_use_llm_polish
-                    try:
-                        settings.tts_use_llm_polish = tts_use_llm_polish
-                        # Use UI-configured voice and speed, fallback to settings defaults
-                        await audio_service.generate_audio_output(
-                            text=last_message,
-                            voice=tts_voice or settings.tts_voice,
-                            speed=tts_speed if tts_speed else settings.tts_speed,
-                        )
-                    finally:
-                        # Restore original setting
-                        settings.tts_use_llm_polish = original_llm_polish
-            except Exception as e:
-                logger.warning("audio_synthesis_failed", error=str(e))
-                # Continue without audio output
-
-        # Note: Audio output is handled separately via TTS service
-        # Gradio ChatInterface doesn't support tuple yields, so we skip audio output here
-        # Audio can be handled via a separate component if needed
+        # Note: Audio output is now handled via on-demand TTS button
+        # Users click "Generate Audio" button to create TTS for the last response
 
     except Exception as e:
         # Return error message without metadata to avoid issues during example caching
@@ -746,19 +714,26 @@ def create_demo() -> gr.Blocks:
             )
             gr.LoginButton("Sign in with Hugging Face")
             gr.Markdown("---")
-            gr.Markdown("### ℹ️ About")  # noqa: RUF001
-            gr.Markdown(
-                "**The DETERMINATOR** - Generalist Deep Research Agent\n\n"
-                "A powerful research agent that stops at nothing until finding precise answers to complex questions.\n\n"
-                "**Available Sources**:\n"
-                "- Web Search (general knowledge)\n"
-                "- PubMed (biomedical literature)\n"
-                "- ClinicalTrials.gov (clinical trials)\n"
-                "- Europe PMC (preprints & papers)\n"
-                "- RAG (semantic search)\n\n"
-                "**Automatic Detection**: Automatically determines if medical knowledge sources are needed for your query.\n\n"
-                "⚠️ **Research tool only** - Synthesizes evidence but cannot provide medical advice."
-            )
+
+            # About Section - Collapsible with details
+            with gr.Accordion("ℹ️ About", open=False):
+                gr.Markdown(
+                    "**The DETERMINATOR** - Generalist Deep Research Agent\n\n"
+                    "Stops at nothing until finding precise answers to complex questions.\n\n"
+                    "**How It Works**:\n"
+                    "- 🔍 Multi-source search (Web, PubMed, ClinicalTrials.gov, Europe PMC, RAG)\n"
+                    "- 🧠 Automatic medical knowledge detection\n"
+                    "- 🔄 Iterative refinement with search-judge loops\n"
+                    "- ⏹️ Continues until budget/time/iteration limits\n"
+                    "- 📊 Evidence synthesis with citations\n\n"
+                    "**Multimodal Input**:\n"
+                    "- 📷 **Images**: Click image icon in textbox (OCR)\n"
+                    "- 🎤 **Audio**: Click microphone icon (speech-to-text)\n"
+                    "- 📄 **Files**: Drag & drop or click to upload\n\n"
+                    "**MCP Server**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
+                    "⚠️ **Research tool only** - Synthesizes evidence but cannot provide medical advice."
+                )
+
             gr.Markdown("---")
 
             # Settings Section - Organized in Accordions
@@ -924,231 +899,321 @@ def create_demo() -> gr.Blocks:
                     info="Process uploaded/recorded audio with speech-to-text",
                 )
 
-                # Audio Output Configuration
-                gr.Markdown("### 🔊 Audio Output (TTS)")
-
-                enable_audio_output_checkbox = gr.Checkbox(
-                    value=settings.enable_audio_output,
-                    label="Enable Audio Output",
-                    info="Generate audio responses using text-to-speech",
+            # Audio Output Configuration - Collapsible
+            with gr.Accordion("🔊 Audio Output (TTS)", open=False):
+                gr.Markdown(
+                    "**Generate audio for research responses on-demand.**\n\n"
+                    "Enter Modal keys below or set `MODAL_TOKEN_ID`/`MODAL_TOKEN_SECRET` in `.env` for local development."
                 )
 
-                tts_voice_dropdown = gr.Dropdown(
-                    choices=[
-                        "af_heart",
-                        "af_bella",
-                        "af_sarah",
-                        "af_sky",
-                        "af_nova",
-                        "af_shimmer",
-                        "af_echo",
-                        "af_fable",
-                        "af_onyx",
-                        "af_angel",
-                        "af_asteria",
-                        "af_jessica",
-                        "af_elli",
-                        "af_domi",
-                        "af_gigi",
-                        "af_freya",
-                        "af_glinda",
-                        "af_cora",
-                        "af_serena",
-                        "af_liv",
-                        "af_naomi",
-                        "af_rachel",
-                        "af_antoni",
-                        "af_thomas",
-                        "af_charlie",
-                        "af_emily",
-                        "af_george",
-                        "af_arnold",
-                        "af_adam",
-                        "af_sam",
-                        "af_paul",
-                        "af_josh",
-                        "af_daniel",
-                        "af_liam",
-                        "af_dave",
-                        "af_fin",
-                        "af_sarah",
-                        "af_glinda",
-                        "af_grace",
-                        "af_dorothy",
-                        "af_michael",
-                        "af_james",
-                        "af_joseph",
-                        "af_jeremy",
-                        "af_ryan",
-                        "af_oliver",
-                        "af_harry",
-                        "af_kyle",
-                        "af_leo",
-                        "af_otto",
-                        "af_owen",
-                        "af_pepper",
-                        "af_phil",
-                        "af_raven",
-                        "af_rocky",
-                        "af_rusty",
-                        "af_serena",
-                        "af_sky",
-                        "af_spark",
-                        "af_stella",
-                        "af_storm",
-                        "af_taylor",
-                        "af_vera",
-                        "af_will",
-                        "af_aria",
-                        "af_ash",
-                        "af_ballad",
-                        "af_bella",
-                        "af_breeze",
-                        "af_cove",
-                        "af_dusk",
-                        "af_ember",
-                        "af_flash",
-                        "af_flow",
-                        "af_glow",
-                        "af_harmony",
-                        "af_journey",
-                        "af_lullaby",
-                        "af_lyra",
-                        "af_melody",
-                        "af_midnight",
-                        "af_moon",
-                        "af_muse",
-                        "af_music",
-                        "af_narrator",
-                        "af_nightingale",
-                        "af_poet",
-                        "af_rain",
-                        "af_redwood",
-                        "af_rewind",
-                        "af_river",
-                        "af_sage",
-                        "af_seashore",
-                        "af_shadow",
-                        "af_silver",
-                        "af_song",
-                        "af_starshine",
-                        "af_story",
-                        "af_summer",
-                        "af_sun",
-                        "af_thunder",
-                        "af_tide",
-                        "af_time",
-                        "af_valentino",
-                        "af_verdant",
-                        "af_verse",
-                        "af_vibrant",
-                        "af_vivid",
-                        "af_warmth",
-                        "af_whisper",
-                        "af_wilderness",
-                        "af_willow",
-                        "af_winter",
-                        "af_wit",
-                        "af_witness",
-                        "af_wren",
-                        "af_writer",
-                        "af_zara",
-                        "af_zeus",
-                        "af_ziggy",
-                        "af_zoom",
-                        "af_river",
-                        "am_michael",
-                        "am_fenrir",
-                        "am_puck",
-                        "am_echo",
-                        "am_eric",
-                        "am_liam",
-                        "am_onyx",
-                        "am_santa",
-                        "am_adam",
-                    ],
-                    value=settings.tts_voice,
-                    label="TTS Voice",
-                    info="Select TTS voice (American English voices: af_*, am_*)",
+                with gr.Accordion("🔑 Modal Credentials (Optional)", open=False):
+                    modal_token_id_input = gr.Textbox(
+                        label="Modal Token ID",
+                        placeholder="ak-... (leave empty to use .env)",
+                        type="password",
+                        value="",
+                    )
+
+                    modal_token_secret_input = gr.Textbox(
+                        label="Modal Token Secret",
+                        placeholder="as-... (leave empty to use .env)",
+                        type="password",
+                        value="",
+                    )
+
+                with gr.Accordion("🎚️ Voice & Quality Settings", open=False):
+                    tts_voice_dropdown = gr.Dropdown(
+                        choices=[
+                            "af_heart",
+                            "af_bella",
+                            "af_sarah",
+                            "af_sky",
+                            "af_nova",
+                            "af_shimmer",
+                            "af_echo",
+                            "af_fable",
+                            "af_onyx",
+                            "af_angel",
+                            "af_asteria",
+                            "af_jessica",
+                            "af_elli",
+                            "af_domi",
+                            "af_gigi",
+                            "af_freya",
+                            "af_glinda",
+                            "af_cora",
+                            "af_serena",
+                            "af_liv",
+                            "af_naomi",
+                            "af_rachel",
+                            "af_antoni",
+                            "af_thomas",
+                            "af_charlie",
+                            "af_emily",
+                            "af_george",
+                            "af_arnold",
+                            "af_adam",
+                            "af_sam",
+                            "af_paul",
+                            "af_josh",
+                            "af_daniel",
+                            "af_liam",
+                            "af_dave",
+                            "af_fin",
+                            "af_sarah",
+                            "af_glinda",
+                            "af_grace",
+                            "af_dorothy",
+                            "af_michael",
+                            "af_james",
+                            "af_joseph",
+                            "af_jeremy",
+                            "af_ryan",
+                            "af_oliver",
+                            "af_harry",
+                            "af_kyle",
+                            "af_leo",
+                            "af_otto",
+                            "af_owen",
+                            "af_pepper",
+                            "af_phil",
+                            "af_raven",
+                            "af_rocky",
+                            "af_rusty",
+                            "af_serena",
+                            "af_sky",
+                            "af_spark",
+                            "af_stella",
+                            "af_storm",
+                            "af_taylor",
+                            "af_vera",
+                            "af_will",
+                            "af_aria",
+                            "af_ash",
+                            "af_ballad",
+                            "af_bella",
+                            "af_breeze",
+                            "af_cove",
+                            "af_dusk",
+                            "af_ember",
+                            "af_flash",
+                            "af_flow",
+                            "af_glow",
+                            "af_harmony",
+                            "af_journey",
+                            "af_lullaby",
+                            "af_lyra",
+                            "af_melody",
+                            "af_midnight",
+                            "af_moon",
+                            "af_muse",
+                            "af_music",
+                            "af_narrator",
+                            "af_nightingale",
+                            "af_poet",
+                            "af_rain",
+                            "af_redwood",
+                            "af_rewind",
+                            "af_river",
+                            "af_sage",
+                            "af_seashore",
+                            "af_shadow",
+                            "af_silver",
+                            "af_song",
+                            "af_starshine",
+                            "af_story",
+                            "af_summer",
+                            "af_sun",
+                            "af_thunder",
+                            "af_tide",
+                            "af_time",
+                            "af_valentino",
+                            "af_verdant",
+                            "af_verse",
+                            "af_vibrant",
+                            "af_vivid",
+                            "af_warmth",
+                            "af_whisper",
+                            "af_wilderness",
+                            "af_willow",
+                            "af_winter",
+                            "af_wit",
+                            "af_witness",
+                            "af_wren",
+                            "af_writer",
+                            "af_zara",
+                            "af_zeus",
+                            "af_ziggy",
+                            "af_zoom",
+                            "af_river",
+                            "am_michael",
+                            "am_fenrir",
+                            "am_puck",
+                            "am_echo",
+                            "am_eric",
+                            "am_liam",
+                            "am_onyx",
+                            "am_santa",
+                            "am_adam",
+                        ],
+                        value=settings.tts_voice,
+                        label="TTS Voice",
+                        info="Select TTS voice (American English voices: af_*, am_*)",
+                    )
+
+                    tts_speed_slider = gr.Slider(
+                        minimum=0.5,
+                        maximum=2.0,
+                        value=settings.tts_speed,
+                        step=0.1,
+                        label="TTS Speech Speed",
+                        info="Adjust TTS speech speed (0.5x to 2.0x)",
+                    )
+
+                    gr.Dropdown(
+                        choices=["T4", "A10", "A100", "L4", "L40S"],
+                        value=settings.tts_gpu or "T4",
+                        label="TTS GPU Type",
+                        info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
+                        visible=settings.modal_available,
+                        interactive=False,  # GPU type set at function definition time, requires restart
+                    )
+
+                    tts_use_llm_polish_checkbox = gr.Checkbox(
+                        value=settings.tts_use_llm_polish,
+                        label="Use LLM Polish for Audio",
+                        info="Apply LLM-based final polish to remove remaining formatting artifacts (costs API calls)",
+                    )
+
+                tts_generate_button = gr.Button(
+                    "🎵 Generate Audio for Last Response",
+                    variant="primary",
+                    size="lg",
                 )
 
-                tts_speed_slider = gr.Slider(
-                    minimum=0.5,
-                    maximum=2.0,
-                    value=settings.tts_speed,
-                    step=0.1,
-                    label="TTS Speech Speed",
-                    info="Adjust TTS speech speed (0.5x to 2.0x)",
+                tts_status_text = gr.Markdown(
+                    "Click the button above to generate audio for the last research response.",
+                    elem_classes="tts-status",
                 )
 
-                gr.Dropdown(
-                    choices=["T4", "A10", "A100", "L4", "L40S"],
-                    value=settings.tts_gpu or "T4",
-                    label="TTS GPU Type",
-                    info="Modal GPU type for TTS (T4 is cheapest, A100 is fastest). Note: GPU changes require app restart.",
-                    visible=settings.modal_available,
-                    interactive=False,  # GPU type set at function definition time, requires restart
-                )
-
-                tts_use_llm_polish_checkbox = gr.Checkbox(
-                    value=settings.tts_use_llm_polish,
-                    label="Use LLM Polish for Audio",
-                    info="Apply LLM-based final polish to remove remaining formatting artifacts (costs API calls)",
-                    visible=settings.enable_audio_output,
-                )
-
-                # Audio output component (for TTS response) - moved to sidebar
+                # Audio output component (for TTS response)
                 audio_output = gr.Audio(
-                    label="🔊 Audio Response",
-                    visible=settings.enable_audio_output,
+                    label="🔊 Audio Output",
+                    visible=True,
                 )
 
-        # Update TTS component visibility based on enable_audio_output_checkbox
-        # This must be after audio_output is defined
-        def update_tts_visibility(
-            enabled: bool,
-        ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
-            """Update visibility of TTS components based on enable checkbox."""
-            return (
-                gr.update(visible=enabled),
-                gr.update(visible=enabled),
-                gr.update(visible=enabled),
-                gr.update(visible=enabled),
+        # TTS on-demand generation handler
+        async def handle_tts_generation(
+            history: list[dict[str, Any]],
+            modal_token_id: str,
+            modal_token_secret: str,
+            voice: str,
+            speed: float,
+            use_llm_polish: bool,
+        ) -> tuple[Any | None, str]:
+            """Generate audio on-demand for the last response.
+
+            Args:
+                history: Chat history
+                modal_token_id: Modal token ID from UI
+                modal_token_secret: Modal token secret from UI
+                voice: TTS voice selection
+                speed: TTS speed
+                use_llm_polish: Enable LLM polish
+
+            Returns:
+                Tuple of (audio_output, status_message)
+            """
+            from src.services.tts_modal import generate_audio_on_demand
+
+            # Get last assistant message from history
+            # History is a list of tuples: [(user_msg, assistant_msg), ...]
+            if not history:
+                logger.warning("tts_no_history", history=history)
+                return None, "❌ No messages in history to generate audio for"
+
+            # Debug: Log history format
+            logger.info(
+                "tts_history_debug",
+                history_type=type(history).__name__,
+                history_length=len(history) if isinstance(history, list) else 0,
+                first_entry_type=type(history[0]).__name__
+                if isinstance(history, list) and len(history) > 0
+                else None,
+                first_entry_sample=str(history[0])[:200]
+                if isinstance(history, list) and len(history) > 0
+                else None,
             )
 
-        enable_audio_output_checkbox.change(
-            fn=update_tts_visibility,
-            inputs=[enable_audio_output_checkbox],
-            outputs=[tts_voice_dropdown, tts_speed_slider, tts_use_llm_polish_checkbox, audio_output],
-        )
+            # Get the last assistant message (second element of last tuple)
+            last_message = None
+            if isinstance(history, list) and len(history) > 0:
+                last_entry = history[-1]
+                # ChatInterface format: (user_message, assistant_message)
+                if isinstance(last_entry, (tuple, list)) and len(last_entry) >= 2:
+                    last_message = last_entry[1]
+                    logger.info(
+                        "tts_extracted_from_tuple", message_type=type(last_message).__name__
+                    )
+                # Dict format: {"role": "assistant", "content": "..."}
+                elif isinstance(last_entry, dict):
+                    if last_entry.get("role") == "assistant":
+                        content = last_entry.get("content", "")
+                        # Content might be a list (multimodal) or string
+                        if isinstance(content, list):
+                            # Extract text from multimodal content list
+                            last_message = " ".join(str(item) for item in content if item)
+                        else:
+                            last_message = content
+                        logger.info(
+                            "tts_extracted_from_dict",
+                            message_type=type(content).__name__,
+                            message_length=len(last_message)
+                            if isinstance(last_message, str)
+                            else 0,
+                        )
+                else:
+                    logger.warning(
+                        "tts_unknown_format",
+                        entry_type=type(last_entry).__name__,
+                        entry=str(last_entry)[:200],
+                    )
+
+            # Also handle if last_message itself is a list
+            if isinstance(last_message, list):
+                last_message = " ".join(str(item) for item in last_message if item)
+
+            if not last_message or not isinstance(last_message, str) or not last_message.strip():
+                logger.error(
+                    "tts_no_message_found",
+                    last_message_type=type(last_message).__name__ if last_message else None,
+                    last_message_value=str(last_message)[:100] if last_message else None,
+                )
+                return None, "❌ No assistant response found in history"
+
+            # Generate audio
+            audio_output, status_message = await generate_audio_on_demand(
+                text=last_message,
+                modal_token_id=modal_token_id,
+                modal_token_secret=modal_token_secret,
+                voice=voice,
+                speed=speed,
+                use_llm_polish=use_llm_polish,
+            )
+
+            return audio_output, status_message
 
         # Chat interface with multimodal support
         # Examples are provided but will NOT run at startup (cache_examples=False)
         # Users must log in first before using examples or submitting queries
-        gr.ChatInterface(
+        chat_interface = gr.ChatInterface(
             fn=research_agent,
             multimodal=True,  # Enable multimodal input (text + images + audio)
             title="🔬 The DETERMINATOR",
             description=(
-                "*Generalist Deep Research Agent — stops at nothing until finding precise answers to complex questions*\n\n"
-                "---\n"
-                "**The DETERMINATOR** uses iterative search-and-judge loops to comprehensively investigate any research question. "
-                "It automatically determines if medical knowledge sources (PubMed, ClinicalTrials.gov) are needed and adapts its search strategy accordingly.\n\n"
-                "**Key Features**:\n"
-                "- 🔍 Multi-source search (Web, PubMed, ClinicalTrials.gov, Europe PMC, RAG)\n"
-                "- 🧠 Automatic medical knowledge detection\n"
-                "- 🔄 Iterative refinement until precise answers are found\n"
-                "- ⏹️ Stops only at configured limits (budget, time, iterations)\n"
-                "- 📊 Evidence synthesis with citations\n\n"
-                "**MCP Server Active**: Connect Claude Desktop to `/gradio_api/mcp/`\n\n"
-                "**📷🎤 Multimodal Input Support**:\n"
-                "- **Images**: Click the 📷 image icon in the textbox to upload images (OCR)\n"
-                "- **Audio**: Click the 🎤 microphone icon in the textbox to record audio (STT)\n"
-                "- **Files**: Drag & drop or click to upload image/audio files\n"
-                "- **Text**: Type your research questions directly\n\n"
-                "💡 **Tip**: Look for the 📷 and 🎤 icons in the text input box below!\n\n"
-                "Configure multimodal inputs in the sidebar settings.\n\n"
-                "**⚠️ Authentication Required**: Please **sign in with HuggingFace** above before using this application."
+                "*Generalist Deep Research Agent — stops at nothing until finding precise answers*\n\n"
+                "💡 **Quick Start**: Type your research question below. Use 📷 for images, 🎤 for audio.\n\n"
+                "⚠️ **Sign in with HuggingFace** (sidebar) before starting."
             ),
             examples=[
                 # When additional_inputs are provided, examples must be lists of lists
@@ -1211,13 +1276,24 @@ def create_demo() -> gr.Blocks:
                 use_graph_checkbox,
                 enable_image_input_checkbox,
                 enable_audio_input_checkbox,
-                tts_voice_dropdown,
-                tts_speed_slider,
-                tts_use_llm_polish_checkbox,
                 web_search_provider_dropdown,
                 # Note: gr.OAuthToken and gr.OAuthProfile are automatically passed as function parameters
             ],
             cache_examples=False,  # Don't cache examples - requires authentication
+        )
+
+        # Wire up TTS generation button
+        tts_generate_button.click(
+            fn=handle_tts_generation,
+            inputs=[
+                chat_interface.chatbot,  # Get chat history from ChatInterface
+                modal_token_id_input,
+                modal_token_secret_input,
+                tts_voice_dropdown,
+                tts_speed_slider,
+                tts_use_llm_polish_checkbox,
+            ],
+            outputs=[audio_output, tts_status_text],
         )
 
     return demo  # type: ignore[no-any-return]

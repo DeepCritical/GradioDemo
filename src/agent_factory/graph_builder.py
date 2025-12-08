@@ -487,12 +487,13 @@ def create_iterative_graph(
     # Add nodes
     builder.add_agent_node("thinking", thinking_agent, "Generate observations")
     builder.add_agent_node("knowledge_gap", knowledge_gap_agent, "Evaluate knowledge gaps")
+
     def _decision_function(result: Any) -> str:
         """Decision function for continue_decision node.
-        
+
         Args:
             result: Result from knowledge_gap node (KnowledgeGapOutput or tuple)
-            
+
         Returns:
             Next node ID: "writer" if research complete, "tool_selector" otherwise
         """
@@ -510,11 +511,11 @@ def create_iterative_graph(
                     return "writer" if item["research_complete"] else "tool_selector"
             # Default to continuing research if we can't determine
             return "tool_selector"
-        
+
         # Normal case: result is KnowledgeGapOutput object
         research_complete = getattr(result, "research_complete", False)
         return "writer" if research_complete else "tool_selector"
-    
+
     builder.add_decision_node(
         "continue_decision",
         decision_function=_decision_function,

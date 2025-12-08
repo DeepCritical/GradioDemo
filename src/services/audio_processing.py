@@ -105,13 +105,14 @@ class AudioService:
             # Refine text for audio (remove markdown, citations, etc.)
             # Use LLM polish if enabled in settings
             refined_text = await audio_refiner.refine_for_audio(
-                text,
-                use_llm_polish=settings.tts_use_llm_polish
+                text, use_llm_polish=settings.tts_use_llm_polish
             )
-            logger.info("text_refined_for_audio",
-                       original_length=len(text),
-                       refined_length=len(refined_text),
-                       llm_polish_enabled=settings.tts_use_llm_polish)
+            logger.info(
+                "text_refined_for_audio",
+                original_length=len(text),
+                refined_length=len(refined_text),
+                llm_polish_enabled=settings.tts_use_llm_polish,
+            )
 
             # Use provided voice/speed or fallback to settings defaults
             voice = voice if voice else settings.tts_voice

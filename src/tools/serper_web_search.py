@@ -89,7 +89,7 @@ class SerperWebSearchTool:
                 title = result.title
                 if len(title) > 500:
                     title = title[:497] + "..."
-                
+
                 ev = Evidence(
                     content=result.text,
                     citation=Citation(
@@ -118,18 +118,3 @@ class SerperWebSearchTool:
         except Exception as e:
             logger.error("Unexpected error in Serper search", error=str(e), query=final_query)
             raise SearchError(f"Serper search failed: {e}") from e
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

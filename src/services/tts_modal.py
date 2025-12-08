@@ -2,15 +2,19 @@
 
 import asyncio
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from functools import lru_cache
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
+from numpy.typing import NDArray
 import structlog
 
 # Load .env file BEFORE importing Modal SDK
 # Modal SDK reads MODAL_TOKEN_ID and MODAL_TOKEN_SECRET from environment on import
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from src.utils.config import settings
@@ -31,6 +35,60 @@ KOKORO_DEPENDENCIES = [
 _modal_app: Any | None = None
 _tts_function: Any | None = None
 _tts_image: Any | None = None
+
+
+@contextmanager
+def modal_credentials_override(token_id: str | None, token_secret: str | None) -> Iterator[None]:
+    """Context manager to temporarily override Modal credentials.
+
+    Args:
+        token_id: Modal token ID (overrides env if provided)
+        token_secret: Modal token secret (overrides env if provided)
+
+    Yields:
+        None
+
+    Note:
+        Resets global Modal state to force re-initialization with new credentials.
+    """
+    global _modal_app, _tts_function
+
+    # Save original credentials
+    original_token_id = os.environ.get("MODAL_TOKEN_ID")
+    original_token_secret = os.environ.get("MODAL_TOKEN_SECRET")
+
+    # Save original Modal state
+    original_app = _modal_app
+    original_function = _tts_function
+
+    try:
+        # Override environment variables if provided
+        if token_id:
+            os.environ["MODAL_TOKEN_ID"] = token_id
+        if token_secret:
+            os.environ["MODAL_TOKEN_SECRET"] = token_secret
+
+        # Reset Modal state to force re-initialization
+        _modal_app = None
+        _tts_function = None
+
+        yield
+
+    finally:
+        # Restore original credentials
+        if original_token_id is not None:
+            os.environ["MODAL_TOKEN_ID"] = original_token_id
+        elif "MODAL_TOKEN_ID" in os.environ:
+            del os.environ["MODAL_TOKEN_ID"]
+
+        if original_token_secret is not None:
+            os.environ["MODAL_TOKEN_SECRET"] = original_token_secret
+        elif "MODAL_TOKEN_SECRET" in os.environ:
+            del os.environ["MODAL_TOKEN_SECRET"]
+
+        # Restore original Modal state
+        _modal_app = original_app
+        _tts_function = original_function
 
 
 def _get_modal_app() -> Any:
@@ -69,7 +127,8 @@ def _get_modal_app() -> Any:
             )
 
             try:
-                _modal_app = modal.App("deepcritical-tts")
+                # Use lookup with create_if_missing for inline function fallback
+                _modal_app = modal.App.lookup("deepcritical-tts", create_if_missing=True)
             except Exception as e:
                 error_msg = str(e).lower()
                 if "token" in error_msg or "malformed" in error_msg or "invalid" in error_msg:
@@ -121,7 +180,7 @@ def _create_tts_function() -> Any:
 
     # Get GPU and timeout from settings (with defaults)
     gpu_type = getattr(settings, "tts_gpu", None) or "T4"
-    timeout_seconds = getattr(settings, "tts_timeout", None) or 60
+    timeout_seconds = getattr(settings, "tts_timeout", None) or 120  # 2 minutes for cold starts
 
     @app.function(
         image=tts_image,
@@ -129,7 +188,7 @@ def _create_tts_function() -> Any:
         timeout=timeout_seconds,
         serialized=True,  # Allow function to be defined outside global scope
     )
-    def kokoro_tts_function(text: str, voice: str, speed: float) -> tuple[int, np.ndarray]:
+    def kokoro_tts_function(text: str, voice: str, speed: float) -> tuple[int, NDArray[np.float32]]:
         """Modal GPU function for Kokoro TTS.
 
         This function runs on Modal's GPU infrastructure.
@@ -170,10 +229,13 @@ def _create_tts_function() -> Any:
 def _setup_modal_function() -> None:
     """Setup Modal GPU function for TTS (called once, lazy initialization).
 
-    Looks up the deployed Modal function instead of creating a new one.
-    This requires the 'deepcritical-tts' app to be deployed on Modal.
+    Hybrid approach:
+    1. Try to lookup pre-deployed function (fast path for advanced users)
+    2. If lookup fails, create function inline (fallback for casual users)
 
-    To deploy: modal deploy <script_with_tts_function>.py
+    This allows both workflows:
+    - Advanced: Deploy with `modal deploy deployments/modal_tts.py` for best performance
+    - Casual: Just add Modal keys and it auto-creates function on first use
     """
     global _tts_function
 
@@ -183,24 +245,38 @@ def _setup_modal_function() -> None:
     try:
         import modal
 
-        # Look up the deployed function from the Modal server
-        # This requires the app to be deployed: modal deploy tts_modal.py
-        _tts_function = modal.Function.from_name(
-            "deepcritical-tts",
-            "kokoro_tts_function"
-        )
+        # Try path 1: Lookup pre-deployed function (fast path)
+        try:
+            _tts_function = modal.Function.from_name("deepcritical-tts", "kokoro_tts_function")
+            logger.info(
+                "modal_tts_function_lookup_success",
+                app_name="deepcritical-tts",
+                function_name="kokoro_tts_function",
+                method="lookup",
+            )
+            return
+        except Exception as lookup_error:
+            logger.info(
+                "modal_tts_function_lookup_failed",
+                error=str(lookup_error),
+                fallback="Creating function inline",
+            )
 
+        # Try path 2: Create function inline (fallback for casual users)
+        logger.info("modal_tts_creating_inline_function")
+        _tts_function = _create_tts_function()
         logger.info(
-            "modal_tts_function_lookup_complete",
+            "modal_tts_function_setup_complete",
             app_name="deepcritical-tts",
             function_name="kokoro_tts_function",
+            method="inline",
         )
 
     except Exception as e:
         logger.error("modal_tts_function_setup_failed", error=str(e))
         raise ConfigurationError(
-            f"Failed to lookup Modal TTS function: {e}. "
-            "Make sure the 'deepcritical-tts' app is deployed on Modal."
+            f"Failed to setup Modal TTS function: {e}. "
+            "Ensure Modal credentials (MODAL_TOKEN_ID, MODAL_TOKEN_SECRET) are valid."
         ) from e
 
 
@@ -233,8 +309,8 @@ class ModalTTSExecutor:
         text: str,
         voice: str = "af_heart",
         speed: float = 1.0,
-        timeout: int = 60,
-    ) -> tuple[int, np.ndarray]:
+        timeout: int = 120,
+    ) -> tuple[int, NDArray[np.float32]]:
         """Synthesize text to speech using Kokoro on Modal GPU.
 
         Args:
@@ -259,7 +335,7 @@ class ModalTTSExecutor:
 
         try:
             # Call the GPU function remotely
-            result = _tts_function.remote(text, voice, speed)
+            result = cast(tuple[int, NDArray[np.float32]], _tts_function.remote(text, voice, speed))
 
             logger.info(
                 "tts_synthesis_complete", sample_rate=result[0], audio_shape=result[1].shape
@@ -296,7 +372,7 @@ class TTSService:
         text: str,
         voice: str = "af_heart",
         speed: float = 1.0,
-    ) -> tuple[int, np.ndarray] | None:
+    ) -> tuple[int, NDArray[np.float32]] | None:
         """Async wrapper for TTS synthesis.
 
         Args:
@@ -334,3 +410,73 @@ def get_tts_service() -> TTSService:
         ConfigurationError: If Modal credentials not configured
     """
     return TTSService()
+
+
+async def generate_audio_on_demand(
+    text: str,
+    modal_token_id: str | None = None,
+    modal_token_secret: str | None = None,
+    voice: str = "af_heart",
+    speed: float = 1.0,
+    use_llm_polish: bool = False,
+) -> tuple[tuple[int, NDArray[np.float32]] | None, str]:
+    """Generate audio on-demand with optional runtime credentials.
+
+    Args:
+        text: Text to synthesize
+        modal_token_id: Modal token ID (UI input, overrides .env)
+        modal_token_secret: Modal token secret (UI input, overrides .env)
+        voice: Voice ID (default: af_heart)
+        speed: Speech speed (default: 1.0)
+        use_llm_polish: Apply LLM polish to text (default: False)
+
+    Returns:
+        Tuple of (audio_output, status_message)
+        - audio_output: (sample_rate, audio_array) or None if failed
+        - status_message: Status/error message for user
+
+    Priority: UI credentials > .env credentials
+    """
+    # Priority: UI keys > .env keys
+    token_id = (modal_token_id or "").strip() or os.getenv("MODAL_TOKEN_ID")
+    token_secret = (modal_token_secret or "").strip() or os.getenv("MODAL_TOKEN_SECRET")
+
+    if not token_id or not token_secret:
+        return (
+            None,
+            "❌ Modal credentials required. Enter keys above or set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET in .env",
+        )
+
+    try:
+        # Use credentials override context
+        with modal_credentials_override(token_id, token_secret):
+            # Import audio_processing here to avoid circular import
+            from src.services.audio_processing import AudioService
+
+            # Temporarily override LLM polish setting
+            original_llm_polish = settings.tts_use_llm_polish
+            try:
+                settings.tts_use_llm_polish = use_llm_polish
+
+                # Create fresh AudioService instance (bypass cache to pick up new credentials)
+                audio_service = AudioService()
+                audio_output = await audio_service.generate_audio_output(
+                    text=text,
+                    voice=voice,
+                    speed=speed,
+                )
+
+                if audio_output:
+                    return audio_output, "✅ Audio generated successfully"
+                else:
+                    return None, "⚠️ Audio generation returned no output"
+
+            finally:
+                settings.tts_use_llm_polish = original_llm_polish
+
+    except ConfigurationError as e:
+        logger.error("audio_generation_config_error", error=str(e))
+        return None, f"❌ Configuration error: {e}"
+    except Exception as e:
+        logger.error("audio_generation_failed", error=str(e), exc_info=True)
+        return None, f"❌ Audio generation failed: {e}"

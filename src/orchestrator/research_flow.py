@@ -219,7 +219,9 @@ class IterativeResearchFlow:
 
             # 4. Select tools for next gap
             next_gap = evaluation.outstanding_gaps[0] if evaluation.outstanding_gaps else query
-            selection_plan = await self._select_agents(next_gap, query, background_context, message_history)
+            selection_plan = await self._select_agents(
+                next_gap, query, background_context, message_history
+            )
 
             # 5. Execute tools
             await self._execute_tools(selection_plan.tasks)
@@ -324,7 +326,10 @@ class IterativeResearchFlow:
         return True
 
     async def _generate_observations(
-        self, query: str, background_context: str = "", message_history: list[ModelMessage] | None = None
+        self,
+        query: str,
+        background_context: str = "",
+        message_history: list[ModelMessage] | None = None,
     ) -> str:
         """Generate observations from current research state."""
         # Build input prompt for token estimation
@@ -364,7 +369,10 @@ ORIGINAL QUERY:
         return observations
 
     async def _evaluate_gaps(
-        self, query: str, background_context: str = "", message_history: list[ModelMessage] | None = None
+        self,
+        query: str,
+        background_context: str = "",
+        message_history: list[ModelMessage] | None = None,
     ) -> KnowledgeGapOutput:
         """Evaluate knowledge gaps in current research."""
         if self.start_time:
@@ -812,7 +820,9 @@ class DeepResearchFlow:
         else:
             return await self._run_with_chains(query, message_history)
 
-    async def _run_with_chains(self, query: str, message_history: list[ModelMessage] | None = None) -> str:
+    async def _run_with_chains(
+        self, query: str, message_history: list[ModelMessage] | None = None
+    ) -> str:
         """
         Run the deep research flow using agent chains.
 
@@ -868,7 +878,9 @@ class DeepResearchFlow:
 
         return final_report
 
-    async def _run_with_graph(self, query: str, message_history: list[ModelMessage] | None = None) -> str:
+    async def _run_with_graph(
+        self, query: str, message_history: list[ModelMessage] | None = None
+    ) -> str:
         """
         Run the deep research flow using graph execution.
 

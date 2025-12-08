@@ -92,10 +92,6 @@ def kokoro_tts_function(text: str, voice: str, speed: float) -> tuple[int, np.nd
 def test():
     """Test the TTS function."""
     print("Testing Modal TTS function...")
-    sample_rate, audio = kokoro_tts_function.remote(
-        "Hello, this is a test.",
-        "af_heart",
-        1.0
-    )
+    sample_rate, audio = kokoro_tts_function.remote("Hello, this is a test.", "af_heart", 1.0)
     print(f"Generated audio: {sample_rate}Hz, shape={audio.shape}")
     print("✓ TTS function works!")

@@ -134,7 +134,9 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             return f"Starting iteration {iteration}. Need to gather information about: {query}"
 
 
-def create_thinking_agent(model: Any | None = None, oauth_token: str | None = None) -> ThinkingAgent:
+def create_thinking_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> ThinkingAgent:
     """
     Factory function to create a thinking agent.
 

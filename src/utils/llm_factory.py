@@ -102,7 +102,7 @@ def get_chat_client_for_agent(oauth_token: str | None = None) -> Any:
     """
     # Check if we have OAuth token or env vars
     has_hf_key = bool(oauth_token or settings.has_huggingface_key)
-    
+
     # Prefer HuggingFace if available (free tier)
     if has_hf_key:
         return get_huggingface_chat_client(oauth_token=oauth_token)
