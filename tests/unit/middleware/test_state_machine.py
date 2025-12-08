@@ -405,10 +405,3 @@ class TestContextVarIsolation:
         assert len(state2.evidence) == 1
         assert state1.evidence[0].citation.url == "https://example.com/1"
         assert state2.evidence[0].citation.url == "https://example.com/2"
-
-
-
-
-
-
-
