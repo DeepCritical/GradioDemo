@@ -181,7 +181,9 @@ REPORT DRAFT:
         return f"# Research Report\n\n## Query\n{query}\n\n" + "\n\n".join(sections)
 
 
-def create_proofreader_agent(model: Any | None = None, oauth_token: str | None = None) -> ProofreaderAgent:
+def create_proofreader_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> ProofreaderAgent:
     """
     Factory function to create a proofreader agent.
 

@@ -27,7 +27,9 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
-def create_input_parser_agent(model: Any | None = None, oauth_token: str | None = None) -> "InputParserAgent":
+def create_input_parser_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> "InputParserAgent":
     """
     Create input parser agent for query analysis and research mode detection.
 
@@ -51,7 +53,9 @@ def create_input_parser_agent(model: Any | None = None, oauth_token: str | None 
         raise ConfigurationError(f"Failed to create input parser agent: {e}") from e
 
 
-def create_planner_agent(model: Any | None = None, oauth_token: str | None = None) -> "PlannerAgent":
+def create_planner_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> "PlannerAgent":
     """
     Create planner agent with web search and crawl tools.
 
@@ -76,7 +80,9 @@ def create_planner_agent(model: Any | None = None, oauth_token: str | None = Non
         raise ConfigurationError(f"Failed to create planner agent: {e}") from e
 
 
-def create_knowledge_gap_agent(model: Any | None = None, oauth_token: str | None = None) -> "KnowledgeGapAgent":
+def create_knowledge_gap_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> "KnowledgeGapAgent":
     """
     Create knowledge gap agent for evaluating research completeness.
 
@@ -100,7 +106,9 @@ def create_knowledge_gap_agent(model: Any | None = None, oauth_token: str | None
         raise ConfigurationError(f"Failed to create knowledge gap agent: {e}") from e
 
 
-def create_tool_selector_agent(model: Any | None = None, oauth_token: str | None = None) -> "ToolSelectorAgent":
+def create_tool_selector_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> "ToolSelectorAgent":
     """
     Create tool selector agent for choosing tools to address gaps.
 
@@ -124,7 +132,9 @@ def create_tool_selector_agent(model: Any | None = None, oauth_token: str | None
         raise ConfigurationError(f"Failed to create tool selector agent: {e}") from e
 
 
-def create_thinking_agent(model: Any | None = None, oauth_token: str | None = None) -> "ThinkingAgent":
+def create_thinking_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> "ThinkingAgent":
     """
     Create thinking agent for generating observations.
 
@@ -172,7 +182,9 @@ def create_writer_agent(model: Any | None = None, oauth_token: str | None = None
         raise ConfigurationError(f"Failed to create writer agent: {e}") from e
 
 
-def create_long_writer_agent(model: Any | None = None, oauth_token: str | None = None) -> "LongWriterAgent":
+def create_long_writer_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> "LongWriterAgent":
     """
     Create long writer agent for iteratively writing report sections.
 
@@ -196,7 +208,9 @@ def create_long_writer_agent(model: Any | None = None, oauth_token: str | None =
         raise ConfigurationError(f"Failed to create long writer agent: {e}") from e
 
 
-def create_proofreader_agent(model: Any | None = None, oauth_token: str | None = None) -> "ProofreaderAgent":
+def create_proofreader_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> "ProofreaderAgent":
     """
     Create proofreader agent for finalizing report drafts.
 

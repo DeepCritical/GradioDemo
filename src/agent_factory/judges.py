@@ -37,7 +37,7 @@ def get_model(oauth_token: str | None = None) -> Any:
     1. HuggingFace (if OAuth token or API key available - preferred for free tier)
     2. OpenAI (if API key available)
     3. Anthropic (if API key available)
-    
+
     If OAuth token is available, prefer HuggingFace (even if provider is set to OpenAI).
     This ensures users logged in via HuggingFace Spaces get the free tier.
 
@@ -175,9 +175,8 @@ class JudgeHandler:
             from src.utils.hf_error_handler import (
                 extract_error_details,
                 get_user_friendly_error_message,
-                should_retry_with_fallback,
             )
-            
+
             error_details = extract_error_details(e)
             logger.error(
                 "Assessment failed",
@@ -187,12 +186,12 @@ class JudgeHandler:
                 is_auth_error=error_details.get("is_auth_error"),
                 is_model_error=error_details.get("is_model_error"),
             )
-            
+
             # Log user-friendly message for debugging
             if error_details.get("is_auth_error") or error_details.get("is_model_error"):
                 user_msg = get_user_friendly_error_message(e, error_details.get("model_name"))
                 logger.warning("API error details", user_message=user_msg[:200])
-            
+
             # Return a safe default assessment on failure
             return self._create_fallback_assessment(question, str(e))
 
@@ -244,9 +243,7 @@ class HFInferenceJudgeHandler:
         "HuggingFaceH4/zephyr-7b-beta",  # Fallback (Ungated)
     ]
 
-    def __init__(
-        self, model_id: str | None = None, api_key: str | None = None
-    ) -> None:
+    def __init__(self, model_id: str | None = None, api_key: str | None = None) -> None:
         """
         Initialize with HF Inference client.
 

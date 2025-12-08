@@ -142,7 +142,9 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             )
 
 
-def create_knowledge_gap_agent(model: Any | None = None, oauth_token: str | None = None) -> KnowledgeGapAgent:
+def create_knowledge_gap_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> KnowledgeGapAgent:
     """
     Factory function to create a knowledge gap agent.
 

@@ -50,7 +50,7 @@ def create_web_search_tool(provider: str | None = None) -> SearchTool | None:
                     "Failed to initialize Serper, falling back",
                     error=str(e),
                 )
-        
+
         # Try SearchXNG as second choice
         if settings.searchxng_host:
             try:
@@ -64,7 +64,7 @@ def create_web_search_tool(provider: str | None = None) -> SearchTool | None:
                     "Failed to initialize SearchXNG, falling back",
                     error=str(e),
                 )
-        
+
         # Fall back to DuckDuckGo
         if provider == "auto":
             logger.info(
@@ -113,18 +113,3 @@ def create_web_search_tool(provider: str | None = None) -> SearchTool | None:
     except Exception as e:
         logger.error("Unexpected error creating web search tool", error=str(e), provider=provider)
         return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

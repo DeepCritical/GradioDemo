@@ -3,6 +3,7 @@
 import asyncio
 
 import structlog
+
 try:
     from ddgs import DDGS  # New package name
 except ImportError:
@@ -59,7 +60,7 @@ class WebSearchTool:
                 title = r.get("title", "No Title")
                 if len(title) > 500:
                     title = title[:497] + "..."
-                
+
                 ev = Evidence(
                     content=r.get("body", ""),
                     citation=Citation(

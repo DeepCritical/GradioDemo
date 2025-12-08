@@ -89,7 +89,7 @@ class SearchXNGWebSearchTool:
                 title = result.title
                 if len(title) > 500:
                     title = title[:497] + "..."
-                
+
                 ev = Evidence(
                     content=result.text,
                     citation=Citation(
@@ -118,18 +118,3 @@ class SearchXNGWebSearchTool:
         except Exception as e:
             logger.error("Unexpected error in SearchXNG search", error=str(e), query=final_query)
             raise SearchError(f"SearchXNG search failed: {e}") from e
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -175,12 +175,12 @@ FINDINGS:
             "Report writing failed after all attempts",
             error=str(last_exception) if last_exception else "Unknown error",
         )
-        
+
         # Try to use evidence-based report generator for better fallback
         try:
             from src.middleware.state_machine import get_workflow_state
             from src.utils.report_generator import generate_report_from_evidence
-            
+
             state = get_workflow_state()
             if state and state.evidence:
                 self.logger.info(
@@ -197,7 +197,7 @@ FINDINGS:
                 "Failed to use evidence-based report generator",
                 error=str(e),
             )
-        
+
         # Fallback to simple report if evidence generator fails
         # Truncate findings in fallback if too long
         fallback_findings = findings[:500] + "..." if len(findings) > 500 else findings

@@ -154,7 +154,9 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
             )
 
 
-def create_tool_selector_agent(model: Any | None = None, oauth_token: str | None = None) -> ToolSelectorAgent:
+def create_tool_selector_agent(
+    model: Any | None = None, oauth_token: str | None = None
+) -> ToolSelectorAgent:
     """
     Factory function to create a tool selector agent.
 
