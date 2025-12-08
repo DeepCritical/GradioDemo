@@ -1,6 +1,7 @@
 """Rate limiting utilities using the limits library."""
 
 import asyncio
+import random
 from typing import ClassVar
 
 from limits import RateLimitItem, parse
@@ -28,7 +29,7 @@ class RateLimiter:
         self._rate_limit: RateLimitItem = parse(rate)
         self._identity = "default"  # Single identity for shared limiting
 
-    async def acquire(self, wait: bool = True) -> bool:
+    async def acquire(self, wait: bool = True, jitter: bool = False) -> bool:
         """
         Acquire permission to make a request.
 
@@ -37,6 +38,7 @@ class RateLimiter:
 
         Args:
             wait: If True, wait until allowed. If False, return immediately.
+            jitter: If True, add random jitter (0-20% of wait time) to avoid thundering herd
 
         Returns:
             True if allowed, False if not (only when wait=False)
@@ -44,6 +46,12 @@ class RateLimiter:
         while True:
             # Check if we can proceed (synchronous, fast - ~microseconds)
             if self._limiter.hit(self._rate_limit, self._identity):
+                # Add jitter after acquiring to spread out requests
+                if jitter:
+                    # Add 0-1 second jitter to spread requests slightly
+                    # This prevents thundering herd without long delays
+                    jitter_seconds = random.uniform(0, 1.0)
+                    await asyncio.sleep(jitter_seconds)
                 return True
 
             if not wait:
@@ -97,7 +105,15 @@ def get_serper_limiter(api_key: str | None = None) -> RateLimiter:
     """
     Get the shared Serper API rate limiter.
 
-    Rate: 10 requests/second (Serper API limit)
+    Rate: 100 requests/second (Serper free tier limit)
+
+    Serper free tier provides:
+    - 2,500 credits (one-time, expire after 6 months)
+    - 100 requests/second rate limit
+    - Credits only deduct for successful responses
+
+    We use a slightly conservative rate (90/second) to stay safely under the limit
+    while allowing high throughput when needed.
 
     Args:
         api_key: Serper API key (optional, for consistency with other limiters)
@@ -105,7 +121,8 @@ def get_serper_limiter(api_key: str | None = None) -> RateLimiter:
     Returns:
         Shared RateLimiter instance
     """
-    return RateLimiterFactory.get("serper", "10/second")
+    # Use 90/second to stay safely under 100/second limit
+    return RateLimiterFactory.get("serper", "90/second")
 
 
 def get_searchxng_limiter() -> RateLimiter:
