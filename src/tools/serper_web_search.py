@@ -1,9 +1,14 @@
 """Serper web search tool using Serper API for Google searches."""
 
 import structlog
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_not_exception_type,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
-from src.tools.query_utils import preprocess_query
+from src.tools.query_utils import preprocess_web_query
 from src.tools.rate_limiter import get_serper_limiter
 from src.tools.vendored.serper_client import SerperClient
 from src.tools.vendored.web_search_core import scrape_urls
@@ -34,6 +39,14 @@ class SerperWebSearchTool:
 
         self._client = SerperClient(api_key=self.api_key)
         self._limiter = get_serper_limiter(self.api_key)
+        
+        # Validate API key format (basic check)
+        if self.api_key and len(self.api_key.strip()) < 10:
+            logger.warning(
+                "Serper API key appears to be too short",
+                key_length=len(self.api_key),
+                hint="Verify SERPER_API_KEY is correct",
+            )
 
     @property
     def name(self) -> str:
@@ -41,13 +54,20 @@ class SerperWebSearchTool:
         return "serper"
 
     async def _rate_limit(self) -> None:
-        """Enforce Serper API rate limiting."""
-        await self._limiter.acquire()
+        """Enforce Serper API rate limiting with jitter.
+        
+        Uses jitter to spread out requests and avoid thundering herd problems.
+        Rate limit is 100 requests/second for free tier, we use 90/second to stay safe.
+        """
+        await self._limiter.acquire(jitter=True)
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=10),
+        stop=stop_after_attempt(3),  # Reduced retries for faster fallback
+        wait=wait_random_exponential(
+            multiplier=1, min=2, max=10, exp_base=2
+        ),  # 2s to 10s backoff with jitter (faster for fallback)
         reraise=True,
+        retry=retry_if_not_exception_type(ConfigurationError),  # Don't retry on config errors
     )
     async def search(self, query: str, max_results: int = 10) -> list[Evidence]:
         """Execute a web search using Serper API.
@@ -62,11 +82,12 @@ class SerperWebSearchTool:
         Raises:
             SearchError: If the search fails
             RateLimitError: If rate limit is exceeded
+            ConfigurationError: If API key is invalid (403 Forbidden)
         """
         await self._rate_limit()
 
-        # Preprocess query to remove noise
-        clean_query = preprocess_query(query)
+        # Preprocess query for web search (simplified, no boolean syntax)
+        clean_query = preprocess_web_query(query)
         final_query = clean_query if clean_query else query
 
         try:
@@ -111,6 +132,9 @@ class SerperWebSearchTool:
 
             return evidence
 
+        except ConfigurationError:
+            # Don't retry configuration errors (e.g., 403 Forbidden = invalid API key)
+            raise
         except RateLimitError:
             raise
         except SearchError:

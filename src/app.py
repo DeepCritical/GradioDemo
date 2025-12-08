@@ -81,11 +81,30 @@ def configure_orchestrator(
     Returns:
         Tuple of (orchestrator, backend_info_string)
     """
+    from src.tools.clinicaltrials import ClinicalTrialsTool
+    from src.tools.europepmc import EuropePMCTool
+    from src.tools.neo4j_search import Neo4jSearchTool
+    from src.tools.pubmed import PubMedTool
     from src.tools.search_handler import SearchHandler
     from src.tools.web_search_factory import create_web_search_tool
 
     # Create search handler with tools
     tools = []
+
+    # Add biomedical search tools (always available, no API keys required)
+    tools.append(PubMedTool())
+    logger.info("PubMed tool added to search handler")
+    
+    tools.append(ClinicalTrialsTool())
+    logger.info("ClinicalTrials tool added to search handler")
+    
+    tools.append(EuropePMCTool())
+    logger.info("EuropePMC tool added to search handler")
+    
+    # Add Neo4j knowledge graph search tool (if Neo4j is configured)
+    neo4j_tool = Neo4jSearchTool()
+    tools.append(neo4j_tool)
+    logger.info("Neo4j search tool added to search handler")
 
     # Add web search tool
     web_search_tool = create_web_search_tool(provider=web_search_provider or "auto")

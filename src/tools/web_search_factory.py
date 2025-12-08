@@ -3,6 +3,7 @@
 import structlog
 
 from src.tools.base import SearchTool
+from src.tools.fallback_web_search import FallbackWebSearchTool
 from src.tools.searchxng_web_search import SearchXNGWebSearchTool
 from src.tools.serper_web_search import SerperWebSearchTool
 from src.tools.web_search import WebSearchTool
@@ -37,17 +38,18 @@ def create_web_search_tool(provider: str | None = None) -> SearchTool | None:
 
     # Auto-detect best available provider if "auto" or if provider is duckduckgo but better options exist
     if provider == "auto" or (provider == "duckduckgo" and settings.serper_api_key):
-        # Prefer Serper if API key is available (better quality)
+        # Use fallback tool if Serper API key is available
+        # This automatically falls back to DuckDuckGo on any Serper error
         if settings.serper_api_key:
             try:
                 logger.info(
-                    "Auto-detected Serper web search (SERPER_API_KEY found)",
-                    provider="serper",
+                    "Auto-detected Serper with DuckDuckGo fallback (SERPER_API_KEY found)",
+                    provider="serper+duckduckgo",
                 )
-                return SerperWebSearchTool()
+                return FallbackWebSearchTool()
             except Exception as e:
                 logger.warning(
-                    "Failed to initialize Serper, falling back",
+                    "Failed to initialize fallback web search, trying alternatives",
                     error=str(e),
                 )
 
@@ -65,7 +67,7 @@ def create_web_search_tool(provider: str | None = None) -> SearchTool | None:
                     error=str(e),
                 )
 
-        # Fall back to DuckDuckGo
+        # Fall back to DuckDuckGo only
         if provider == "auto":
             logger.info(
                 "Auto-detected DuckDuckGo web search (no API keys found)",

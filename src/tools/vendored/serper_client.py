@@ -9,7 +9,7 @@ import aiohttp
 import structlog
 
 from src.tools.vendored.web_search_core import WebpageSnippet, ssl_context
-from src.utils.exceptions import RateLimitError, SearchError
+from src.utils.exceptions import ConfigurationError, RateLimitError, SearchError
 
 logger = structlog.get_logger()
 
@@ -34,6 +34,11 @@ class SerperClient:
                 "No API key provided. Set SERPER_API_KEY environment variable."
             )
 
+        # Serper API endpoint and headers
+        # Documentation: https://serper.dev/api
+        # Format: POST https://google.serper.dev/search
+        # Headers: X-API-KEY (required), Content-Type: application/json
+        # Body: {"q": "search query", "autocorrect": false}
         self.url = "https://google.serper.dev/search"
         self.headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
 
@@ -57,11 +62,43 @@ class SerperClient:
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         try:
             async with aiohttp.ClientSession(connector=connector) as session:
+                # Verify API call format matches Serper API documentation:
+                # POST https://google.serper.dev/search
+                # Headers: X-API-KEY, Content-Type: application/json
+                # Body: {"q": query, "autocorrect": false}
                 async with session.post(
-                    self.url, headers=self.headers, json={"q": query, "autocorrect": False}
+                    self.url,
+                    headers=self.headers,
+                    json={"q": query, "autocorrect": False},
+                    timeout=aiohttp.ClientTimeout(total=30),  # 30 second timeout
                 ) as response:
                     if response.status == 429:
                         raise RateLimitError("Serper API rate limit exceeded")
+                    
+                    if response.status == 403:
+                        # 403 can mean either invalid key OR credits exhausted
+                        # For free tier (2,500 credits), it's often credit exhaustion
+                        # Read response body to get more details
+                        try:
+                            error_body = await response.text()
+                            logger.warning(
+                                "Serper API returned 403 Forbidden",
+                                status=403,
+                                body=error_body[:200],  # Truncate for logging
+                                hint="May be credit exhaustion (free tier: 2,500 credits) or invalid key",
+                            )
+                        except Exception:
+                            pass
+                        
+                        # Raise RateLimitError instead of ConfigurationError
+                        # This allows retry logic to handle credit exhaustion
+                        # The retry decorator will use exponential backoff with jitter
+                        raise RateLimitError(
+                            "Serper API credits may be exhausted (403 Forbidden). "
+                            "Free tier provides 2,500 credits (one-time, expire after 6 months). "
+                            "Check your dashboard at https://serper.dev/dashboard. "
+                            "Retrying with backoff..."
+                        )
 
                     response.raise_for_status()
                     results = await response.json()
