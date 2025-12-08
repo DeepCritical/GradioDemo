@@ -522,7 +522,7 @@ HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
         """
         if self._rag_service is None:
             try:
-                self._rag_service = get_rag_service()
+                self._rag_service = get_rag_service(oauth_token=self.oauth_token)
                 self.logger.info("RAG service initialized for research flow")
             except (ConfigurationError, ImportError) as e:
                 self.logger.warning(

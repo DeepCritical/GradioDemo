@@ -118,6 +118,7 @@ class SearchHandler:
             "pubmed": "pubmed",
             "clinicaltrials": "clinicaltrials",
             "europepmc": "europepmc",
+            "neo4j": "neo4j",
             "rag": "rag",
             "web": "web",  # In case tool already uses "web"
         }
@@ -141,6 +142,7 @@ class SearchHandler:
                     "preprint",
                     "rag",
                     "web",
+                    "neo4j",
                 ]:
                     logger.warning(
                         "Tool name not in SourceName literals, defaulting to 'web'",
